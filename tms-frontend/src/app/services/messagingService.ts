@@ -13,6 +13,12 @@ export interface BackendDiscordServer {
     server_binding_id: number | null;
     class_id: number | null;
     class_name: string | null;
+    notification_channel_id: string | null;
+    notification_channel_name: string | null;
+    notification_channel_cache_id: number | null;
+    attendance_voice_channel_id: string | null;
+    attendance_voice_channel_name: string | null;
+    attendance_voice_channel_cache_id: number | null;
   };
 }
 
@@ -30,9 +36,14 @@ export interface BackendCommunityServer {
   id: number;
   teacher_id: number;
   discord_server_id: string;
+  server_id: number | null;
   name: string | null;
   notification_channel_id: string | null;
+  notification_channel_name: string | null;
+  notification_channel_cache_id: number | null;
   voice_channel_id: string | null;
+  voice_channel_name: string | null;
+  voice_channel_cache_id: number | null;
 }
 
 export interface BackendDiscordChannel {
@@ -50,6 +61,7 @@ export interface DiscordSetupIssue {
   severity: "critical" | "warning" | "info";
   title: string;
   description: string;
+  cta_action?: "open_bot_invite" | "sync_servers" | "open_community_server" | "open_class_server" | "review_students" | null;
   cta_label?: string | null;
 }
 
@@ -64,6 +76,7 @@ export interface DiscordSetupStatus {
     active_classes: number;
     configured_class_servers: number;
     classes_missing_server: number;
+    synced_servers: number;
   };
   missing_class_server_names: string[];
   issues: DiscordSetupIssue[];

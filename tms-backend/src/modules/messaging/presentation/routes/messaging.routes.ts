@@ -20,6 +20,7 @@ type MessagingRouteControllers = {
   listDiscordServers: MessagingController;
   syncDiscordServers: MessagingController;
   listDiscordChannels: MessagingController;
+  completeDiscordInstall: MessagingController;
   getCommunityServer: MessagingController;
   upsertCommunityServer: MessagingController;
   deleteCommunityServer: MessagingController;
@@ -34,6 +35,8 @@ type MessagingRouteControllers = {
 
 export function createMessagingRouter(controllers: MessagingRouteControllers): Router {
   const router = Router();
+
+  router.get('/discord/oauth/callback', adaptExpressRoute(controllers.completeDiscordInstall));
 
   router.use(passport.authenticate('jwt', { session: false }));
   router.use(requireRoles([TeacherRole.Teacher]));

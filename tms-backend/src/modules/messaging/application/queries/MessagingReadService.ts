@@ -1,4 +1,5 @@
 import type { DiscordMessageType } from '../../../../entities/enums.js';
+import type { DiscordSetupIssue } from '../dto/MessagingDto.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
 import type { MessagingReadRepository } from './MessagingReadRepository.js';
 
@@ -73,7 +74,7 @@ export class MessagingReadService {
     return this.messagingReadRepository.findCommunityServerForTeacher(teacherId);
   }
 
-  async getBotInviteLink() {
+  async getBotInviteLink(_teacherId: number) {
     const credential = await this.discordBotCredentialStore.findDefault();
     const clientId = credential?.client_id.trim() ?? '';
     if (!clientId) {
@@ -104,6 +105,12 @@ export class MessagingReadService {
         server_binding_id: server.binding_server_id,
         class_id: server.binding_class_id,
         class_name: server.binding_class_name,
+        notification_channel_id: server.binding_notification_channel_id,
+        notification_channel_name: server.binding_notification_channel_name,
+        notification_channel_cache_id: server.binding_notification_channel_cache_id,
+        attendance_voice_channel_id: server.binding_attendance_voice_channel_id,
+        attendance_voice_channel_name: server.binding_attendance_voice_channel_name,
+        attendance_voice_channel_cache_id: server.binding_attendance_voice_channel_cache_id,
       },
     })));
   }
@@ -120,6 +127,7 @@ export class MessagingReadService {
       activeClasses,
       configuredClassServers,
       missingClassServerNames,
+      syncedServers,
     ] = await Promise.all([
       this.messagingReadRepository.findCommunityServerForTeacher(teacherId),
       this.messagingReadRepository.countActiveStudentsForTeacher(teacherId),
@@ -127,19 +135,14 @@ export class MessagingReadService {
       this.messagingReadRepository.countActiveClassesForTeacher(teacherId),
       this.messagingReadRepository.countConfiguredDiscordServersForTeacher(teacherId),
       this.messagingReadRepository.listActiveClassesMissingDiscordServerNamesForTeacher(teacherId),
+      this.messagingReadRepository.countTeacherDiscordServerCaches(teacherId),
     ]);
 
     const [inviteLink, credential] = await Promise.all([
-      this.getBotInviteLink(),
+      this.getBotInviteLink(teacherId),
       this.discordBotCredentialStore.findDefault(),
     ]);
-    const issues: Array<{
-      code: string;
-      severity: 'critical' | 'warning' | 'info';
-      title: string;
-      description: string;
-      cta_label?: string | null;
-    }> = [];
+    const issues: DiscordSetupIssue[] = [];
 
     if (!credential?.bot_token || !inviteLink) {
       issues.push({
@@ -147,7 +150,19 @@ export class MessagingReadService {
         severity: 'critical',
         title: 'Bot Discord chưa được cấu hình',
         description: 'Sysadmin cần cấu hình bot credential và bot invite link trước khi giáo viên có thể dùng Discord.',
+        cta_action: null,
         cta_label: null,
+      });
+    }
+
+    if (credential?.bot_token && syncedServers === 0) {
+      issues.push({
+        code: 'discord_servers_not_synced',
+        severity: 'critical',
+        title: 'Chưa đồng bộ được server Discord nào',
+        description: 'Mở invite link, thêm bot vào server của bạn, rồi bấm đồng bộ lại để hệ thống lấy danh sách server và channel.',
+        cta_action: inviteLink ? 'open_bot_invite' : 'sync_servers',
+        cta_label: inviteLink ? 'Mời bot vào server' : 'Đồng bộ server',
       });
     }
 
@@ -157,6 +172,7 @@ export class MessagingReadService {
         severity: 'critical',
         title: 'Chưa có server chung',
         description: 'Hãy thêm bot vào server Discord chung của bạn rồi cấu hình server chung trong app.',
+        cta_action: 'open_community_server',
         cta_label: 'Cấu hình server chung',
       });
     } else {
@@ -166,6 +182,7 @@ export class MessagingReadService {
           severity: 'warning',
           title: 'Server chung chưa có voice channel',
           description: 'Chọn voice channel dùng cho vận hành community server.',
+          cta_action: 'open_community_server',
           cta_label: 'Cập nhật server chung',
         });
       }
@@ -176,6 +193,7 @@ export class MessagingReadService {
           severity: 'warning',
           title: 'Server chung chưa có kênh thông báo',
           description: 'Chọn kênh dùng để bot gửi thông báo chung hoặc broadcast khi cần.',
+          cta_action: 'open_community_server',
           cta_label: 'Cập nhật server chung',
         });
       }
@@ -188,6 +206,7 @@ export class MessagingReadService {
         severity: 'warning',
         title: `Còn ${studentsMissingDiscordUsername} học sinh thiếu Discord username`,
         description: 'Các học sinh này chưa sẵn sàng để nhận DM hoặc được đối soát invite qua Discord.',
+        cta_action: 'review_students',
         cta_label: 'Rà lại học sinh',
       });
     }
@@ -201,6 +220,7 @@ export class MessagingReadService {
         description: missingClassServerNames.length <= 3
           ? `Chưa cấu hình server cho: ${preview}.`
           : `Chưa cấu hình server cho: ${preview} và ${missingClassServerNames.length - 3} lớp khác.`,
+        cta_action: 'open_class_server',
         cta_label: 'Cấu hình server lớp',
       });
     }
@@ -211,6 +231,7 @@ export class MessagingReadService {
         severity: 'info',
         title: 'Cấu hình Discord đang ổn',
         description: 'Server chung và server lớp chính đã có đủ cấu hình để tiếp tục vận hành.',
+        cta_action: null,
         cta_label: null,
       });
     }
@@ -226,6 +247,7 @@ export class MessagingReadService {
         active_classes: activeClasses,
         configured_class_servers: configuredClassServers,
         classes_missing_server: Math.max(0, activeClasses - configuredClassServers),
+        synced_servers: syncedServers,
       },
       missing_class_server_names: missingClassServerNames,
       issues,

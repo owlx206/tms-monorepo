@@ -32,6 +32,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   const response = await fetch(`/api${path}`, {
     ...init,
+    cache: "no-store",
     headers: requestHeaders,
   });
 

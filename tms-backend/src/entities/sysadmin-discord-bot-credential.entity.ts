@@ -15,6 +15,9 @@ export class SysadminDiscordBotCredential {
   @Column({ type: 'varchar', length: 64 })
   client_id!: string;
 
+  @Column({ type: 'text', default: '' })
+  client_secret!: string;
+
   @Column({ type: 'varchar', length: 128, nullable: true })
   permissions!: string | null;
 

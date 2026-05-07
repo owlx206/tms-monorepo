@@ -46,16 +46,21 @@ export class BindClassDiscordServerUseCase {
       throw new ServiceError('selected server is already bound as community server', 409);
     }
 
+    const existing = await this.messagingWriteRepository.findDiscordServerByClass(teacherId, classId);
     const existingByServer = await this.messagingWriteRepository.findDiscordServerByDiscordServerId(
       teacherId,
       serverCache.discord_server_id,
     );
+
     if (existingByServer && existingByServer.class_id !== classId) {
       throw new ServiceError('selected server is already bound to another class', 409);
     }
 
-    const existing = await this.messagingWriteRepository.findDiscordServerByClass(teacherId, classId);
     if (existing) {
+      if (existing.discord_server_id !== serverCache.discord_server_id) {
+        throw new ServiceError('current class already has another server binding', 409);
+      }
+
       existing.discord_server_id = serverCache.discord_server_id;
       existing.name = serverCache.name;
       existing.notification_channel_id = notificationChannel?.discord_channel_id ?? null;

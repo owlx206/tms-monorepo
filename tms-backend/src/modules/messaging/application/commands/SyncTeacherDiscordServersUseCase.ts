@@ -14,7 +14,7 @@ export class SyncTeacherDiscordServersUseCase {
     const discord = this.discordGatewayFactory.create(credential?.bot_token ?? null);
     const guilds = await discord.listGuilds();
 
-    const savedServers = await this.messagingWriteRepository.replaceTeacherDiscordServerCaches(
+    const cachedGuilds = await this.messagingWriteRepository.replaceTeacherDiscordServerCaches(
       teacherId,
       guilds.map((guild) => ({
         discord_server_id: guild.id,
@@ -22,11 +22,11 @@ export class SyncTeacherDiscordServersUseCase {
       })),
     );
 
-    for (const guild of guilds) {
-      const channels = await discord.listGuildChannels(guild.id);
+    for (const guild of cachedGuilds) {
+      const channels = await discord.listGuildChannels(guild.discord_server_id);
       await this.messagingWriteRepository.replaceTeacherDiscordChannelCaches(
         teacherId,
-        guild.id,
+        guild.discord_server_id,
         channels.map((channel) => ({
           discord_channel_id: channel.id,
           name: channel.name,
@@ -36,7 +36,7 @@ export class SyncTeacherDiscordServersUseCase {
     }
 
     return {
-      synced_servers: savedServers.length,
+      synced_servers: cachedGuilds.length,
     };
   }
 }

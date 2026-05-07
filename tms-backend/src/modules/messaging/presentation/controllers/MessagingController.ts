@@ -15,6 +15,7 @@ type MessagingControllerAction =
   | 'listDiscordServers'
   | 'syncDiscordServers'
   | 'listDiscordChannels'
+  | 'completeDiscordInstall'
   | 'getCommunityServer'
   | 'upsertCommunityServer'
   | 'deleteCommunityServer'
@@ -30,10 +31,16 @@ type MessagingControllerDependencies = {
   listDiscordServers(teacherId: number): Promise<unknown>;
   syncDiscordServers(teacherId: number): Promise<unknown>;
   listDiscordChannels(teacherId: number, serverId: number): Promise<unknown>;
+  completeDiscordInstall(input: {
+    code?: string;
+    state?: string;
+    guild_id?: string;
+    error?: string;
+  }): Promise<string>;
   getCommunityServer(teacherId: number): Promise<unknown>;
   upsertCommunityServer(teacherId: number, input: UpsertCommunityServerInput): Promise<unknown>;
   deleteCommunityServer(teacherId: number): Promise<unknown>;
-  getBotInviteLink(): Promise<unknown> | unknown;
+  getBotInviteLink(teacherId: number): Promise<unknown> | unknown;
   getSetupStatus(teacherId: number): Promise<unknown>;
   upsertDiscordServerByClass(
     teacherId: number,
@@ -67,6 +74,8 @@ export class MessagingController implements Controller {
           return this.syncDiscordServers(request);
         case 'listDiscordChannels':
           return this.listDiscordChannels(request);
+        case 'completeDiscordInstall':
+          return this.completeDiscordInstall(request);
         case 'getCommunityServer':
           return this.getCommunityServer(request);
         case 'upsertCommunityServer':
@@ -74,7 +83,7 @@ export class MessagingController implements Controller {
         case 'deleteCommunityServer':
           return this.deleteCommunityServer(request);
         case 'getBotInviteLink':
-          return this.getBotInviteLink();
+          return this.getBotInviteLink(request);
         case 'getSetupStatus':
           return this.getSetupStatus(request);
         case 'upsertDiscordServer':
@@ -139,6 +148,27 @@ export class MessagingController implements Controller {
     };
   }
 
+  private async completeDiscordInstall(request: MessagingHttpRequest): Promise<HttpResponse> {
+    const redirectUrl = await this.dependencies.completeDiscordInstall(
+      (request.query ?? {}) as {
+        code?: string;
+        state?: string;
+        guild_id?: string;
+        error?: string;
+      },
+    );
+
+    return {
+      statusCode: 302,
+      body: {
+        redirect_to: redirectUrl,
+      },
+      headers: {
+        Location: redirectUrl,
+      },
+    };
+  }
+
   private async upsertCommunityServer(request: MessagingHttpRequest): Promise<HttpResponse> {
     const server = await this.dependencies.upsertCommunityServer(
       getTeacherId(request),
@@ -160,8 +190,8 @@ export class MessagingController implements Controller {
     };
   }
 
-  private async getBotInviteLink(): Promise<HttpResponse> {
-    const inviteLink = await this.dependencies.getBotInviteLink();
+  private async getBotInviteLink(request: MessagingHttpRequest): Promise<HttpResponse> {
+    const inviteLink = await this.dependencies.getBotInviteLink(getTeacherId(request));
 
     return {
       statusCode: 200,

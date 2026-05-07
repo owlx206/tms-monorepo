@@ -10,6 +10,9 @@ export interface AuthTeacher {
   codeforces_handle: string | null;
   codeforces_api_key: string | null;
   codeforces_api_secret: string | null;
+  discord_username: string | null;
+  discord_user_id: string | null;
+  discord_verified_at: string | null;
   created_at: string;
 }
 
@@ -63,4 +66,9 @@ export async function updateMe(payload: {
   });
 
   return data.teacher;
+}
+
+export async function getDiscordVerificationAuthorizeUrl(): Promise<string> {
+  const data = await apiRequest<{ authorize_url: string }>("/me/discord/verification/start");
+  return data.authorize_url;
 }

@@ -3,6 +3,7 @@ import type { SysadminDiscordBotCredentialOrmEntity } from './SysadminDiscordBot
 export type SysadminDiscordBotCredentialRecord = {
   id: number;
   client_id: string;
+  client_secret: string;
   bot_token: string;
   permissions: string | null;
   scopes: string | null;
@@ -15,6 +16,7 @@ export interface SysadminDiscordBotCredentialStore {
   saveDefault(input: {
     bot_token: string;
     client_id: string;
+    client_secret: string;
     permissions?: string | null;
     scopes?: string | null;
   }): Promise<SysadminDiscordBotCredentialOrmEntity>;

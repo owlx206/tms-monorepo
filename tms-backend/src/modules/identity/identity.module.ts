@@ -3,6 +3,8 @@ import config from '../../config.js';
 import { CreateTeacherByAdminUseCase } from './application/commands/CreateTeacherByAdminUseCase.js';
 import { LoginUseCase } from './application/commands/LoginUseCase.js';
 import { RegisterUseCase } from './application/commands/RegisterUseCase.js';
+import { CompleteTeacherDiscordVerificationUseCase } from './application/commands/CompleteTeacherDiscordVerificationUseCase.js';
+import { StartTeacherDiscordVerificationUseCase } from './application/commands/StartTeacherDiscordVerificationUseCase.js';
 import { UpsertSysadminDiscordBotCredentialUseCase } from './application/commands/UpsertSysadminDiscordBotCredentialUseCase.js';
 import { UpdateTeacherByAdminUseCase } from './application/commands/UpdateTeacherByAdminUseCase.js';
 import { UpdateMyProfileUseCase } from './application/commands/UpdateMyProfileUseCase.js';
@@ -42,6 +44,13 @@ const loginUseCase = new LoginUseCase(
 const updateMyProfileUseCase = new UpdateMyProfileUseCase(teacherRepository, passwordHasher);
 const createTeacherByAdminUseCase = new CreateTeacherByAdminUseCase(teacherRepository, passwordHasher);
 const updateTeacherByAdminUseCase = new UpdateTeacherByAdminUseCase(teacherRepository, passwordHasher);
+const startTeacherDiscordVerificationUseCase = new StartTeacherDiscordVerificationUseCase(
+  discordBotCredentialStore,
+);
+const completeTeacherDiscordVerificationUseCase = new CompleteTeacherDiscordVerificationUseCase(
+  teacherRepository,
+  discordBotCredentialStore,
+);
 const upsertSysadminDiscordBotCredentialUseCase = new UpsertSysadminDiscordBotCredentialUseCase(
   discordBotCredentialStore,
 );
@@ -52,24 +61,48 @@ const authRouter = createAuthRouter({
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
+    startDiscordVerification: startTeacherDiscordVerificationUseCase,
+    completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
   login: new AuthController('login', {
     readService: authReadService,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
+    startDiscordVerification: startTeacherDiscordVerificationUseCase,
+    completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
   me: new AuthController('me', {
     readService: authReadService,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
+    startDiscordVerification: startTeacherDiscordVerificationUseCase,
+    completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
   updateMe: new AuthController('updateMe', {
     readService: authReadService,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
+    startDiscordVerification: startTeacherDiscordVerificationUseCase,
+    completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
+  }),
+  startDiscordVerification: new AuthController('startDiscordVerification', {
+    readService: authReadService,
+    register: registerUseCase,
+    login: loginUseCase,
+    updateMe: updateMyProfileUseCase,
+    startDiscordVerification: startTeacherDiscordVerificationUseCase,
+    completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
+  }),
+  completeDiscordVerification: new AuthController('completeDiscordVerification', {
+    readService: authReadService,
+    register: registerUseCase,
+    login: loginUseCase,
+    updateMe: updateMyProfileUseCase,
+    startDiscordVerification: startTeacherDiscordVerificationUseCase,
+    completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
 });
 

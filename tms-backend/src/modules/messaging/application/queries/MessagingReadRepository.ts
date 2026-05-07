@@ -41,9 +41,14 @@ export interface MessagingReadRepository {
     id: number;
     teacher_id: number;
     discord_server_id: string;
+    server_id: number | null;
     name: string | null;
     notification_channel_id: string | null;
+    notification_channel_name: string | null;
+    notification_channel_cache_id: number | null;
     voice_channel_id: string | null;
+    voice_channel_name: string | null;
+    voice_channel_cache_id: number | null;
   } | null>;
   listTeacherDiscordServers(teacherId: number): Promise<Array<{
     id: number;
@@ -55,6 +60,12 @@ export interface MessagingReadRepository {
     binding_role: 'unbound' | 'community' | 'class';
     binding_class_id: number | null;
     binding_class_name: string | null;
+    binding_notification_channel_id: string | null;
+    binding_notification_channel_name: string | null;
+    binding_notification_channel_cache_id: number | null;
+    binding_attendance_voice_channel_id: string | null;
+    binding_attendance_voice_channel_name: string | null;
+    binding_attendance_voice_channel_cache_id: number | null;
   }>>;
   listTeacherDiscordChannelsForServer(teacherId: number, discordServerId: string): Promise<Array<{
     id: number;
@@ -70,4 +81,5 @@ export interface MessagingReadRepository {
   countActiveClassesForTeacher(teacherId: number): Promise<number>;
   countConfiguredDiscordServersForTeacher(teacherId: number): Promise<number>;
   listActiveClassesMissingDiscordServerNamesForTeacher(teacherId: number): Promise<string[]>;
+  countTeacherDiscordServerCaches(teacherId: number): Promise<number>;
 }

@@ -34,6 +34,7 @@ export type AdminTeacher = {
 export type SysadminDiscordBotCredentialInput = {
   bot_token: string;
   client_id: string;
+  client_secret: string;
   permissions?: string | null;
   scopes?: string | null;
 };
@@ -44,6 +45,8 @@ export type SysadminDiscordBotCredentialView = {
   permissions: string | null;
   scopes: string | null;
   invite_link: string;
+  verification_redirect_uri: string;
   has_bot_token: boolean;
+  has_client_secret: boolean;
   updated_at: Date;
 };

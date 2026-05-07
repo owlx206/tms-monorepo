@@ -17,11 +17,11 @@ User goal:
 - giáo viên không cần hiểu Discord API
 - không cần biết `guild id`, `channel id`, `invite endpoint`, `bot permissions`
 - chỉ cần:
-  - nhận `link mời bot` từ admin hệ thống
-  - tự add bot đó vào server Discord của mình
-  - vào app và bấm `Đồng bộ server`
-  - chọn `server chung` từ danh sách server đã sync
-  - chọn `server lớp` từ danh sách server đã sync nếu cần
+  - xác thực Discord account của mình một lần qua OAuth
+  - sau khi xác thực xong mới được tạo hoặc dùng `discord workspace`
+  - dùng bot/system flow để tạo hoặc quản lý server Discord từ workspace đó
+  - quay lại app và chọn `server chung`
+  - chọn `server lớp` nếu cần
   - chọn 1 `text channel` và 1 `voice channel` tương ứng
   - bấm các action như:
     - `Gửi lời mời`
@@ -44,15 +44,16 @@ System goal:
 Flow mong muốn:
 
 1. sysadmin cấu hình bot credential trong UI quản trị của hệ thống
-2. hệ thống generate `invite link` từ bot đó
-3. sysadmin gửi cho giáo viên `invite link`
-4. giáo viên tự mở link đó và add bot vào:
-   - server chung của mình
-   - các server lớp nếu có
-5. trong app, giáo viên chỉ cần:
-   - bấm `Đồng bộ server Discord`
-   - chọn `server chung` từ danh sách server đã sync
-   - chọn `server lớp` từ danh sách server đã sync
+2. giáo viên vào app và bấm `Xác thực Discord`
+3. Discord OAuth redirect về backend
+4. backend lấy được Discord identity đã verify:
+   - `discord_user_id`
+   - `discord_username`
+5. hệ thống chỉ cho tạo hoặc dùng `discord workspace` sau khi teacher đã verify Discord account
+6. teacher tạo `server chung` hoặc `server lớp` từ workspace hiện tại
+7. trong app, giáo viên chỉ cần:
+   - chọn `server chung` của workspace hiện tại
+   - chọn `server lớp` của workspace hiện tại
    - chọn `text channel`
    - chọn `voice channel`
    - bấm `Lưu`
@@ -63,7 +64,11 @@ Nguyên tắc:
 - app không yêu cầu giáo viên tự lấy bot token từ Discord Developer Portal
 - bot credential nằm trong phạm vi quản trị `sysadmin`, không expose cho giáo viên
 - app không yêu cầu giáo viên paste `server id`, `channel id`, hay `bot token`
-- app phải tự sync danh sách `discord servers` và `channels` sau khi bot đã được giáo viên add vào server
+- trước khi có Discord workspace, teacher phải verify Discord account bằng OAuth
+- `discord_username` là workspace selector ở level product
+- Discord identity đã verify là thứ quyết định teacher đang đứng ở workspace nào
+- khi teacher đổi sang `discord_username` khác, hệ thống phải load workspace khác
+- khi teacher đổi lại `discord_username` cũ, hệ thống phải quay lại workspace cũ
 
 ## 3. Non-goals cho phase đầu
 
@@ -97,7 +102,7 @@ Gợi ý fields:
 
 ```txt
 id
-teacher_id
+discord_workspace_key
 discord_server_id
 name
 notification_channel_id nullable
@@ -108,10 +113,31 @@ updated_at
 
 Rule:
 
-- một giáo viên có tối đa một community server active
+- một `discord workspace` có tối đa một community server active
 - bot identity là bot chung do hệ thống cấp
 - bot credential thuộc ownership của `sysadmin`
 - giáo viên không tự quản lý bot token trong UI
+
+### `DiscordWorkspace`
+
+Đây là identity gốc của phần Discord.
+
+Gợi ý fields:
+
+```txt
+id
+discord_user_id
+discord_username
+verified_at
+last_synced_at
+```
+
+Rule:
+
+- teacher chỉ được tạo hoặc dùng Discord workspace sau khi verify Discord account qua OAuth
+- workspace gắn với Discord identity đã verify
+- ở level product, `discord_username` là selector của workspace
+- ở level kỹ thuật, phải lưu cả `discord_user_id` để verify identity bền hơn username hiển thị
 
 ### `ClassDiscordServerBinding`
 
@@ -183,10 +209,49 @@ Không yêu cầu user nhập token ở bất kỳ màn hình nào.
 Khuyến nghị:
 
 - bot credential được cấu hình trong UI của `sysadmin`
-- giáo viên chỉ add bot bằng invite link
-- UI chỉ cho giáo viên chọn server và channel từ danh sách đã sync
-- mọi validate đều dựa trên bot đã được giáo viên add vào server qua invite link của admin
+- teacher phải verify Discord account trước khi tạo hoặc dùng workspace
+- OAuth ở đây dùng để verify Discord identity của teacher
+- UI chỉ cho giáo viên chọn server và channel từ workspace hiện tại của Discord username đã verify
 - không còn use case `giáo viên tự add discord server bằng tay` trong app
+
+### Rule 7. Workspace identity
+
+- `teacher_id` không quyết định Discord workspace
+- `discord_username` của teacher quyết định workspace ở level product
+- teacher đổi `discord_username` => chuyển workspace
+- teacher đổi lại `discord_username` cũ => quay lại workspace cũ
+- mọi binding `server chung` / `server lớp` phải được scope theo workspace hiện tại
+- không được xóa workspace cũ chỉ vì teacher đang dùng username khác
+
+### Rule 7.1. Discord OAuth verification
+
+- trước khi tạo workspace, teacher phải đi qua Discord OAuth
+- backend phải verify và lưu:
+  - `discord_user_id`
+  - `discord_username`
+- nếu teacher chưa verify Discord account:
+  - không được tạo `server chung`
+  - không được tạo `server lớp`
+  - không được dùng các action Discord quan trọng
+- nếu Discord OAuth trả về identity khác với username teacher đang định dùng cho workspace, UI phải chặn và báo rõ
+
+### Rule 8. Chọn nhầm server phải recover được
+
+- giáo viên có thể chọn nhầm `server chung`
+- giáo viên có thể gắn nhầm `server lớp`
+- hệ thống không được trap user vào binding sai
+- phải cho phép:
+  - `đổi server chung` nhanh
+  - `gỡ server chung`
+  - `đổi server lớp`
+  - `gỡ server lớp`
+- mọi action đổi binding phải có confirm dialog khi đã có dữ liệu vận hành đi kèm
+- confirm dialog phải nói rõ impact:
+  - DM/invite mặc định sẽ chuyển sang server chung mới
+  - voice attendance của lớp sẽ chuyển sang server lớp mới
+  - server cũ không bị xóa trên Discord, chỉ bị gỡ binding trong app
+- nếu teacher chọn nhầm server và chưa save thì phải sửa ngay trong modal, không cần đi vòng
+- nếu teacher đã save nhầm thì phải có `Rebind` path rõ ràng trong UI, không bắt user liên hệ admin
 
 ### Rule 6. Template message
 
@@ -208,14 +273,15 @@ Phase đầu nên có:
 
 Chịu trách nhiệm:
 
-- đồng bộ danh sách Discord servers mà bot đang thấy theo từng giáo viên
-- đồng bộ danh sách channels / voice channels của từng server
-- binding `server chung` và `server lớp` dựa trên dữ liệu đã sync
+- nhận OAuth callback để verify Discord identity của teacher
+- quản lý `discord workspace`
+- đồng bộ metadata guild/channel trong phạm vi workspace hiện tại
+- binding `server chung` và `server lớp` dựa trên workspace hiện tại
 - validate bot/server/channel
 - send DM / channel post
 - invite generation
 - delivery log
-- giữ mapping giữa teacher/class và các Discord server mà bot đã được add vào
+- giữ mapping giữa workspace hiện tại và các Discord server đã được bind
 
 ### `enrollment`
 
@@ -236,13 +302,17 @@ Chịu trách nhiệm:
 - teacher ownership / auth / permission
 - sysadmin-owned bot credential
 - sysadmin UI để cấu hình bot credential
-- invite link distribution
+- Discord verification entrypoint cho teacher profile
 
 ## 6.2. Backend use cases dự kiến
 
 ```txt
 messaging/application/commands/
-  SyncTeacherDiscordServersUseCase
+  StartTeacherDiscordVerificationUseCase
+  CompleteTeacherDiscordVerificationUseCase
+  CreateDiscordWorkspaceUseCase
+  SwitchDiscordWorkspaceUseCase
+  SyncDiscordWorkspaceChannelsUseCase
   SelectCommunityServerUseCase
   BindClassDiscordServerUseCase
   UnbindClassDiscordServerUseCase
@@ -254,8 +324,9 @@ messaging/application/commands/
 
 messaging/application/queries/
   GetDiscordWorkspaceStatusUseCase
-  ListTeacherDiscordServersUseCase
-  ListTeacherDiscordChannelsUseCase
+  GetCurrentDiscordWorkspaceUseCase
+  ListDiscordWorkspaceServersUseCase
+  ListDiscordWorkspaceChannelsUseCase
   ListCommunityStudentStatusesUseCase
   ListMessagingTemplatesUseCase
 
@@ -276,6 +347,7 @@ messaging/application/ports/
   SysadminBotCredentialPort.ts
 
 messaging/infrastructure/persistence/typeorm/
+  DiscordWorkspaceOrmEntity.ts
   TeacherCommunityServerOrmEntity.ts
   TeacherDiscordServerCacheOrmEntity.ts
   TeacherDiscordChannelCacheOrmEntity.ts
@@ -290,6 +362,7 @@ messaging/infrastructure/integrations/discord/
 
 identity/infrastructure/persistence/typeorm/
   SysadminDiscordBotCredentialOrmEntity.ts
+  TeacherDiscordVerificationOrmEntity.ts
 
 identity/presentation/routes/
   sysadmin-discord-bot.routes.ts
@@ -300,7 +373,9 @@ identity/presentation/routes/
 ### Community server setup
 
 ```txt
-GET    /discord/bot-invite-link
+GET    /discord/verification/start
+GET    /discord/verification/callback
+GET    /discord/workspace/current
 GET    /discord/community-server
 PUT    /discord/community-server/select
 POST   /discord/servers/sync
@@ -326,7 +401,7 @@ POST /discord/community-server/messages/invite-reminder
 
 ### Class server binding
 
-Teacher không tự nhập server nữa. Teacher chọn class server từ danh sách server đã sync:
+Teacher không tự nhập server nữa. Teacher chọn class server từ danh sách server của workspace hiện tại:
 
 ```txt
 GET    /discord/class-servers
@@ -339,7 +414,6 @@ DELETE /classes/:classId/discord-server
 ```txt
 GET  /admin/discord-bot
 PUT  /admin/discord-bot
-GET  /admin/discord-bot/invite-link
 ```
 
 ## 7. Frontend plan
@@ -428,6 +502,7 @@ Mục tiêu là:
 - giáo viên mở trang lên là biết ngay hệ thống đang thiếu gì
 - không phải tự vào từng tab để dò
 - không phải đọc tài liệu để hiểu bước tiếp theo
+- nếu chọn sai server, user cũng biết ngay đang bind nhầm ở đâu và sửa bằng action rõ ràng
 
 ### Tab 1. `Server chung`
 
@@ -463,9 +538,25 @@ Actions:
 - `Mở link mời bot`
 - `Đồng bộ server Discord`
 - `Chọn server chung`
+- `Đổi server chung`
+- `Gỡ server chung`
 - `Lưu cấu hình`
 - `Gửi lời mời cho cả lớp`
 - `Gửi lời mời cho học sinh chưa tham gia`
+
+UX guard rails:
+
+- trước khi save `server chung`, modal phải preview:
+  - tên server
+  - text channel
+  - voice channel
+- nếu teacher đang đổi từ server chung A sang B, modal confirm phải ghi rõ:
+  - `Server chung hiện tại: A`
+  - `Server chung mới: B`
+  - `Tin nhắn và invite mặc định sau này sẽ dùng server mới`
+- sau khi save, card `Server chung` phải hiện action phụ:
+  - `Đổi lại`
+  - `Gỡ binding`
 
 ### Tab 2. `Server lớp`
 
@@ -497,6 +588,22 @@ Actions:
 - `Gắn server`
 - `Chỉnh sửa`
 - `Gỡ`
+
+UX guard rails:
+
+- trước khi save `server lớp`, modal phải preview:
+  - lớp nào đang được gắn
+  - server nào sẽ được dùng
+  - text channel nào
+  - voice channel nào
+- nếu đang đổi từ server lớp A sang B, modal confirm phải ghi rõ:
+  - `Voice attendance của lớp này sẽ chuyển sang voice channel mới`
+  - `Server cũ chỉ bị gỡ binding trong app, không bị xóa khỏi Discord`
+- ở table phải hiện rõ lớp nào đang bind sai để teacher sửa nhanh:
+  - server name
+  - text channel
+  - voice channel
+  - action `Đổi lại`
 
 ### Tab 3. `Học sinh & Discord`
 
@@ -752,6 +859,8 @@ Feature này chỉ được coi là done khi:
   - thiếu học sinh trong server chung
   - lớp chưa có server
 - có validate bot/server/channel trước khi save
+- giáo viên chọn nhầm `server chung` vẫn có thể tự sửa trong app bằng `đổi` hoặc `gỡ binding`
+- giáo viên chọn nhầm `server lớp` vẫn có thể tự sửa trong app bằng `đổi` hoặc `gỡ binding`
 - có thể mời học sinh vào server chung bằng 1 action rõ ràng
 - có thể gửi DM hàng loạt từ community server context
 - có template `nhắc học phí`

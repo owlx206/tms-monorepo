@@ -1,0 +1,25 @@
+import config from '../../../../config.js';
+import { AuthError } from '../../../../shared/errors/auth.error.js';
+import { signDiscordVerificationState } from '../../infrastructure/auth/DiscordVerificationState.js';
+import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
+
+export class StartTeacherDiscordVerificationUseCase {
+  constructor(private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore) {}
+
+  async execute(teacherId: number): Promise<string> {
+    const credential = await this.discordBotCredentialStore.findDefault();
+    if (!credential?.client_id || !credential.client_secret) {
+      throw new AuthError('discord oauth is not configured by sysadmin', 503);
+    }
+
+    const search = new URLSearchParams({
+      client_id: credential.client_id,
+      response_type: 'code',
+      redirect_uri: `${config.backendPublicUrl}${config.apiPrefix}/discord/verification/callback`,
+      scope: 'identify',
+      state: signDiscordVerificationState({ teacher_id: teacherId }),
+    });
+
+    return `https://discord.com/oauth2/authorize?${search.toString()}`;
+  }
+}

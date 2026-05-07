@@ -29,6 +29,9 @@ export type AuthTeacher = {
   codeforces_handle: string | null;
   codeforces_api_key: string | null;
   codeforces_api_secret: string | null;
+  discord_username: string | null;
+  discord_user_id: string | null;
+  discord_verified_at: Date | null;
   created_at: Date;
 };
 

@@ -20,12 +20,19 @@ export type SelectClassDiscordServerInput = {
 };
 
 export type DiscordSetupIssueSeverity = 'critical' | 'warning' | 'info';
+export type DiscordSetupAction =
+  | 'open_bot_invite'
+  | 'sync_servers'
+  | 'open_community_server'
+  | 'open_class_server'
+  | 'review_students';
 
 export type DiscordSetupIssue = {
   code: string;
   severity: DiscordSetupIssueSeverity;
   title: string;
   description: string;
+  cta_action?: DiscordSetupAction | null;
   cta_label?: string | null;
 };
 
@@ -36,9 +43,14 @@ export type DiscordSetupStatus = {
     id: number;
     teacher_id: number;
     discord_server_id: string;
+    server_id: number | null;
     name: string | null;
     notification_channel_id: string | null;
+    notification_channel_name: string | null;
+    notification_channel_cache_id: number | null;
     voice_channel_id: string | null;
+    voice_channel_name: string | null;
+    voice_channel_cache_id: number | null;
   } | null;
   metrics: {
     active_students: number;
@@ -47,6 +59,7 @@ export type DiscordSetupStatus = {
     active_classes: number;
     configured_class_servers: number;
     classes_missing_server: number;
+    synced_servers: number;
   };
   missing_class_server_names: string[];
   issues: DiscordSetupIssue[];
@@ -63,6 +76,12 @@ export type TeacherDiscordServerOption = {
     server_binding_id: number | null;
     class_id: number | null;
     class_name: string | null;
+    notification_channel_id: string | null;
+    notification_channel_name: string | null;
+    notification_channel_cache_id: number | null;
+    attendance_voice_channel_id: string | null;
+    attendance_voice_channel_name: string | null;
+    attendance_voice_channel_cache_id: number | null;
   };
 };
 

@@ -18,7 +18,9 @@ export interface BackendSysadminDiscordBotCredential {
   permissions: string | null;
   scopes: string | null;
   invite_link: string;
+  verification_redirect_uri: string;
   has_bot_token: boolean;
+  has_client_secret: boolean;
   updated_at: string;
 }
 
@@ -70,6 +72,7 @@ export async function getSysadminDiscordBotCredential(): Promise<BackendSysadmin
 export async function upsertSysadminDiscordBotCredential(payload: {
   bot_token: string;
   client_id: string;
+  client_secret: string;
   permissions?: string | null;
   scopes?: string | null;
 }): Promise<BackendSysadminDiscordBotCredential> {

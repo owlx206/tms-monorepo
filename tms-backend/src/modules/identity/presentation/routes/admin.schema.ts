@@ -37,6 +37,7 @@ export const updateTeacherByAdminBodySchema = z.object({
 export const upsertSysadminDiscordBotCredentialBodySchema = z.object({
   bot_token: requiredTrimmedStringSchema,
   client_id: requiredTrimmedStringSchema,
+  client_secret: requiredTrimmedStringSchema,
   permissions: nullableOptionalTrimmedStringSchema,
   scopes: nullableOptionalTrimmedStringSchema,
 });

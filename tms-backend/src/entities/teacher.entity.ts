@@ -28,6 +28,15 @@ export class Teacher {
   @Column({ type: 'text', nullable: true })
   codeforces_api_secret!: string | null;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  discord_username!: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  discord_user_id!: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  discord_verified_at!: Date | null;
+
   @Column({ type: 'timestamptz', default: () => 'NOW()' })
   created_at!: Date;
 }

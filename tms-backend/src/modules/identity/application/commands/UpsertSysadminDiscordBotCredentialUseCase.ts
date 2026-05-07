@@ -1,3 +1,4 @@
+import config from '../../../../config.js';
 import type {
   SysadminDiscordBotCredentialInput,
   SysadminDiscordBotCredentialView,
@@ -30,10 +31,15 @@ export class UpsertSysadminDiscordBotCredentialUseCase {
     const botToken = normalizedBotToken && normalizedBotToken !== '__KEEP_EXISTING__'
       ? normalizedBotToken
       : existing?.bot_token ?? '';
+    const normalizedClientSecret = input.client_secret.trim();
+    const clientSecret = normalizedClientSecret && normalizedClientSecret !== '__KEEP_EXISTING__'
+      ? normalizedClientSecret
+      : existing?.client_secret ?? '';
 
     const saved = await this.store.saveDefault({
       bot_token: botToken,
       client_id: input.client_id.trim(),
+      client_secret: clientSecret,
       permissions: input.permissions ?? null,
       scopes: input.scopes ?? null,
     });
@@ -48,7 +54,9 @@ export class UpsertSysadminDiscordBotCredentialUseCase {
         permissions: saved.permissions,
         scopes: saved.scopes,
       }),
+      verification_redirect_uri: `${config.backendPublicUrl}${config.apiPrefix}/discord/verification/callback`,
       has_bot_token: true,
+      has_client_secret: Boolean(saved.client_secret),
       updated_at: saved.updated_at,
     };
   }

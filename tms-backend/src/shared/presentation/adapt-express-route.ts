@@ -21,6 +21,12 @@ export function adaptExpressRoute(
       const request = buildRequest?.(req, res) ?? buildDefaultRequest(req, res);
       const response = await controller.handle(request);
 
+      if (response.headers) {
+        Object.entries(response.headers).forEach(([name, value]) => {
+          res.setHeader(name, value);
+        });
+      }
+
       if (response.body === undefined) {
         res.status(response.statusCode).end();
         return;

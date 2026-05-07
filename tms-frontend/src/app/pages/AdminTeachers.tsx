@@ -184,6 +184,7 @@ export function AdminTeachers() {
   const handleSaveDiscordBotCredential = async (payload: {
     bot_token: string;
     client_id: string;
+    client_secret: string;
     permissions?: string | null;
     scopes?: string | null;
   }) => {
@@ -256,8 +257,10 @@ export function AdminTeachers() {
             </p>
             <div className="mt-4 space-y-1 text-sm text-zinc-700">
               <p>Bot token: {discordBotCredential?.has_bot_token ? "đã cấu hình" : "chưa cấu hình"}</p>
+              <p>Client secret: {discordBotCredential?.has_client_secret ? "đã cấu hình" : "chưa cấu hình"}</p>
               <p>Client ID: {discordBotCredential?.client_id || "chưa cấu hình"}</p>
               <p>Invite link: {discordBotCredential?.invite_link || "chưa có"}</p>
+              <p>OAuth redirect URI: {discordBotCredential?.verification_redirect_uri || "chưa có"}</p>
             </div>
           </div>
           <button
@@ -404,12 +407,14 @@ function DiscordBotCredentialModal({
   onSubmit: (payload: {
     bot_token: string;
     client_id: string;
+    client_secret: string;
     permissions?: string | null;
     scopes?: string | null;
   }) => Promise<void>;
 }) {
   const [botToken, setBotToken] = useState("");
   const [clientId, setClientId] = useState(credential?.client_id ?? "");
+  const [clientSecret, setClientSecret] = useState("");
   const [permissions, setPermissions] = useState(credential?.permissions ?? "");
   const [scopes, setScopes] = useState(credential?.scopes ?? "bot applications.commands");
   const [localError, setLocalError] = useState("");
@@ -428,9 +433,15 @@ function DiscordBotCredentialModal({
       return;
     }
 
+    if (!credential?.has_client_secret && !clientSecret.trim()) {
+      setLocalError("Client secret là bắt buộc ở lần cấu hình đầu");
+      return;
+    }
+
     await onSubmit({
       bot_token: botToken.trim() || "__KEEP_EXISTING__",
       client_id: clientId.trim(),
+      client_secret: clientSecret.trim() || "__KEEP_EXISTING__",
       permissions: permissions.trim() || null,
       scopes: scopes.trim() || null,
     });
@@ -440,6 +451,12 @@ function DiscordBotCredentialModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl">
         <h2 className="mb-6 text-xl font-semibold text-zinc-900">Cấu hình Discord bot</h2>
+        <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
+          <p className="font-medium text-zinc-900">OAuth redirect URI cần add trong Discord Developer Portal</p>
+          <p className="mt-1 break-all">
+            {credential?.verification_redirect_uri ?? "http://localhost:4000/api/discord/verification/callback"}
+          </p>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-sm text-zinc-700">Bot token</label>
@@ -457,6 +474,16 @@ function DiscordBotCredentialModal({
               value={clientId}
               onChange={(event) => setClientId(event.target.value)}
               className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm text-zinc-700">Client secret</label>
+            <input
+              type="password"
+              value={clientSecret}
+              onChange={(event) => setClientSecret(event.target.value)}
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              placeholder={credential?.has_client_secret ? "Để trống nếu giữ client secret hiện tại" : "Nhập client secret"}
             />
           </div>
           <div>

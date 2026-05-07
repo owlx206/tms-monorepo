@@ -27,6 +27,14 @@ export interface MessagingWriteRepository {
     teacherId: number,
     servers: Array<{ discord_server_id: string; name: string }>,
   ): Promise<TeacherDiscordServerCache[]>;
+  listTeacherDiscordServerCaches(teacherId: number): Promise<TeacherDiscordServerCache[]>;
+  findTeacherDiscordServerCacheByDiscordServerId(
+    teacherId: number,
+    discordServerId: string,
+  ): Promise<TeacherDiscordServerCache | null>;
+  findAnyTeacherDiscordServerCacheByDiscordServerId(discordServerId: string): Promise<TeacherDiscordServerCache | null>;
+  createTeacherDiscordServerCache(values: Partial<TeacherDiscordServerCache>): TeacherDiscordServerCache;
+  saveTeacherDiscordServerCache(server: TeacherDiscordServerCache): Promise<TeacherDiscordServerCache>;
   replaceTeacherDiscordChannelCaches(
     teacherId: number,
     discordServerId: string,

@@ -192,6 +192,34 @@ export class TypeOrmMessagingWriteRepository implements MessagingWriteRepository
     })));
   }
 
+  listTeacherDiscordServerCaches(teacherId: number) {
+    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).find({
+      where: { teacher_id: teacherId },
+      order: { name: 'ASC' },
+    });
+  }
+
+  findTeacherDiscordServerCacheByDiscordServerId(teacherId: number, discordServerId: string) {
+    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).findOneBy({
+      teacher_id: teacherId,
+      discord_server_id: discordServerId,
+    });
+  }
+
+  findAnyTeacherDiscordServerCacheByDiscordServerId(discordServerId: string) {
+    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).findOneBy({
+      discord_server_id: discordServerId,
+    });
+  }
+
+  createTeacherDiscordServerCache(values: Partial<TeacherDiscordServerCache>) {
+    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).create(values);
+  }
+
+  saveTeacherDiscordServerCache(server: TeacherDiscordServerCache) {
+    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).save(server);
+  }
+
   async replaceTeacherDiscordChannelCaches(
     teacherId: number,
     discordServerId: string,

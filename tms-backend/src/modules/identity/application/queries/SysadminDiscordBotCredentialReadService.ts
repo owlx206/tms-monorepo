@@ -1,3 +1,4 @@
+import config from '../../../../config.js';
 import type { SysadminDiscordBotCredentialView } from '../dto/AdminDto.js';
 import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
 
@@ -37,7 +38,9 @@ export class SysadminDiscordBotCredentialReadService {
         permissions: credential.permissions,
         scopes: credential.scopes,
       }),
+      verification_redirect_uri: `${config.backendPublicUrl}${config.apiPrefix}/discord/verification/callback`,
       has_bot_token: Boolean(credential.bot_token),
+      has_client_secret: Boolean(credential.client_secret),
       updated_at: credential.updated_at,
     };
   }

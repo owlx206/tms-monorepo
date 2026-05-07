@@ -11,6 +11,8 @@ type AuthRouteControllers = {
   login: AuthController;
   me: AuthController;
   updateMe: AuthController;
+  startDiscordVerification: AuthController;
+  completeDiscordVerification: AuthController;
 };
 
 export function createAuthRouter(controllers: AuthRouteControllers): Router {
@@ -18,7 +20,13 @@ export function createAuthRouter(controllers: AuthRouteControllers): Router {
 
   router.post('/register', validate({ body: registerBodySchema }), adaptExpressRoute(controllers.register));
   router.post('/login', validate({ body: loginBodySchema }), adaptExpressRoute(controllers.login));
+  router.get('/discord/verification/callback', adaptExpressRoute(controllers.completeDiscordVerification));
   router.get('/me', passport.authenticate('jwt', { session: false }), adaptExpressRoute(controllers.me));
+  router.get(
+    '/me/discord/verification/start',
+    passport.authenticate('jwt', { session: false }),
+    adaptExpressRoute(controllers.startDiscordVerification),
+  );
   router.patch(
     '/me',
     passport.authenticate('jwt', { session: false }),

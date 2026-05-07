@@ -33,6 +33,9 @@ const config = {
   host: process.env.HOST,
   port: Number(process.env.PORT),
   apiPrefix: process.env.API_PREFIX as string,
+  frontendUrl: parseOptionalString(process.env.FRONTEND_URL) ?? 'http://localhost:5173',
+  backendPublicUrl: parseOptionalString(process.env.BACKEND_PUBLIC_URL)
+    ?? `http://localhost:${Number(process.env.PORT)}`,
   auth: {
     jwtSecret: process.env.JWT_SECRET as string,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN,

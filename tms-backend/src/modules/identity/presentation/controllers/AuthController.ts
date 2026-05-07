@@ -7,13 +7,23 @@ import { AuthReadService } from '../../application/queries/AuthReadService.js';
 import type { LoginInput, RegisterInput, UpdateTeacherInput } from '../../application/dto/AuthDto.js';
 import { getTeacher } from './request-context.js';
 
-type AuthControllerAction = 'register' | 'login' | 'me' | 'updateMe';
+type AuthControllerAction =
+  | 'register'
+  | 'login'
+  | 'me'
+  | 'updateMe'
+  | 'startDiscordVerification'
+  | 'completeDiscordVerification';
 
 type AuthControllerDependencies = {
   readService: AuthReadService;
   register: { execute(input: RegisterInput): Promise<unknown> };
   login: { execute(input: LoginInput): Promise<unknown> };
   updateMe: { execute(teacherId: number, input: UpdateTeacherInput): Promise<unknown> };
+  startDiscordVerification: { execute(teacherId: number): Promise<string> };
+  completeDiscordVerification: {
+    execute(input: { code?: string; state?: string; error?: string }): Promise<string>;
+  };
 };
 
 export class AuthController implements Controller {
@@ -33,6 +43,10 @@ export class AuthController implements Controller {
           return this.me(request);
         case 'updateMe':
           return this.updateMe(request);
+        case 'startDiscordVerification':
+          return this.startDiscordVerification(request);
+        case 'completeDiscordVerification':
+          return this.completeDiscordVerification(request);
       }
     } catch (error) {
       if (error instanceof AuthError || error instanceof ServiceError) {
@@ -78,6 +92,32 @@ export class AuthController implements Controller {
     return {
       statusCode: 200,
       body: { teacher: updatedTeacher },
+    };
+  }
+
+  private async startDiscordVerification(request: HttpRequest): Promise<HttpResponse> {
+    const teacher = getTeacher(request);
+    const authorizeUrl = await this.dependencies.startDiscordVerification.execute(teacher.id);
+
+    return {
+      statusCode: 200,
+      body: { authorize_url: authorizeUrl },
+    };
+  }
+
+  private async completeDiscordVerification(request: HttpRequest): Promise<HttpResponse> {
+    const redirectUrl = await this.dependencies.completeDiscordVerification.execute(
+      (request.query ?? {}) as { code?: string; state?: string; error?: string },
+    );
+
+    return {
+      statusCode: 302,
+      body: {
+        redirect_to: redirectUrl,
+      },
+      headers: {
+        Location: redirectUrl,
+      },
     };
   }
 }

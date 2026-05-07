@@ -1,6 +1,7 @@
 import type { AppModule } from '../module.types.js';
 import { TypeOrmSysadminDiscordBotCredentialStore } from '../identity/infrastructure/persistence/typeorm/TypeOrmSysadminDiscordBotCredentialStore.js';
 import { BindClassDiscordServerUseCase } from './application/commands/BindClassDiscordServerUseCase.js';
+import { CompleteDiscordGuildInstallUseCase } from './application/commands/CompleteDiscordGuildInstallUseCase.js';
 import { DeleteCommunityServerUseCase } from './application/commands/DeleteCommunityServerUseCase.js';
 import { DeleteDiscordServerUseCase } from './application/commands/DeleteDiscordServerUseCase.js';
 import { SelectCommunityServerUseCase } from './application/commands/SelectCommunityServerUseCase.js';
@@ -34,6 +35,11 @@ const syncTeacherDiscordServersUseCase = new SyncTeacherDiscordServersUseCase(
   discordGatewayFactory,
   discordBotCredentialStore,
 );
+const completeDiscordGuildInstallUseCase = new CompleteDiscordGuildInstallUseCase(
+  messagingWriteRepository,
+  discordGatewayFactory,
+  discordBotCredentialStore,
+);
 const selectCommunityServerUseCase = new SelectCommunityServerUseCase(messagingWriteRepository);
 const bindClassDiscordServerUseCase = new BindClassDiscordServerUseCase(messagingWriteRepository);
 const deleteCommunityServerUseCase = new DeleteCommunityServerUseCase(messagingWriteRepository);
@@ -50,6 +56,8 @@ const sendChannelPostUseCase = new SendChannelPostUseCase(
 const messagingControllerDependencies = {
   listDiscordServers: (teacherId: number) => messagingReadService.listTeacherDiscordServers(teacherId),
   syncDiscordServers: (teacherId: number) => syncTeacherDiscordServersUseCase.execute(teacherId),
+  completeDiscordInstall: (input: { code?: string; state?: string; guild_id?: string; error?: string }) =>
+    completeDiscordGuildInstallUseCase.execute(input),
   listDiscordChannels: async (teacherId: number, serverId: number) => {
     const server = await messagingWriteRepository.findTeacherDiscordServerCacheById(teacherId, serverId);
     if (!server) {
@@ -64,7 +72,7 @@ const messagingControllerDependencies = {
     input: Parameters<SelectCommunityServerUseCase['execute']>[1],
   ) => selectCommunityServerUseCase.execute(teacherId, input),
   deleteCommunityServer: (teacherId: number) => deleteCommunityServerUseCase.execute(teacherId),
-  getBotInviteLink: () => messagingReadService.getBotInviteLink(),
+  getBotInviteLink: (teacherId: number) => messagingReadService.getBotInviteLink(teacherId),
   getSetupStatus: (teacherId: number) => messagingReadService.getSetupStatus(teacherId),
   upsertDiscordServerByClass: (
     teacherId: number,
@@ -87,6 +95,7 @@ const messagingRouter = createMessagingRouter({
   listDiscordServers: new MessagingController('listDiscordServers', messagingControllerDependencies),
   syncDiscordServers: new MessagingController('syncDiscordServers', messagingControllerDependencies),
   listDiscordChannels: new MessagingController('listDiscordChannels', messagingControllerDependencies),
+  completeDiscordInstall: new MessagingController('completeDiscordInstall', messagingControllerDependencies),
   getCommunityServer: new MessagingController('getCommunityServer', messagingControllerDependencies),
   upsertCommunityServer: new MessagingController('upsertCommunityServer', messagingControllerDependencies),
   deleteCommunityServer: new MessagingController('deleteCommunityServer', messagingControllerDependencies),
