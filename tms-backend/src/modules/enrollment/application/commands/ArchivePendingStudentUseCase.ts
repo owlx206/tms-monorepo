@@ -1,14 +1,11 @@
 import { parseAmountToBigInt } from '../../../../shared/helpers/money.js';
 import type { UseCase } from '../../../../shared/application/UseCase.js';
 import { DomainError } from '../../../../shared/domain/DomainError.js';
-import type {
-  EnrollmentPendingArchiveReason,
-  EnrollmentStudentStatus,
-} from '../../domain/models/Student.js';
-import type { EnrollmentRepository } from '../../infrastructure/persistence/typeorm/EnrollmentRepository.js';
-import type { StudentRepository } from '../../infrastructure/persistence/typeorm/StudentRepository.js';
+import type { EnrollmentRepository } from '../../domain/repositories/EnrollmentRepository.js';
+import type { StudentRepository } from '../../domain/repositories/StudentRepository.js';
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
+import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
 import type { ArchiveFinancePort } from '../ports/ArchiveFinancePort.js';
 import type { BalanceSnapshotPort } from '../ports/BalanceSnapshotPort.js';
 import type { ArchivePendingStudentCommand } from '../dto/ArchivePendingStudentCommand.js';
@@ -58,25 +55,11 @@ export class ArchivePendingStudentUseCase implements UseCase<ArchivePendingStude
 
     student.archive(command.archivedAt);
     const savedStudent = await this.students.save(student);
-    const snapshot = savedStudent.toSnapshot();
 
-    return {
-      id: command.studentId,
-      teacher_id: snapshot.teacherId,
-      full_name: snapshot.fullName,
-      codeforces_handle: snapshot.codeforcesHandle,
-      discord_username: snapshot.discordUsername,
-      phone: snapshot.phone,
-      note: snapshot.note,
-      status: snapshot.status as EnrollmentStudentStatus,
-      pending_archive_reason: snapshot.pendingArchiveReason as EnrollmentPendingArchiveReason | null,
-      created_at: snapshot.createdAt ?? new Date(),
-      archived_at: snapshot.archivedAt,
-      current_class_id: null,
-      current_enrollment_id: null,
-      transactions_total: balanceSnapshot.transactions_total,
-      active_fee_total: balanceSnapshot.active_fee_total,
-      balance: balanceSnapshot.balance,
-    };
+    return StudentSummaryMapper.fromSnapshots({
+      student: savedStudent.toSnapshot(),
+      balance: balanceSnapshot,
+      fallbackStudentId: command.studentId,
+    });
   }
 }

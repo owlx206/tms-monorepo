@@ -3,7 +3,7 @@ import { IsNull } from 'typeorm';
 
 import type { Enrollment } from '../../../domain/models/Enrollment.js';
 import { StudentId } from '../../../domain/value-objects/StudentId.js';
-import type { EnrollmentRepository } from './EnrollmentRepository.js';
+import type { EnrollmentRepository } from '../../../domain/repositories/EnrollmentRepository.js';
 import { EnrollmentMapper } from './EnrollmentMapper.js';
 import { Enrollment as EnrollmentOrmEntity } from './EnrollmentOrmEntity.js';
 

@@ -6,6 +6,7 @@ import {
   UserX,
   ArrowRightLeft,
   Pencil,
+  Send,
   AlertCircle,
   DollarSign,
   CheckCircle,
@@ -20,6 +21,7 @@ import {
   bulkTransferStudents,
   buildStudentNote,
   createStudent,
+  inviteStudentToCurrentClassDiscord,
   withdrawStudent,
   listStudents,
   reinstateStudent,
@@ -33,6 +35,7 @@ type StudentView = {
   name: string;
   email: string;
   discordUsername: string;
+  discordUserId: string;
   phone: string;
   classId: number | null;
   className: string;
@@ -82,6 +85,7 @@ function toStudentView(
     name: student.full_name,
     email: parseEmailFromNote(student.note),
     discordUsername: student.discord_username ?? "",
+    discordUserId: student.discord_user_id ?? "",
     phone: student.phone ?? "",
     classId: student.current_class_id,
     className: student.current_class_id !== null
@@ -206,6 +210,7 @@ export function Students() {
     class_id: number;
     codeforces_handle: string | null;
     discord_username: string;
+    discord_user_id: string | null;
     note: string | null;
   }) => {
     setSubmitting(true);
@@ -246,6 +251,7 @@ export function Students() {
     full_name: string;
     codeforces_handle: string | null;
     discord_username: string;
+    discord_user_id: string | null;
     phone: string | null;
     note: string | null;
   }) => {
@@ -273,6 +279,22 @@ export function Students() {
       setShowArchiveModal(false);
       setSelectedStudent(null);
       await loadData();
+    } catch (error) {
+      setRequestError(toErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleInviteStudentToDiscord = async (student: StudentView) => {
+    setSubmitting(true);
+    setRequestError("");
+
+    try {
+      const result = await inviteStudentToCurrentClassDiscord(student.id);
+      if (!result.sent) {
+        setRequestError(result.reason ?? "Không gửi được lời mời Discord");
+      }
     } catch (error) {
       setRequestError(toErrorMessage(error));
     } finally {
@@ -605,6 +627,14 @@ export function Students() {
                           {student.status === "active" && (
                             <>
                               <button
+                                onClick={() => { void handleInviteStudentToDiscord(student); }}
+                                className="p-2 hover:bg-zinc-200 rounded-lg transition-colors disabled:opacity-50"
+                                title="Gửi lời mời Discord vào server lớp hiện tại"
+                                disabled={submitting}
+                              >
+                                <Send className="w-4 h-4 text-zinc-600" />
+                              </button>
+                              <button
                                 onClick={() => {
                                   setSelectedStudent(student);
                                   setShowTransferModal(true);
@@ -860,6 +890,7 @@ function AddStudentModal({
     class_id: number;
     codeforces_handle: string | null;
     discord_username: string;
+    discord_user_id: string | null;
     note: string | null;
   }) => Promise<void>;
   submitting: boolean;
@@ -870,6 +901,7 @@ function AddStudentModal({
   const [classId, setClassId] = useState("");
   const [codeforcesHandle, setCodeforcesHandle] = useState("");
   const [discordUsername, setDiscordUsername] = useState("");
+  const [discordUserId, setDiscordUserId] = useState("");
   const [localError, setLocalError] = useState("");
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -898,6 +930,7 @@ function AddStudentModal({
       class_id: classIdValue,
       codeforces_handle: codeforcesHandle.trim() || null,
       discord_username: discordUsername.trim(),
+      discord_user_id: discordUserId.trim() || null,
       note: buildStudentNote(email),
     });
   };
@@ -959,6 +992,16 @@ function AddStudentModal({
               placeholder="username#0001 hoặc @username"
             />
           </div>
+          <div>
+            <label className="block text-sm text-zinc-600 mb-2">Discord User ID (tùy chọn)</label>
+            <input
+              type="text"
+              value={discordUserId}
+              onChange={(event) => setDiscordUserId(event.target.value)}
+              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              placeholder="123456789012345678"
+            />
+          </div>
 
           {(localError || error) && <p className="text-sm text-red-600">{localError || error}</p>}
 
@@ -999,6 +1042,7 @@ function EditStudentModal({
     full_name: string;
     codeforces_handle: string | null;
     discord_username: string;
+    discord_user_id: string | null;
     phone: string | null;
     note: string | null;
   }) => Promise<void>;
@@ -1009,6 +1053,7 @@ function EditStudentModal({
   const [email, setEmail] = useState(student.email);
   const [codeforcesHandle, setCodeforcesHandle] = useState(student.codeforcesHandle);
   const [discordUsername, setDiscordUsername] = useState(student.discordUsername);
+  const [discordUserId, setDiscordUserId] = useState(student.discordUserId);
   const [phone, setPhone] = useState(student.phone);
   const [localError, setLocalError] = useState("");
 
@@ -1031,6 +1076,7 @@ function EditStudentModal({
       full_name: name.trim(),
       codeforces_handle: codeforcesHandle.trim() || null,
       discord_username: discordUsername.trim(),
+      discord_user_id: discordUserId.trim() || null,
       phone: phone.trim() || null,
       note: buildStudentNote(email),
     });
@@ -1081,6 +1127,16 @@ function EditStudentModal({
               onChange={(event) => setDiscordUsername(event.target.value)}
               className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               placeholder="username#0001 hoặc @username"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-zinc-600 mb-2">Discord User ID (tùy chọn)</label>
+            <input
+              type="text"
+              value={discordUserId}
+              onChange={(event) => setDiscordUserId(event.target.value)}
+              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              placeholder="123456789012345678"
             />
           </div>
           <div>

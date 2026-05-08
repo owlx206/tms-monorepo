@@ -30,6 +30,7 @@ type StudentRouteControllers = {
   getStudentById: StudentController;
   createStudent: StudentController;
   updateStudent: StudentController;
+  inviteStudentToCurrentClass: StudentController;
   transferStudent: StudentController;
   bulkTransferStudents: StudentController;
   withdrawStudent: StudentController;
@@ -58,6 +59,10 @@ export function createStudentRouter(controllers: StudentRouteControllers): Route
     body: updateStudentBodySchema,
     params: studentIdParamSchema,
   }), authorizeOwnedStudentParam(), adaptExpressRoute(controllers.updateStudent));
+
+  studentRouter.post('/students/:studentId/discord/invite-current-class', validate({
+    params: studentIdParamSchema,
+  }), authorizeOwnedStudentParam(), adaptExpressRoute(controllers.inviteStudentToCurrentClass));
 
   studentRouter.post('/students/:studentId/transfer', validate({
     body: transferStudentBodySchema,

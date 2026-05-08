@@ -3,7 +3,8 @@ services:
     build: ./tms-backend
     restart: always
     depends_on:
-      - database
+      database:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -35,7 +36,7 @@ services:
     command: sh -c "npm install && npm run dev"
 
   database:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     restart: always
     env_file:
       - .env
@@ -47,6 +48,12 @@ services:
       - TZ=${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
       - PGTZ=${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
     command: postgres -c timezone=${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     ports:
       - "${POSTGRES_PORT}:${DB_PORT}"
     volumes:

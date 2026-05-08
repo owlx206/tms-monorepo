@@ -1,5 +1,5 @@
-import type { Student } from '../../../domain/models/Student.js';
-import type { StudentId } from '../../../domain/value-objects/StudentId.js';
+import type { Student } from '../models/Student.js';
+import type { StudentId } from '../value-objects/StudentId.js';
 
 export interface StudentRepository {
   codeforcesHandleExists(teacherId: number, codeforcesHandle: string, excludeStudentId?: number): Promise<boolean>;

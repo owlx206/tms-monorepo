@@ -1,5 +1,5 @@
 import type { AppModule } from '../module.types.js';
-import { TypeOrmSysadminDiscordBotCredentialStore } from '../identity/infrastructure/persistence/typeorm/TypeOrmSysadminDiscordBotCredentialStore.js';
+import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
 import { BindClassDiscordServerUseCase } from './application/commands/BindClassDiscordServerUseCase.js';
 import { CompleteDiscordGuildInstallUseCase } from './application/commands/CompleteDiscordGuildInstallUseCase.js';
 import { DeleteCommunityServerUseCase } from './application/commands/DeleteCommunityServerUseCase.js';
@@ -22,7 +22,7 @@ import { TypeOrmMessagingWriteRepository } from './infrastructure/persistence/ty
 import { MessagingController } from './presentation/controllers/MessagingController.js';
 import { createMessagingRouter } from './presentation/routes/messaging.routes.js';
 
-const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore();
+const discordBotCredentialStore = createSysadminDiscordBotCredentialStore();
 const messagingReadService = new MessagingReadService(
   new TypeOrmMessagingReadRepository(),
   discordBotCredentialStore,

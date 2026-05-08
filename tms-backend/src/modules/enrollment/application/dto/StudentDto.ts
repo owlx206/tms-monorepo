@@ -15,6 +15,7 @@ export type CreateStudentInput = {
   class_id: number;
   codeforces_handle: string | null;
   discord_username: string;
+  discord_user_id: string | null;
   phone: string | null;
   note: string | null;
   enrolled_at: Date;
@@ -24,6 +25,7 @@ export type UpdateStudentInput = {
   full_name?: string;
   codeforces_handle?: string | null;
   discord_username?: string;
+  discord_user_id?: string | null;
   phone?: string | null;
   note?: string | null;
 };
@@ -70,6 +72,7 @@ export type StudentSummary = {
   full_name: string;
   codeforces_handle: string | null;
   discord_username: string | null;
+  discord_user_id: string | null;
   phone: string | null;
   note: string | null;
   status: EnrollmentStudentStatus;

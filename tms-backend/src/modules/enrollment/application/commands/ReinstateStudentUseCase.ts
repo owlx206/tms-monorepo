@@ -1,14 +1,11 @@
 import type { UseCase } from '../../../../shared/application/UseCase.js';
 import { DomainError } from '../../../../shared/domain/DomainError.js';
 import { Enrollment } from '../../domain/models/Enrollment.js';
-import type {
-  EnrollmentPendingArchiveReason,
-  EnrollmentStudentStatus,
-} from '../../domain/models/Student.js';
-import type { EnrollmentRepository } from '../../infrastructure/persistence/typeorm/EnrollmentRepository.js';
-import type { StudentRepository } from '../../infrastructure/persistence/typeorm/StudentRepository.js';
+import type { EnrollmentRepository } from '../../domain/repositories/EnrollmentRepository.js';
+import type { StudentRepository } from '../../domain/repositories/StudentRepository.js';
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
+import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
 import type { BalanceSnapshotPort } from '../ports/BalanceSnapshotPort.js';
 import type { ClassroomPort } from '../ports/ClassroomPort.js';
 import type { ReinstateStudentCommand } from '../dto/ReinstateStudentCommand.js';
@@ -53,27 +50,13 @@ export class ReinstateStudentUseCase implements UseCase<ReinstateStudentCommand,
       enrolledAt: command.enrolledAt,
     });
     const savedEnrollment = await this.enrollments.save(enrollment);
-    const snapshot = savedStudent.toSnapshot();
-    const enrollmentSnapshot = savedEnrollment.toSnapshot();
     const balanceSnapshot = await this.balanceSnapshots.loadForStudent(command.teacherId, command.studentId);
 
-    return {
-      id: command.studentId,
-      teacher_id: snapshot.teacherId,
-      full_name: snapshot.fullName,
-      codeforces_handle: snapshot.codeforcesHandle,
-      discord_username: snapshot.discordUsername,
-      phone: snapshot.phone,
-      note: snapshot.note,
-      status: snapshot.status as EnrollmentStudentStatus,
-      pending_archive_reason: snapshot.pendingArchiveReason as EnrollmentPendingArchiveReason | null,
-      created_at: snapshot.createdAt ?? new Date(),
-      archived_at: snapshot.archivedAt,
-      current_class_id: enrollmentSnapshot.classId,
-      current_enrollment_id: enrollmentSnapshot.id,
-      transactions_total: balanceSnapshot.transactions_total,
-      active_fee_total: balanceSnapshot.active_fee_total,
-      balance: balanceSnapshot.balance,
-    };
+    return StudentSummaryMapper.fromSnapshots({
+      student: savedStudent.toSnapshot(),
+      enrollment: savedEnrollment.toSnapshot(),
+      balance: balanceSnapshot,
+      fallbackStudentId: command.studentId,
+    });
   }
 }

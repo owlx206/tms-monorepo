@@ -9,7 +9,7 @@ import type {
   DiscordGuildChannel,
   DiscordGuildMetadata,
 } from '../../application/ports/DiscordGateway.js';
-import type { SysadminDiscordBotCredentialStore } from '../../../identity/infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
+import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
 
 class StoredDiscordGateway implements DiscordGateway {
   constructor(

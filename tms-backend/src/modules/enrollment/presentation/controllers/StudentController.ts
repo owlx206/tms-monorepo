@@ -27,6 +27,7 @@ type StudentControllerDependencies = {
       classId: number;
       codeforcesHandle: string | null;
       discordUsername: string | null;
+      discordUserId: string | null;
       phone: string | null;
       note: string | null;
       enrolledAt: Date;
@@ -39,9 +40,16 @@ type StudentControllerDependencies = {
       fullName?: string;
       codeforcesHandle?: string | null;
       discordUsername?: string;
+      discordUserId?: string | null;
       phone?: string | null;
       note?: string | null;
     }): Promise<StudentSummary>;
+  };
+  inviteStudentToCurrentClass: {
+    execute(input: {
+      teacherId: number;
+      studentId: number;
+    }): Promise<{ sent: boolean; reason: string | null }>;
   };
   transferStudent: {
     execute(input: {
@@ -96,6 +104,7 @@ type StudentControllerAction =
   | 'getStudentById'
   | 'createStudent'
   | 'updateStudent'
+  | 'inviteStudentToCurrentClass'
   | 'transferStudent'
   | 'bulkTransferStudents'
   | 'withdrawStudent'
@@ -133,6 +142,8 @@ export class StudentController implements Controller {
           return this.createStudent(request);
         case 'updateStudent':
           return this.updateStudent(request);
+        case 'inviteStudentToCurrentClass':
+          return this.inviteStudentToCurrentClass(request);
         case 'transferStudent':
           return this.transferStudent(request);
         case 'bulkTransferStudents':
@@ -181,6 +192,7 @@ export class StudentController implements Controller {
       classId: input.class_id,
       codeforcesHandle: input.codeforces_handle,
       discordUsername: input.discord_username,
+      discordUserId: input.discord_user_id,
       phone: input.phone,
       note: input.note,
       enrolledAt: input.enrolled_at,
@@ -200,6 +212,7 @@ export class StudentController implements Controller {
       fullName: input.full_name,
       codeforcesHandle: input.codeforces_handle,
       discordUsername: input.discord_username,
+      discordUserId: input.discord_user_id,
       phone: input.phone,
       note: input.note,
     });
@@ -207,6 +220,18 @@ export class StudentController implements Controller {
     return {
       statusCode: 200,
       body: { student },
+    };
+  }
+
+  private async inviteStudentToCurrentClass(request: StudentHttpRequest): Promise<HttpResponse> {
+    const result = await this.dependencies.inviteStudentToCurrentClass.execute({
+      teacherId: getTeacherId(request),
+      studentId: getStudentId(request),
+    });
+
+    return {
+      statusCode: 200,
+      body: result,
     };
   }
 

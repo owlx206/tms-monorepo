@@ -1,4 +1,4 @@
-import type { DataSource } from 'typeorm';
+import type { DataSource, EntityManager } from 'typeorm';
 
 import { ArchivePendingStudentUseCase } from '../../../application/commands/ArchivePendingStudentUseCase.js';
 import { BulkTransferStudentsUseCase } from '../../../application/commands/BulkTransferStudentsUseCase.js';
@@ -22,113 +22,156 @@ import { TypeOrmClassroomPort } from './TypeOrmClassroomPort.js';
 import { TypeOrmEnrollmentRepository } from './TypeOrmEnrollmentRepository.js';
 import { TypeOrmStudentRepository } from './TypeOrmStudentRepository.js';
 import type { StudentCommunityPort } from '../../../application/ports/StudentCommunityPort.js';
+import { StudentCommunityNotifier } from './StudentCommunityNotifier.js';
+
+type StudentPersistenceContext = {
+  students: TypeOrmStudentRepository;
+  enrollments: TypeOrmEnrollmentRepository;
+  classroom: TypeOrmClassroomPort;
+  balanceSnapshots: TypeOrmBalanceSnapshotPort;
+  archiveFinance: TypeOrmArchiveFinancePort;
+};
 
 export class TypeOrmStudentCommandHandlers {
+  private readonly studentCommunityNotifier: StudentCommunityNotifier;
+
   constructor(
     private readonly dataSource: DataSource,
-    private readonly studentCommunityPort?: StudentCommunityPort,
-  ) {}
+    studentCommunityPort?: StudentCommunityPort,
+  ) {
+    this.studentCommunityNotifier = new StudentCommunityNotifier(studentCommunityPort);
+  }
 
   readonly createStudent = {
-    execute: (input: CreateStudentCommand) => this.dataSource.transaction(async (manager) => {
-      return new CreateStudentUseCase(
-        new TypeOrmStudentRepository(manager),
-        new TypeOrmEnrollmentRepository(manager),
-        new TypeOrmClassroomPort(manager),
-      ).execute(input);
-    }),
+    execute: async (input: CreateStudentCommand) => {
+      const result = await this.withTransaction((context) => new CreateStudentUseCase(
+        context.students,
+        context.enrollments,
+        context.classroom,
+      ).execute(input));
+
+      this.studentCommunityNotifier.studentEnrolled(input.teacherId, result.id, input.classId);
+      return result;
+    },
   };
 
   readonly updateStudent = {
-    execute: (input: UpdateStudentCommand) => this.dataSource.transaction(async (manager) => {
+    execute: (input: UpdateStudentCommand) => this.withTransaction((context) => {
       return new UpdateStudentUseCase(
-        new TypeOrmStudentRepository(manager),
-        new TypeOrmEnrollmentRepository(manager),
-        new TypeOrmBalanceSnapshotPort(manager),
+        context.students,
+        context.enrollments,
+        context.balanceSnapshots,
       ).execute(input);
     }),
+  };
+
+  readonly inviteStudentToCurrentClass = {
+    execute: async (input: { teacherId: number; studentId: number }) => {
+      return this.studentCommunityNotifier.inviteStudentToCurrentClass(input);
+    },
   };
 
   readonly transferStudent = {
-    execute: (input: TransferStudentCommand) => this.dataSource.transaction(async (manager) => {
-      const result = await new TransferStudentUseCase(
-        new TypeOrmStudentRepository(manager),
-        new TypeOrmEnrollmentRepository(manager),
-        new TypeOrmClassroomPort(manager),
-        new TypeOrmBalanceSnapshotPort(manager),
-      ).execute(input);
+    execute: async (input: TransferStudentCommand) => {
+      const result = await this.withTransaction((context) => this.createTransferStudentUseCase(context).execute(input));
 
-      void this.studentCommunityPort?.onStudentTransferred(
-        input.teacherId,
-        input.studentId,
-        input.toClassId,
-      ).catch(() => {});
-
+      this.studentCommunityNotifier.studentTransferred(input.teacherId, input.studentId, input.toClassId);
       return result;
-    }),
+    },
   };
 
   readonly bulkTransferStudents = {
-    execute: (input: BulkTransferStudentsCommand) => this.dataSource.transaction(async (manager) => {
-      const transferStudent = new TransferStudentUseCase(
-        new TypeOrmStudentRepository(manager),
-        new TypeOrmEnrollmentRepository(manager),
-        new TypeOrmClassroomPort(manager),
-        new TypeOrmBalanceSnapshotPort(manager),
-      );
+    execute: async (input: BulkTransferStudentsCommand) => {
+      const result = await this.withTransaction((context) => {
+        const transferStudent = this.createTransferStudentUseCase(context);
+        return new BulkTransferStudentsUseCase(transferStudent).execute(input);
+      });
 
-      return new BulkTransferStudentsUseCase(transferStudent).execute(input);
-    }),
+      result.forEach((student) => {
+        this.studentCommunityNotifier.studentTransferred(input.teacherId, student.id, input.toClassId);
+      });
+
+      return result;
+    },
   };
 
   readonly withdrawStudent = {
-    execute: (input: WithdrawStudentCommand) => this.dataSource.transaction(async (manager) => {
-      const result = await new WithdrawStudentUseCase(
-        new TypeOrmStudentRepository(manager),
-        new TypeOrmEnrollmentRepository(manager),
-        new TypeOrmBalanceSnapshotPort(manager),
-      ).execute(input);
+    execute: async (input: WithdrawStudentCommand) => {
+      const result = await this.withTransaction((context) => this.createWithdrawStudentUseCase(context).execute(input));
 
-      void this.studentCommunityPort?.onStudentWithdrawn(
-        input.teacherId,
-        input.studentId,
-      ).catch(() => {});
-
+      this.studentCommunityNotifier.studentWithdrawn(input.teacherId, input.studentId);
       return result;
-    }),
+    },
   };
 
   readonly bulkWithdrawStudents = {
-    execute: (input: BulkWithdrawStudentsCommand) => this.dataSource.transaction(async (manager) => {
-      const withdrawStudent = new WithdrawStudentUseCase(
-        new TypeOrmStudentRepository(manager),
-        new TypeOrmEnrollmentRepository(manager),
-        new TypeOrmBalanceSnapshotPort(manager),
-      );
+    execute: async (input: BulkWithdrawStudentsCommand) => {
+      const result = await this.withTransaction((context) => {
+        const withdrawStudent = this.createWithdrawStudentUseCase(context);
+        return new BulkWithdrawStudentsUseCase(withdrawStudent).execute(input);
+      });
 
-      return new BulkWithdrawStudentsUseCase(withdrawStudent).execute(input);
-    }),
+      result.forEach((student) => {
+        this.studentCommunityNotifier.studentWithdrawn(input.teacherId, student.id);
+      });
+
+      return result;
+    },
   };
 
   readonly reinstateStudent = {
-    execute: (input: ReinstateStudentCommand) => this.dataSource.transaction(async (manager) => {
-      return new ReinstateStudentUseCase(
-        new TypeOrmStudentRepository(manager),
-        new TypeOrmEnrollmentRepository(manager),
-        new TypeOrmClassroomPort(manager),
-        new TypeOrmBalanceSnapshotPort(manager),
+    execute: async (input: ReinstateStudentCommand) => {
+      const result = await this.withTransaction((context) => new ReinstateStudentUseCase(
+        context.students,
+        context.enrollments,
+        context.classroom,
+        context.balanceSnapshots,
+      ).execute(input));
+
+      this.studentCommunityNotifier.studentEnrolled(input.teacherId, input.studentId, input.classId);
+      return result;
+    },
+  };
+
+  readonly archivePendingStudent = {
+    execute: (input: ArchivePendingStudentCommand) => this.withTransaction((context) => {
+      return new ArchivePendingStudentUseCase(
+        context.students,
+        context.enrollments,
+        context.balanceSnapshots,
+        context.archiveFinance,
       ).execute(input);
     }),
   };
 
-  readonly archivePendingStudent = {
-    execute: (input: ArchivePendingStudentCommand) => this.dataSource.transaction(async (manager) => {
-      return new ArchivePendingStudentUseCase(
-        new TypeOrmStudentRepository(manager),
-        new TypeOrmEnrollmentRepository(manager),
-        new TypeOrmBalanceSnapshotPort(manager),
-        new TypeOrmArchiveFinancePort(manager),
-      ).execute(input);
-    }),
-  };
+  private withTransaction<T>(work: (context: StudentPersistenceContext) => Promise<T>): Promise<T> {
+    return this.dataSource.transaction((manager) => work(this.createPersistenceContext(manager)));
+  }
+
+  private createPersistenceContext(manager: EntityManager): StudentPersistenceContext {
+    return {
+      students: new TypeOrmStudentRepository(manager),
+      enrollments: new TypeOrmEnrollmentRepository(manager),
+      classroom: new TypeOrmClassroomPort(manager),
+      balanceSnapshots: new TypeOrmBalanceSnapshotPort(manager),
+      archiveFinance: new TypeOrmArchiveFinancePort(manager),
+    };
+  }
+
+  private createTransferStudentUseCase(context: StudentPersistenceContext): TransferStudentUseCase {
+    return new TransferStudentUseCase(
+      context.students,
+      context.enrollments,
+      context.classroom,
+      context.balanceSnapshots,
+    );
+  }
+
+  private createWithdrawStudentUseCase(context: StudentPersistenceContext): WithdrawStudentUseCase {
+    return new WithdrawStudentUseCase(
+      context.students,
+      context.enrollments,
+      context.balanceSnapshots,
+    );
+  }
 }

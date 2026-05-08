@@ -4,6 +4,7 @@ export type UpdateStudentCommand = {
   fullName?: string;
   codeforcesHandle?: string | null;
   discordUsername?: string;
+  discordUserId?: string | null;
   phone?: string | null;
   note?: string | null;
 };

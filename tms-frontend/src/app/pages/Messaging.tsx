@@ -405,7 +405,7 @@ export function Messaging() {
           <StatusItem label="Có server Discord" status={setupStatus.hasServers} />
           <StatusItem label="Server chung đã thiết lập" status={setupStatus.commonServerSet} />
           <StatusItem label="Server lớp đã gắn đủ" status={setupStatus.classServersSet} />
-          <StatusItem label="Học sinh có Discord" status={setupStatus.studentsHaveDiscord} />
+          <StatusItem label="Học sinh có Discord username" status={setupStatus.studentsHaveDiscord} />
         </div>
       </div>
 
@@ -1103,7 +1103,7 @@ function SendMessageTab({
                     <p className="text-xs text-zinc-600">{className ?? "Chưa có lớp"}</p>
                   </div>
                   {!student.discord_username && (
-                    <span className="rounded bg-zinc-200 px-2 py-0.5 text-xs text-zinc-600">Chưa có Discord</span>
+                    <span className="rounded bg-zinc-200 px-2 py-0.5 text-xs text-zinc-600">Thiếu username</span>
                   )}
                 </label>
               );

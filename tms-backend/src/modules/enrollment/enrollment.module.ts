@@ -1,5 +1,6 @@
 import type { AppModule } from '../module.types.js';
 import { AppDataSource } from '../../data-source.js';
+import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
 import { StudentReadService } from './application/queries/StudentReadService.js';
 import { Enrollment } from './infrastructure/persistence/typeorm/EnrollmentOrmEntity.js';
 import { Student } from './infrastructure/persistence/typeorm/StudentOrmEntity.js';
@@ -15,7 +16,10 @@ import { StudentReportController } from './presentation/controllers/StudentRepor
 import { createStudentReportRouter } from './presentation/routes/student-report.routes.js';
 import { createStudentRouter } from './presentation/routes/enrollment.routes.js';
 
-const studentCommunityPort = new TypeOrmStudentCommunityPort(AppDataSource);
+const studentCommunityPort = new TypeOrmStudentCommunityPort(
+  AppDataSource,
+  createSysadminDiscordBotCredentialStore(),
+);
 const studentCommandHandlers = new TypeOrmStudentCommandHandlers(AppDataSource, studentCommunityPort);
 const studentControllerDependencies = {
   readService: new StudentReadService(
@@ -23,6 +27,7 @@ const studentControllerDependencies = {
   ),
   createStudent: studentCommandHandlers.createStudent,
   updateStudent: studentCommandHandlers.updateStudent,
+  inviteStudentToCurrentClass: studentCommandHandlers.inviteStudentToCurrentClass,
   transferStudent: studentCommandHandlers.transferStudent,
   bulkTransferStudents: studentCommandHandlers.bulkTransferStudents,
   withdrawStudent: studentCommandHandlers.withdrawStudent,
@@ -35,6 +40,7 @@ const studentControllers = {
   getStudentById: new StudentController('getStudentById', studentControllerDependencies),
   createStudent: new StudentController('createStudent', studentControllerDependencies),
   updateStudent: new StudentController('updateStudent', studentControllerDependencies),
+  inviteStudentToCurrentClass: new StudentController('inviteStudentToCurrentClass', studentControllerDependencies),
   transferStudent: new StudentController('transferStudent', studentControllerDependencies),
   bulkTransferStudents: new StudentController('bulkTransferStudents', studentControllerDependencies),
   withdrawStudent: new StudentController('withdrawStudent', studentControllerDependencies),
@@ -67,5 +73,3 @@ export const enrollmentModule: AppModule = {
     { path: '/', router: studentReportRouter },
   ],
 };
-
-export { studentControllers, studentReportQueries, studentReportRouter, studentRouter };

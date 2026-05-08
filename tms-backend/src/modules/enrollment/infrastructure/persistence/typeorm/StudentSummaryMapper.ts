@@ -19,6 +19,7 @@ export function toStudentSummary(
     full_name: student.full_name,
     codeforces_handle: student.codeforces_handle,
     discord_username: student.discord_username,
+    discord_user_id: student.discord_user_id,
     phone: student.phone,
     note: student.note,
     status: student.status as unknown as EnrollmentStudentStatus,

@@ -1,16 +1,13 @@
 import type { UseCase } from '../../../../shared/application/UseCase.js';
 import { DomainError } from '../../../../shared/domain/DomainError.js';
 import { Enrollment } from '../../domain/models/Enrollment.js';
-import {
-  EnrollmentPendingArchiveReason,
-  EnrollmentStudentStatus,
-  Student,
-} from '../../domain/models/Student.js';
-import type { EnrollmentRepository } from '../../infrastructure/persistence/typeorm/EnrollmentRepository.js';
-import type { StudentRepository } from '../../infrastructure/persistence/typeorm/StudentRepository.js';
+import { Student } from '../../domain/models/Student.js';
+import type { EnrollmentRepository } from '../../domain/repositories/EnrollmentRepository.js';
+import type { StudentRepository } from '../../domain/repositories/StudentRepository.js';
 import { CodeforcesHandle } from '../../domain/value-objects/CodeforcesHandle.js';
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
+import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
 import type { ClassroomPort } from '../ports/ClassroomPort.js';
 import type { CreateStudentCommand } from '../dto/CreateStudentCommand.js';
 
@@ -34,6 +31,7 @@ export class CreateStudentUseCase implements UseCase<CreateStudentCommand, Stude
       fullName: command.fullName,
       codeforcesHandle,
       discordUsername: command.discordUsername,
+      discordUserId: command.discordUserId,
       phone: command.phone,
       note: command.note,
     });
@@ -53,26 +51,10 @@ export class CreateStudentUseCase implements UseCase<CreateStudentCommand, Stude
     });
     const savedEnrollment = await this.enrollments.save(enrollment);
 
-    const savedStudentSnapshot = savedStudent.toSnapshot();
-    const savedEnrollmentSnapshot = savedEnrollment.toSnapshot();
-
-    return {
-      id: savedStudentId,
-      teacher_id: savedStudentSnapshot.teacherId,
-      full_name: savedStudentSnapshot.fullName,
-      codeforces_handle: savedStudentSnapshot.codeforcesHandle,
-      discord_username: savedStudentSnapshot.discordUsername,
-      phone: savedStudentSnapshot.phone,
-      note: savedStudentSnapshot.note,
-      status: savedStudentSnapshot.status as EnrollmentStudentStatus,
-      pending_archive_reason: savedStudentSnapshot.pendingArchiveReason as EnrollmentPendingArchiveReason | null,
-      created_at: savedStudentSnapshot.createdAt ?? new Date(),
-      archived_at: savedStudentSnapshot.archivedAt,
-      current_class_id: savedEnrollmentSnapshot.classId,
-      current_enrollment_id: savedEnrollmentSnapshot.id,
-      transactions_total: '0',
-      active_fee_total: '0',
-      balance: '0',
-    };
+    return StudentSummaryMapper.fromSnapshots({
+      student: savedStudent.toSnapshot(),
+      enrollment: savedEnrollment.toSnapshot(),
+      fallbackStudentId: savedStudentId,
+    });
   }
 }

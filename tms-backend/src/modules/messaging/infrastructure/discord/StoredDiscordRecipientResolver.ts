@@ -3,7 +3,7 @@ import type {
   DiscordRecipientResolverPort,
   DiscordServerContext,
 } from '../../application/ports/DiscordRecipientResolverPort.js';
-import type { SysadminDiscordBotCredentialStore } from '../../../identity/infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
+import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
 
 export class StoredDiscordRecipientResolver implements DiscordRecipientResolverPort {
   constructor(

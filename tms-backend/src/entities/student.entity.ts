@@ -38,6 +38,9 @@ export class Student {
   @Column({ type: 'varchar', length: 100, nullable: true })
   discord_username!: string | null;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  discord_user_id!: string | null;
+
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone!: string | null;
 

@@ -23,6 +23,7 @@ export type StudentSnapshot = {
   fullName: string;
   codeforcesHandle: string | null;
   discordUsername: string | null;
+  discordUserId: string | null;
   phone: string | null;
   note: string | null;
   status: EnrollmentStudentStatus;
@@ -36,6 +37,7 @@ type CreateStudentProps = {
   fullName: string;
   codeforcesHandle: CodeforcesHandle | null;
   discordUsername: string | null;
+  discordUserId: string | null;
   phone: string | null;
   note: string | null;
 };
@@ -47,6 +49,7 @@ export class Student extends AggregateRoot<StudentId | null> {
     private fullName: string,
     private codeforcesHandle: CodeforcesHandle | null,
     private discordUsername: string | null,
+    private discordUserId: string | null,
     private phone: string | null,
     private note: string | null,
     private status: EnrollmentStudentStatus,
@@ -69,6 +72,7 @@ export class Student extends AggregateRoot<StudentId | null> {
       fullName,
       props.codeforcesHandle,
       normalizeNullableText(props.discordUsername),
+      normalizeDiscordUserId(props.discordUserId),
       normalizeNullableText(props.phone),
       normalizeNullableText(props.note),
       EnrollmentStudentStatus.Active,
@@ -85,6 +89,7 @@ export class Student extends AggregateRoot<StudentId | null> {
       snapshot.fullName,
       CodeforcesHandle.fromNullable(snapshot.codeforcesHandle),
       snapshot.discordUsername,
+      snapshot.discordUserId,
       snapshot.phone,
       snapshot.note,
       snapshot.status,
@@ -101,6 +106,7 @@ export class Student extends AggregateRoot<StudentId | null> {
       fullName: this.fullName,
       codeforcesHandle: this.codeforcesHandle?.value ?? null,
       discordUsername: this.discordUsername,
+      discordUserId: this.discordUserId,
       phone: this.phone,
       note: this.note,
       status: this.status,
@@ -161,6 +167,10 @@ export class Student extends AggregateRoot<StudentId | null> {
 
   updateDiscordUsername(discordUsername: string | null): void {
     this.discordUsername = normalizeNullableText(discordUsername);
+  }
+
+  updateDiscordUserId(discordUserId: string | null): void {
+    this.discordUserId = normalizeDiscordUserId(discordUserId);
   }
 
   updatePhone(phone: string | null): void {
@@ -233,4 +243,19 @@ function normalizeNullableText(value: string | null | undefined): string | null 
 
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeDiscordUserId(value: string | null | undefined): string | null {
+  const normalized = normalizeNullableText(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const mentionMatch = /^<@!?(\d{15,25})>$/.exec(normalized);
+  if (mentionMatch) {
+    return mentionMatch[1];
+  }
+
+  const snowflakeMatch = /\d{15,25}/.exec(normalized);
+  return snowflakeMatch ? snowflakeMatch[0] : normalized;
 }

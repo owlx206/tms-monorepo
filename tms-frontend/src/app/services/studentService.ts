@@ -9,6 +9,7 @@ export interface BackendStudentSummary {
   full_name: string;
   codeforces_handle: string | null;
   discord_username: string | null;
+  discord_user_id: string | null;
   phone: string | null;
   note: string | null;
   status: BackendStudentStatus;
@@ -79,6 +80,7 @@ export async function createStudent(payload: {
   class_id: number;
   codeforces_handle: string | null;
   discord_username: string;
+  discord_user_id?: string | null;
   phone?: string | null;
   note: string | null;
 }): Promise<BackendStudentSummary> {
@@ -95,6 +97,7 @@ export async function updateStudent(payload: {
   full_name?: string;
   codeforces_handle?: string | null;
   discord_username?: string;
+  discord_user_id?: string | null;
   phone?: string | null;
   note?: string | null;
 }): Promise<BackendStudentSummary> {
@@ -105,6 +108,19 @@ export async function updateStudent(payload: {
   });
 
   return data.student;
+}
+
+export async function inviteStudentToCurrentClassDiscord(studentId: number): Promise<{
+  sent: boolean;
+  reason: string | null;
+}> {
+  return apiRequest<{ sent: boolean; reason: string | null }>(
+    `/students/${studentId}/discord/invite-current-class`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
 }
 
 export async function transferStudent(payload: {

@@ -16,6 +16,7 @@ export class StudentMapper {
         fullName: entity.full_name,
         codeforcesHandle: entity.codeforces_handle,
         discordUsername: entity.discord_username,
+        discordUserId: entity.discord_user_id,
         phone: entity.phone,
         note: entity.note,
         status: entity.status as unknown as EnrollmentStudentStatus,
@@ -38,6 +39,7 @@ export class StudentMapper {
     entity.full_name = snapshot.fullName;
     entity.codeforces_handle = snapshot.codeforcesHandle;
     entity.discord_username = snapshot.discordUsername;
+    entity.discord_user_id = snapshot.discordUserId;
     entity.phone = snapshot.phone;
     entity.note = snapshot.note;
     entity.status = snapshot.status as unknown as StudentStatus;

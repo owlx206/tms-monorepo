@@ -1,6 +1,6 @@
 import type { DiscordMessageType } from '../../../../entities/enums.js';
 import type { DiscordSetupIssue } from '../dto/MessagingDto.js';
-import type { SysadminDiscordBotCredentialStore } from '../../../identity/infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
+import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
 import type { MessagingReadRepository } from './MessagingReadRepository.js';
 
 export class MessagingReadService {
@@ -205,7 +205,7 @@ export class MessagingReadService {
         code: 'students_missing_discord_username',
         severity: 'warning',
         title: `Còn ${studentsMissingDiscordUsername} học sinh thiếu Discord username`,
-        description: 'Các học sinh này chưa sẵn sàng để nhận DM hoặc được đối soát invite qua Discord.',
+        description: 'Discord username chỉ giúp hệ thống tìm học sinh; học sinh vẫn cần tham gia server chung trước khi có thể được đối soát hoặc nhận DM ổn định.',
         cta_action: 'review_students',
         cta_label: 'Rà lại học sinh',
       });

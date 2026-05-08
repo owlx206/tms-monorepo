@@ -3,7 +3,7 @@ import type { EntityManager } from 'typeorm';
 import { DomainError } from '../../../../../shared/domain/DomainError.js';
 import type { Student } from '../../../domain/models/Student.js';
 import { StudentId } from '../../../domain/value-objects/StudentId.js';
-import type { StudentRepository } from './StudentRepository.js';
+import type { StudentRepository } from '../../../domain/repositories/StudentRepository.js';
 import { StudentMapper } from './StudentMapper.js';
 import { Student as StudentOrmEntity } from './StudentOrmEntity.js';
 

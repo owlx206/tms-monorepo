@@ -30,6 +30,32 @@ const optionalNullableTrimmedStringSchema = nullableTrimmedStringSchema
   .optional()
   .transform((value) => value ?? null);
 
+const discordUserIdSchema = z.preprocess((value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const mentionMatch = /^<@!?(\d{15,25})>$/.exec(trimmed);
+  if (mentionMatch) {
+    return mentionMatch[1];
+  }
+
+  const snowflakeMatch = /\d{15,25}/.exec(trimmed);
+  return snowflakeMatch ? snowflakeMatch[0] : trimmed;
+}, z.string().regex(/^\d{15,25}$/, 'discord_user_id must be a valid Discord user ID').nullable());
+
+const optionalDiscordUserIdSchema = discordUserIdSchema.optional()
+  .transform((value) => value ?? null);
+
 const nonEmptyStudentIdsSchema = positiveIntegerArraySchema.refine((value) => value.length > 0, {
   message: 'student_ids must include at least one student',
 });
@@ -50,6 +76,7 @@ export const createStudentBodySchema = z.object({
   class_id: positiveIntegerSchema,
   codeforces_handle: nullableTrimmedStringSchema,
   discord_username: requiredTrimmedStringSchema,
+  discord_user_id: optionalDiscordUserIdSchema,
   phone: optionalNullableTrimmedStringSchema,
   note: nullableTrimmedStringSchema,
   enrolled_at: dateTimeSchema.optional().default(() => new Date()),
@@ -59,6 +86,7 @@ export const updateStudentBodySchema = z.object({
   full_name: requiredTrimmedStringSchema.optional(),
   codeforces_handle: nullableTrimmedStringSchema.optional(),
   discord_username: requiredTrimmedStringSchema.optional(),
+  discord_user_id: discordUserIdSchema.optional(),
   phone: nullableTrimmedStringSchema.optional(),
   note: nullableTrimmedStringSchema.optional(),
 }).refine((value) => Object.keys(value).length > 0, {
