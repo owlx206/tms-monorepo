@@ -70,10 +70,6 @@ export class MessagingReadService {
     }));
   }
 
-  async getCommunityServer(teacherId: number) {
-    return this.messagingReadRepository.findCommunityServerForTeacher(teacherId);
-  }
-
   async getBotInviteLink(_teacherId: number) {
     const credential = await this.discordBotCredentialStore.findDefault();
     const clientId = credential?.client_id.trim() ?? '';
@@ -121,7 +117,6 @@ export class MessagingReadService {
 
   async getSetupStatus(teacherId: number) {
     const [
-      communityServer,
       activeStudents,
       studentsWithDiscordUsername,
       activeClasses,
@@ -129,7 +124,6 @@ export class MessagingReadService {
       missingClassServerNames,
       syncedServers,
     ] = await Promise.all([
-      this.messagingReadRepository.findCommunityServerForTeacher(teacherId),
       this.messagingReadRepository.countActiveStudentsForTeacher(teacherId),
       this.messagingReadRepository.countActiveStudentsWithDiscordUsernameForTeacher(teacherId),
       this.messagingReadRepository.countActiveClassesForTeacher(teacherId),
@@ -166,48 +160,31 @@ export class MessagingReadService {
       });
     }
 
-    if (!communityServer) {
-      issues.push({
-        code: 'community_server_missing',
-        severity: 'critical',
-        title: 'Chưa có server chung',
-        description: 'Hãy thêm bot vào server Discord chung của bạn rồi cấu hình server chung trong app.',
-        cta_action: 'open_community_server',
-        cta_label: 'Cấu hình server chung',
-      });
-    } else {
-      if (!communityServer.voice_channel_id) {
-        issues.push({
-          code: 'community_voice_channel_missing',
-          severity: 'warning',
-          title: 'Server chung chưa có voice channel',
-          description: 'Chọn voice channel dùng cho vận hành community server.',
-          cta_action: 'open_community_server',
-          cta_label: 'Cập nhật server chung',
-        });
-      }
-
-      if (!communityServer.notification_channel_id) {
-        issues.push({
-          code: 'community_notification_channel_missing',
-          severity: 'warning',
-          title: 'Server chung chưa có kênh thông báo',
-          description: 'Chọn kênh dùng để bot gửi thông báo chung hoặc broadcast khi cần.',
-          cta_action: 'open_community_server',
-          cta_label: 'Cập nhật server chung',
-        });
-      }
-    }
-
     const studentsMissingDiscordUsername = Math.max(0, activeStudents - studentsWithDiscordUsername);
     if (studentsMissingDiscordUsername > 0) {
       issues.push({
         code: 'students_missing_discord_username',
         severity: 'warning',
         title: `Còn ${studentsMissingDiscordUsername} học sinh thiếu Discord username`,
-        description: 'Discord username chỉ giúp hệ thống tìm học sinh; học sinh vẫn cần tham gia server chung trước khi có thể được đối soát hoặc nhận DM ổn định.',
+        description: 'Discord username chỉ là thông tin hiển thị. Với luồng mới, học sinh cần authorize Discord bằng link để hệ thống add/kick server lớp.',
         cta_action: 'review_students',
         cta_label: 'Rà lại học sinh',
+      });
+    }
+
+    if (
+      credential?.bot_token
+      && configuredClassServers > 0
+      && activeStudents > 0
+      && studentsMissingDiscordUsername === 0
+    ) {
+      issues.push({
+        code: 'discord_membership_sync_available',
+        severity: 'info',
+        title: 'Có thể đồng bộ học sinh với Discord',
+        description: 'Chạy đồng bộ để add học sinh đã authorize vào server lớp hiện tại và gỡ học sinh đã nghỉ khỏi server lớp cũ.',
+        cta_action: 'sync_membership',
+        cta_label: 'Đồng bộ Discord',
       });
     }
 
@@ -230,7 +207,7 @@ export class MessagingReadService {
         code: 'setup_healthy',
         severity: 'info',
         title: 'Cấu hình Discord đang ổn',
-        description: 'Server chung và server lớp chính đã có đủ cấu hình để tiếp tục vận hành.',
+        description: 'Server lớp chính đã có đủ cấu hình để tiếp tục vận hành.',
         cta_action: null,
         cta_label: null,
       });
@@ -239,7 +216,6 @@ export class MessagingReadService {
     return {
       invite_link: inviteLink,
       bot_configured: Boolean(credential?.bot_token && credential?.client_id),
-      community_server: communityServer,
       metrics: {
         active_students: activeStudents,
         students_with_discord_username: studentsWithDiscordUsername,

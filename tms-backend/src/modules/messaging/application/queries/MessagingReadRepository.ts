@@ -37,19 +37,6 @@ export interface MessagingReadRepository {
   }>>;
   countRecipientsByMessageIds(teacherId: number, messageIds: number[]): Promise<MessageRecipientCount[]>;
   listFailedRecipientsByMessageIds(teacherId: number, messageIds: number[]): Promise<FailedMessageRecipient[]>;
-  findCommunityServerForTeacher(teacherId: number): Promise<{
-    id: number;
-    teacher_id: number;
-    discord_server_id: string;
-    server_id: number | null;
-    name: string | null;
-    notification_channel_id: string | null;
-    notification_channel_name: string | null;
-    notification_channel_cache_id: number | null;
-    voice_channel_id: string | null;
-    voice_channel_name: string | null;
-    voice_channel_cache_id: number | null;
-  } | null>;
   listTeacherDiscordServers(teacherId: number): Promise<Array<{
     id: number;
     teacher_id: number;
@@ -57,7 +44,7 @@ export interface MessagingReadRepository {
     name: string;
     synced_at: Date;
     binding_server_id: number | null;
-    binding_role: 'unbound' | 'community' | 'class';
+    binding_role: 'unbound' | 'class';
     binding_class_id: number | null;
     binding_class_name: string | null;
     binding_notification_channel_id: string | null;

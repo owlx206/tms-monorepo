@@ -9,7 +9,7 @@ export interface BackendDiscordServer {
   name: string;
   synced_at: string;
   binding: {
-    role: "unbound" | "community" | "class";
+    role: "unbound" | "class";
     server_binding_id: number | null;
     class_id: number | null;
     class_name: string | null;
@@ -32,20 +32,6 @@ export interface BackendClassDiscordServerBinding {
   notification_channel_id: string | null;
 }
 
-export interface BackendCommunityServer {
-  id: number;
-  teacher_id: number;
-  discord_server_id: string;
-  server_id: number | null;
-  name: string | null;
-  notification_channel_id: string | null;
-  notification_channel_name: string | null;
-  notification_channel_cache_id: number | null;
-  voice_channel_id: string | null;
-  voice_channel_name: string | null;
-  voice_channel_cache_id: number | null;
-}
-
 export interface BackendDiscordChannel {
   id: number;
   teacher_id: number;
@@ -61,14 +47,13 @@ export interface DiscordSetupIssue {
   severity: "critical" | "warning" | "info";
   title: string;
   description: string;
-  cta_action?: "open_bot_invite" | "sync_servers" | "open_community_server" | "open_class_server" | "review_students" | null;
+  cta_action?: "open_bot_invite" | "sync_servers" | "sync_membership" | "open_class_server" | "review_students" | null;
   cta_label?: string | null;
 }
 
 export interface DiscordSetupStatus {
   invite_link: string | null;
   bot_configured: boolean;
-  community_server: BackendCommunityServer | null;
   metrics: {
     active_students: number;
     students_with_discord_username: number;
@@ -101,6 +86,25 @@ export interface BackendMessageListRow {
   }>;
 }
 
+export interface DiscordMembershipSyncResult {
+  synced_servers: number;
+  total_students: number;
+  resolved_students: number;
+  discord_user_ids_updated: number;
+  already_in_class_server: number;
+  joined_class_server: number;
+  kicked_from_class_server: number;
+  failed: number;
+  failures: Array<{
+    student_id: number | null;
+    student_name: string | null;
+    class_id: number | null;
+    class_name: string | null;
+    code: string;
+    message: string;
+  }>;
+}
+
 export async function listDiscordServers(): Promise<BackendDiscordServer[]> {
   const data = await apiRequest<{ servers: BackendDiscordServer[] }>("/discord/servers");
   return data.servers;
@@ -112,6 +116,19 @@ export async function syncDiscordServers(): Promise<{ synced_servers: number }> 
   });
 }
 
+export async function syncDiscordMembership(): Promise<DiscordMembershipSyncResult> {
+  return apiRequest<DiscordMembershipSyncResult>("/discord/membership/sync", {
+    method: "POST",
+  });
+}
+
+export async function getStudentDiscordAuthorizationUrl(studentId: number): Promise<string> {
+  const data = await apiRequest<{ authorize_url: string }>(
+    `/students/${studentId}/discord/authorization-url`,
+  );
+  return data.authorize_url;
+}
+
 export async function listDiscordChannels(serverId: number): Promise<BackendDiscordChannel[]> {
   const data = await apiRequest<{ channels: BackendDiscordChannel[] }>(`/discord/servers/${serverId}/channels`);
   return data.channels;
@@ -120,30 +137,6 @@ export async function listDiscordChannels(serverId: number): Promise<BackendDisc
 export async function getDiscordBotInviteLink(): Promise<string | null> {
   const data = await apiRequest<{ invite_link: string | null }>("/discord/bot-invite-link");
   return data.invite_link;
-}
-
-export async function getCommunityServer(): Promise<BackendCommunityServer | null> {
-  const data = await apiRequest<{ server: BackendCommunityServer | null }>("/discord/community-server");
-  return data.server;
-}
-
-export async function upsertCommunityServer(payload: {
-  server_id: number;
-  notification_channel_id?: string | null;
-  voice_channel_id?: string | null;
-}): Promise<BackendCommunityServer> {
-  const data = await apiRequest<{ server: BackendCommunityServer }>("/discord/community-server/select", {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-
-  return data.server;
-}
-
-export async function deleteCommunityServer(): Promise<void> {
-  await apiRequest<{ removed: boolean }>("/discord/community-server", {
-    method: "DELETE",
-  });
 }
 
 export async function getDiscordSetupStatus(): Promise<DiscordSetupStatus> {

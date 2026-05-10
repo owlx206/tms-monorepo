@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Edit2, Archive, Users, Trash2 } from "lucide-react";
+import { Plus, Edit2, Archive, Users, Trash2, MessageSquare } from "lucide-react";
 
 import { ApiError } from "../services/apiClient";
 import {
@@ -12,6 +12,11 @@ import {
   updateClass,
 } from "../services/classService";
 import { listStudents } from "../services/studentService";
+import {
+  listDiscordServers,
+  sendChannelPost,
+  type BackendDiscordServer,
+} from "../services/messagingService";
 
 type ClassCard = {
   id: number;
@@ -121,14 +126,20 @@ export function Classes() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassCard | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showClassMessageModal, setShowClassMessageModal] = useState(false);
   const [classes, setClasses] = useState<ClassCard[]>([]);
+  const [discordServers, setDiscordServers] = useState<BackendDiscordServer[]>([]);
   const [requestError, setRequestError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const refreshClasses = async (): Promise<void> => {
-    const rawClasses = await listClasses();
+    const [rawClasses, servers] = await Promise.all([
+      listClasses(),
+      listDiscordServers(),
+    ]);
     const classCards = await buildClassCards(rawClasses);
     setClasses(classCards);
+    setDiscordServers(servers);
   };
 
   useEffect(() => {
@@ -216,6 +227,38 @@ export function Classes() {
     }
   };
 
+  const handleSendClassMessage = async (payload: {
+    classId: number;
+    content: string;
+  }) => {
+    setSubmitting(true);
+    setRequestError("");
+
+    try {
+      const server = discordServers.find((item) => (
+        item.binding.role === "class"
+        && item.binding.class_id === payload.classId
+        && item.binding.notification_channel_id
+      ));
+
+      if (!server) {
+        setRequestError("Lớp này chưa cấu hình Discord notification channel");
+        return;
+      }
+
+      await sendChannelPost({
+        content: payload.content,
+        server_ids: [server.id],
+      });
+      setShowClassMessageModal(false);
+      setSelectedClass(null);
+    } catch (error) {
+      setRequestError(toErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
@@ -280,6 +323,18 @@ export function Classes() {
               </div>
 
               <button
+                className="w-full mt-4 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                onClick={() => {
+                  setSelectedClass(cls);
+                  setShowClassMessageModal(true);
+                }}
+                disabled={submitting}
+              >
+                <MessageSquare className="w-4 h-4" />
+                Nhắn nhóm lớp
+              </button>
+
+              <button
                 className="w-full mt-4 px-4 py-2 bg-zinc-100 text-zinc-700 rounded-lg hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                 onClick={() => void handleArchiveClass(cls.id)}
                 disabled={submitting}
@@ -333,6 +388,89 @@ export function Classes() {
         />
       )}
 
+      {showClassMessageModal && selectedClass && (
+        <ClassMessageModal
+          classData={selectedClass}
+          submitting={submitting}
+          error={requestError}
+          onClose={() => {
+            setShowClassMessageModal(false);
+            setSelectedClass(null);
+          }}
+          onSubmit={handleSendClassMessage}
+        />
+      )}
+
+    </div>
+  );
+}
+
+function ClassMessageModal({
+  classData,
+  submitting,
+  error,
+  onClose,
+  onSubmit,
+}: {
+  classData: ClassCard;
+  submitting: boolean;
+  error: string;
+  onClose: () => void;
+  onSubmit: (payload: { classId: number; content: string }) => Promise<void>;
+}) {
+  const [content, setContent] = useState("");
+  const [localError, setLocalError] = useState("");
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLocalError("");
+
+    if (!content.trim()) {
+      setLocalError("Nội dung tin nhắn là bắt buộc");
+      return;
+    }
+
+    await onSubmit({
+      classId: classData.id,
+      content: content.trim(),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-white/80 flex items-center justify-center p-4 z-50">
+      <div className="bg-zinc-100 border border-zinc-200 rounded-xl p-6 w-full max-w-lg">
+        <h2 className="text-xl font-semibold text-zinc-900 mb-2">Nhắn nhóm {classData.name}</h2>
+        <p className="text-sm text-zinc-600 mb-6">Tin nhắn sẽ được gửi vào Discord notification channel của lớp.</p>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <textarea
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            rows={8}
+            className="w-full resize-none rounded-lg border border-zinc-200 bg-white px-4 py-3 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            placeholder="Nhập nội dung thông báo..."
+          />
+
+          {(localError || error) && <p className="text-sm text-red-600">{localError || error}</p>}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-zinc-100 text-zinc-900 rounded-lg hover:bg-zinc-200 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors font-medium disabled:opacity-60"
+            >
+              {submitting ? "Đang gửi..." : "Gửi tin nhắn"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

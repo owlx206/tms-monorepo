@@ -9,7 +9,6 @@ export { FeeRecord } from './fee-record.entity.js';
 export { Session } from './session.entity.js';
 export { Student } from './student.entity.js';
 export { Teacher } from './teacher.entity.js';
-export { TeacherCommunityServer } from './teacher-community-server.entity.js';
 export { TeacherDiscordChannelCache } from './teacher-discord-channel-cache.entity.js';
 export { TeacherDiscordServerCache } from './teacher-discord-server-cache.entity.js';
 export { SysadminDiscordBotCredential } from './sysadmin-discord-bot-credential.entity.js';

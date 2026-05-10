@@ -3,7 +3,6 @@ import { EntityManager, In, IsNull } from 'typeorm';
 import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
 import { FeeRecord } from '../../../../../entities/fee-record.entity.js';
 import { FeeRecordStatus } from '../../../../../entities/enums.js';
-import { TeacherCommunityServer } from '../../../../../entities/teacher-community-server.entity.js';
 import { Transaction } from '../../../../../entities/transaction.entity.js';
 import { parseAmountToBigInt } from '../../../../../shared/helpers/money.js';
 import type { StudentBalanceSnapshot, StudentListFilters } from '../../../application/dto/StudentDto.js';
@@ -166,15 +165,6 @@ export async function findDiscordServerByClass(
   return manager.getRepository(DiscordServer).findOneBy({
     teacher_id: teacherId,
     class_id: classId,
-  });
-}
-
-export async function findCommunityServerByTeacher(
-  manager: EntityManager,
-  teacherId: number,
-): Promise<TeacherCommunityServer | null> {
-  return manager.getRepository(TeacherCommunityServer).findOneBy({
-    teacher_id: teacherId,
   });
 }
 

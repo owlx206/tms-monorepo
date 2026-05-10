@@ -2,11 +2,12 @@ import type { AppModule } from '../module.types.js';
 import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
 import { BindClassDiscordServerUseCase } from './application/commands/BindClassDiscordServerUseCase.js';
 import { CompleteDiscordGuildInstallUseCase } from './application/commands/CompleteDiscordGuildInstallUseCase.js';
-import { DeleteCommunityServerUseCase } from './application/commands/DeleteCommunityServerUseCase.js';
+import { CompleteStudentDiscordAuthorizationUseCase } from './application/commands/CompleteStudentDiscordAuthorizationUseCase.js';
 import { DeleteDiscordServerUseCase } from './application/commands/DeleteDiscordServerUseCase.js';
-import { SelectCommunityServerUseCase } from './application/commands/SelectCommunityServerUseCase.js';
 import { SendBulkDmUseCase } from './application/commands/SendBulkDmUseCase.js';
 import { SendChannelPostUseCase } from './application/commands/SendChannelPostUseCase.js';
+import { StartStudentDiscordAuthorizationUseCase } from './application/commands/StartStudentDiscordAuthorizationUseCase.js';
+import { SyncDiscordMembershipUseCase } from './application/commands/SyncDiscordMembershipUseCase.js';
 import { SyncTeacherDiscordServersUseCase } from './application/commands/SyncTeacherDiscordServersUseCase.js';
 import { MessagingReadService } from './application/queries/MessagingReadService.js';
 import { StoredDiscordGatewayFactory } from './infrastructure/discord/StoredDiscordGatewayFactory.js';
@@ -16,7 +17,6 @@ import { DiscordMessageOrmEntity } from './infrastructure/persistence/typeorm/Di
 import { DiscordServerOrmEntity } from './infrastructure/persistence/typeorm/DiscordServerOrmEntity.js';
 import { TeacherDiscordChannelCacheOrmEntity } from './infrastructure/persistence/typeorm/TeacherDiscordChannelCacheOrmEntity.js';
 import { TeacherDiscordServerCacheOrmEntity } from './infrastructure/persistence/typeorm/TeacherDiscordServerCacheOrmEntity.js';
-import { TeacherCommunityServerOrmEntity } from './infrastructure/persistence/typeorm/TeacherCommunityServerOrmEntity.js';
 import { TypeOrmMessagingReadRepository } from './infrastructure/persistence/typeorm/TypeOrmMessagingReadRepository.js';
 import { TypeOrmMessagingWriteRepository } from './infrastructure/persistence/typeorm/TypeOrmMessagingWriteRepository.js';
 import { MessagingController } from './presentation/controllers/MessagingController.js';
@@ -35,14 +35,25 @@ const syncTeacherDiscordServersUseCase = new SyncTeacherDiscordServersUseCase(
   discordGatewayFactory,
   discordBotCredentialStore,
 );
+const syncDiscordMembershipUseCase = new SyncDiscordMembershipUseCase(
+  messagingWriteRepository,
+  discordBotCredentialStore,
+  syncTeacherDiscordServersUseCase,
+);
 const completeDiscordGuildInstallUseCase = new CompleteDiscordGuildInstallUseCase(
   messagingWriteRepository,
   discordGatewayFactory,
   discordBotCredentialStore,
 );
-const selectCommunityServerUseCase = new SelectCommunityServerUseCase(messagingWriteRepository);
+const startStudentDiscordAuthorizationUseCase = new StartStudentDiscordAuthorizationUseCase(
+  messagingWriteRepository,
+  discordBotCredentialStore,
+);
+const completeStudentDiscordAuthorizationUseCase = new CompleteStudentDiscordAuthorizationUseCase(
+  messagingWriteRepository,
+  discordBotCredentialStore,
+);
 const bindClassDiscordServerUseCase = new BindClassDiscordServerUseCase(messagingWriteRepository);
-const deleteCommunityServerUseCase = new DeleteCommunityServerUseCase(messagingWriteRepository);
 const deleteDiscordServerUseCase = new DeleteDiscordServerUseCase(messagingWriteRepository);
 const sendBulkDmUseCase = new SendBulkDmUseCase(
   messagingWriteRepository,
@@ -56,8 +67,13 @@ const sendChannelPostUseCase = new SendChannelPostUseCase(
 const messagingControllerDependencies = {
   listDiscordServers: (teacherId: number) => messagingReadService.listTeacherDiscordServers(teacherId),
   syncDiscordServers: (teacherId: number) => syncTeacherDiscordServersUseCase.execute(teacherId),
+  syncDiscordMembership: (teacherId: number) => syncDiscordMembershipUseCase.execute(teacherId),
   completeDiscordInstall: (input: { code?: string; state?: string; guild_id?: string; error?: string }) =>
     completeDiscordGuildInstallUseCase.execute(input),
+  startStudentDiscordAuthorization: (teacherId: number, studentId: number) =>
+    startStudentDiscordAuthorizationUseCase.execute(teacherId, studentId),
+  completeStudentDiscordAuthorization: (input: { code?: string; state?: string; error?: string }) =>
+    completeStudentDiscordAuthorizationUseCase.execute(input),
   listDiscordChannels: async (teacherId: number, serverId: number) => {
     const server = await messagingWriteRepository.findTeacherDiscordServerCacheById(teacherId, serverId);
     if (!server) {
@@ -66,12 +82,6 @@ const messagingControllerDependencies = {
 
     return messagingReadService.listTeacherDiscordChannelsForServer(teacherId, server.discord_server_id);
   },
-  getCommunityServer: (teacherId: number) => messagingReadService.getCommunityServer(teacherId),
-  upsertCommunityServer: (
-    teacherId: number,
-    input: Parameters<SelectCommunityServerUseCase['execute']>[1],
-  ) => selectCommunityServerUseCase.execute(teacherId, input),
-  deleteCommunityServer: (teacherId: number) => deleteCommunityServerUseCase.execute(teacherId),
   getBotInviteLink: (teacherId: number) => messagingReadService.getBotInviteLink(teacherId),
   getSetupStatus: (teacherId: number) => messagingReadService.getSetupStatus(teacherId),
   upsertDiscordServerByClass: (
@@ -94,11 +104,17 @@ const messagingControllerDependencies = {
 const messagingRouter = createMessagingRouter({
   listDiscordServers: new MessagingController('listDiscordServers', messagingControllerDependencies),
   syncDiscordServers: new MessagingController('syncDiscordServers', messagingControllerDependencies),
+  syncDiscordMembership: new MessagingController('syncDiscordMembership', messagingControllerDependencies),
   listDiscordChannels: new MessagingController('listDiscordChannels', messagingControllerDependencies),
   completeDiscordInstall: new MessagingController('completeDiscordInstall', messagingControllerDependencies),
-  getCommunityServer: new MessagingController('getCommunityServer', messagingControllerDependencies),
-  upsertCommunityServer: new MessagingController('upsertCommunityServer', messagingControllerDependencies),
-  deleteCommunityServer: new MessagingController('deleteCommunityServer', messagingControllerDependencies),
+  startStudentDiscordAuthorization: new MessagingController(
+    'startStudentDiscordAuthorization',
+    messagingControllerDependencies,
+  ),
+  completeStudentDiscordAuthorization: new MessagingController(
+    'completeStudentDiscordAuthorization',
+    messagingControllerDependencies,
+  ),
   getBotInviteLink: new MessagingController('getBotInviteLink', messagingControllerDependencies),
   getSetupStatus: new MessagingController('getSetupStatus', messagingControllerDependencies),
   upsertDiscordServer: new MessagingController('upsertDiscordServer', messagingControllerDependencies),
@@ -114,7 +130,6 @@ export const messagingModule: AppModule = {
     DiscordServerOrmEntity,
     TeacherDiscordServerCacheOrmEntity,
     TeacherDiscordChannelCacheOrmEntity,
-    TeacherCommunityServerOrmEntity,
     DiscordMessageOrmEntity,
     DiscordMessageRecipientOrmEntity,
   ],

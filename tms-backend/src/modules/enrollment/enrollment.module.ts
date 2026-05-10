@@ -4,7 +4,7 @@ import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
 import { StudentReadService } from './application/queries/StudentReadService.js';
 import { Enrollment } from './infrastructure/persistence/typeorm/EnrollmentOrmEntity.js';
 import { Student } from './infrastructure/persistence/typeorm/StudentOrmEntity.js';
-import { TypeOrmStudentCommunityPort } from './infrastructure/persistence/typeorm/TypeOrmStudentCommunityPort.js';
+import { TypeOrmStudentDiscordMembershipPort } from './infrastructure/persistence/typeorm/TypeOrmStudentDiscordMembershipPort.js';
 import { TypeOrmStudentCommandHandlers } from './infrastructure/persistence/typeorm/TypeOrmStudentCommandHandlers.js';
 import { TypeOrmStudentReadRepository } from './infrastructure/persistence/typeorm/TypeOrmStudentReadRepository.js';
 import { GetDashboardSummaryUseCase } from './application/queries/GetDashboardSummaryUseCase.js';
@@ -16,11 +16,11 @@ import { StudentReportController } from './presentation/controllers/StudentRepor
 import { createStudentReportRouter } from './presentation/routes/student-report.routes.js';
 import { createStudentRouter } from './presentation/routes/enrollment.routes.js';
 
-const studentCommunityPort = new TypeOrmStudentCommunityPort(
+const studentDiscordMembershipPort = new TypeOrmStudentDiscordMembershipPort(
   AppDataSource,
   createSysadminDiscordBotCredentialStore(),
 );
-const studentCommandHandlers = new TypeOrmStudentCommandHandlers(AppDataSource, studentCommunityPort);
+const studentCommandHandlers = new TypeOrmStudentCommandHandlers(AppDataSource, studentDiscordMembershipPort);
 const studentControllerDependencies = {
   readService: new StudentReadService(
     new TypeOrmStudentReadRepository(AppDataSource.manager),

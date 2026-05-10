@@ -7,12 +7,6 @@ export type UpsertDiscordServerInput = {
   notification_channel_id?: string | null;
 };
 
-export type UpsertCommunityServerInput = {
-  server_id: number;
-  notification_channel_id?: string | null;
-  voice_channel_id?: string | null;
-};
-
 export type SelectClassDiscordServerInput = {
   server_id: number;
   notification_channel_id?: string | null;
@@ -23,7 +17,7 @@ export type DiscordSetupIssueSeverity = 'critical' | 'warning' | 'info';
 export type DiscordSetupAction =
   | 'open_bot_invite'
   | 'sync_servers'
-  | 'open_community_server'
+  | 'sync_membership'
   | 'open_class_server'
   | 'review_students';
 
@@ -39,19 +33,6 @@ export type DiscordSetupIssue = {
 export type DiscordSetupStatus = {
   invite_link: string | null;
   bot_configured: boolean;
-  community_server: {
-    id: number;
-    teacher_id: number;
-    discord_server_id: string;
-    server_id: number | null;
-    name: string | null;
-    notification_channel_id: string | null;
-    notification_channel_name: string | null;
-    notification_channel_cache_id: number | null;
-    voice_channel_id: string | null;
-    voice_channel_name: string | null;
-    voice_channel_cache_id: number | null;
-  } | null;
   metrics: {
     active_students: number;
     students_with_discord_username: number;
@@ -72,7 +53,7 @@ export type TeacherDiscordServerOption = {
   name: string;
   synced_at: Date;
   binding: {
-    role: 'unbound' | 'community' | 'class';
+    role: 'unbound' | 'class';
     server_binding_id: number | null;
     class_id: number | null;
     class_name: string | null;
@@ -108,4 +89,25 @@ export type BulkDmInput = {
 export type ChannelPostInput = {
   content: string;
   server_ids: number[];
+};
+
+export type DiscordMembershipSyncFailure = {
+  student_id: number | null;
+  student_name: string | null;
+  class_id: number | null;
+  class_name: string | null;
+  code: string;
+  message: string;
+};
+
+export type DiscordMembershipSyncResult = {
+  synced_servers: number;
+  total_students: number;
+  resolved_students: number;
+  discord_user_ids_updated: number;
+  already_in_class_server: number;
+  joined_class_server: number;
+  kicked_from_class_server: number;
+  failed: number;
+  failures: DiscordMembershipSyncFailure[];
 };

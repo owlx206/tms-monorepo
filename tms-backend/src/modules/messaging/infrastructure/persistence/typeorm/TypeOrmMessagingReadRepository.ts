@@ -11,7 +11,6 @@ import { DiscordMessageRecipientOrmEntity } from './DiscordMessageRecipientOrmEn
 import { DiscordServerOrmEntity } from './DiscordServerOrmEntity.js';
 import { TeacherDiscordChannelCacheOrmEntity } from './TeacherDiscordChannelCacheOrmEntity.js';
 import { TeacherDiscordServerCacheOrmEntity } from './TeacherDiscordServerCacheOrmEntity.js';
-import { TeacherCommunityServerOrmEntity } from './TeacherCommunityServerOrmEntity.js';
 import type {
   FailedMessageRecipient,
   MessageRecipientCount,
@@ -80,78 +79,9 @@ export class TypeOrmMessagingReadRepository implements MessagingReadRepository {
       .getRawMany<FailedMessageRecipient>();
   }
 
-  findCommunityServerForTeacher(teacherId: number) {
-    return AppDataSource.getRepository(TeacherCommunityServerOrmEntity)
-      .createQueryBuilder('community')
-      .leftJoin(
-        TeacherDiscordServerCacheOrmEntity,
-        'server_cache',
-        'server_cache.teacher_id = community.teacher_id AND server_cache.discord_server_id = community.discord_server_id',
-      )
-      .leftJoin(
-        TeacherDiscordChannelCacheOrmEntity,
-        'notification_channel_cache',
-        'notification_channel_cache.teacher_id = community.teacher_id AND notification_channel_cache.discord_server_id = community.discord_server_id AND notification_channel_cache.discord_channel_id = community.notification_channel_id',
-      )
-      .leftJoin(
-        TeacherDiscordChannelCacheOrmEntity,
-        'voice_channel_cache',
-        'voice_channel_cache.teacher_id = community.teacher_id AND voice_channel_cache.discord_server_id = community.discord_server_id AND voice_channel_cache.discord_channel_id = community.voice_channel_id',
-      )
-      .select('community.id', 'id')
-      .addSelect('community.teacher_id', 'teacher_id')
-      .addSelect('community.discord_server_id', 'discord_server_id')
-      .addSelect('server_cache.id', 'server_id')
-      .addSelect('community.name', 'name')
-      .addSelect('community.notification_channel_id', 'notification_channel_id')
-      .addSelect('notification_channel_cache.name', 'notification_channel_name')
-      .addSelect('notification_channel_cache.id', 'notification_channel_cache_id')
-      .addSelect('community.voice_channel_id', 'voice_channel_id')
-      .addSelect('voice_channel_cache.name', 'voice_channel_name')
-      .addSelect('voice_channel_cache.id', 'voice_channel_cache_id')
-      .where('community.teacher_id = :teacherId', { teacherId })
-      .getRawOne<{
-        id: string;
-        teacher_id: string;
-        discord_server_id: string;
-        server_id: string | null;
-        name: string | null;
-        notification_channel_id: string | null;
-        notification_channel_name: string | null;
-        notification_channel_cache_id: string | null;
-        voice_channel_id: string | null;
-        voice_channel_name: string | null;
-        voice_channel_cache_id: string | null;
-      }>()
-      .then((row) => {
-        if (!row) {
-          return null;
-        }
-
-        return {
-          id: Number(row.id),
-          teacher_id: Number(row.teacher_id),
-          discord_server_id: row.discord_server_id,
-          server_id: row.server_id === null ? null : Number(row.server_id),
-          name: row.name,
-          notification_channel_id: row.notification_channel_id,
-          notification_channel_name: row.notification_channel_name,
-          notification_channel_cache_id: row.notification_channel_cache_id === null ? null : Number(row.notification_channel_cache_id),
-          voice_channel_id: row.voice_channel_id,
-          voice_channel_name: row.voice_channel_name,
-          voice_channel_cache_id: row.voice_channel_cache_id === null ? null : Number(row.voice_channel_cache_id),
-        };
-      });
-  }
-
   async listTeacherDiscordServers(teacherId: number) {
     return AppDataSource.getRepository(TeacherDiscordServerCacheOrmEntity)
       .createQueryBuilder('server_cache')
-      .leftJoin(
-        TeacherCommunityServerOrmEntity,
-        'community',
-        'community.teacher_id = server_cache.teacher_id AND community.discord_server_id = server_cache.discord_server_id',
-      )
       .leftJoin(
         DiscordServerOrmEntity,
         'class_binding',
@@ -179,7 +109,6 @@ export class TypeOrmMessagingReadRepository implements MessagingReadRepository {
       .addSelect('server_cache.synced_at', 'synced_at')
       .addSelect(`
         CASE
-          WHEN community.id IS NOT NULL THEN 'community'
           WHEN class_binding.id IS NOT NULL THEN 'class'
           ELSE 'unbound'
         END
@@ -202,7 +131,7 @@ export class TypeOrmMessagingReadRepository implements MessagingReadRepository {
         name: string;
         synced_at: string | Date;
         binding_server_id: string | null;
-        binding_role: 'unbound' | 'community' | 'class';
+        binding_role: 'unbound' | 'class';
         binding_class_id: string | null;
         binding_class_name: string | null;
         binding_notification_channel_id: string | null;

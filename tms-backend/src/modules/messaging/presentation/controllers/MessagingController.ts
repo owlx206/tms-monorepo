@@ -7,18 +7,17 @@ import type {
   ChannelPostInput,
   MessageListFilters,
   SelectClassDiscordServerInput,
-  UpsertCommunityServerInput,
 } from '../../application/dto/MessagingDto.js';
 import { getClassId, getTeacherId } from './request-context.js';
 
 type MessagingControllerAction =
   | 'listDiscordServers'
   | 'syncDiscordServers'
+  | 'syncDiscordMembership'
   | 'listDiscordChannels'
   | 'completeDiscordInstall'
-  | 'getCommunityServer'
-  | 'upsertCommunityServer'
-  | 'deleteCommunityServer'
+  | 'startStudentDiscordAuthorization'
+  | 'completeStudentDiscordAuthorization'
   | 'getBotInviteLink'
   | 'getSetupStatus'
   | 'upsertDiscordServer'
@@ -30,6 +29,7 @@ type MessagingControllerAction =
 type MessagingControllerDependencies = {
   listDiscordServers(teacherId: number): Promise<unknown>;
   syncDiscordServers(teacherId: number): Promise<unknown>;
+  syncDiscordMembership(teacherId: number): Promise<unknown>;
   listDiscordChannels(teacherId: number, serverId: number): Promise<unknown>;
   completeDiscordInstall(input: {
     code?: string;
@@ -37,9 +37,12 @@ type MessagingControllerDependencies = {
     guild_id?: string;
     error?: string;
   }): Promise<string>;
-  getCommunityServer(teacherId: number): Promise<unknown>;
-  upsertCommunityServer(teacherId: number, input: UpsertCommunityServerInput): Promise<unknown>;
-  deleteCommunityServer(teacherId: number): Promise<unknown>;
+  startStudentDiscordAuthorization(teacherId: number, studentId: number): Promise<string>;
+  completeStudentDiscordAuthorization(input: {
+    code?: string;
+    state?: string;
+    error?: string;
+  }): Promise<string>;
   getBotInviteLink(teacherId: number): Promise<unknown> | unknown;
   getSetupStatus(teacherId: number): Promise<unknown>;
   upsertDiscordServerByClass(
@@ -54,9 +57,9 @@ type MessagingControllerDependencies = {
 };
 
 type MessagingHttpRequest = HttpRequest<
-  SelectClassDiscordServerInput | UpsertCommunityServerInput | BulkDmInput | ChannelPostInput,
-  { classId?: number; serverId?: number },
-  MessageListFilters
+  SelectClassDiscordServerInput | BulkDmInput | ChannelPostInput,
+  { classId?: number; serverId?: number; studentId?: number },
+  MessageListFilters & { code?: string; state?: string; guild_id?: string; error?: string }
 >;
 
 export class MessagingController implements Controller {
@@ -72,16 +75,16 @@ export class MessagingController implements Controller {
           return this.listDiscordServers(request);
         case 'syncDiscordServers':
           return this.syncDiscordServers(request);
+        case 'syncDiscordMembership':
+          return this.syncDiscordMembership(request);
         case 'listDiscordChannels':
           return this.listDiscordChannels(request);
         case 'completeDiscordInstall':
           return this.completeDiscordInstall(request);
-        case 'getCommunityServer':
-          return this.getCommunityServer(request);
-        case 'upsertCommunityServer':
-          return this.upsertCommunityServer(request);
-        case 'deleteCommunityServer':
-          return this.deleteCommunityServer(request);
+        case 'startStudentDiscordAuthorization':
+          return this.startStudentDiscordAuthorization(request);
+        case 'completeStudentDiscordAuthorization':
+          return this.completeStudentDiscordAuthorization(request);
         case 'getBotInviteLink':
           return this.getBotInviteLink(request);
         case 'getSetupStatus':
@@ -124,6 +127,15 @@ export class MessagingController implements Controller {
     };
   }
 
+  private async syncDiscordMembership(request: MessagingHttpRequest): Promise<HttpResponse> {
+    const result = await this.dependencies.syncDiscordMembership(getTeacherId(request));
+
+    return {
+      statusCode: 200,
+      body: result,
+    };
+  }
+
   private async listDiscordChannels(request: MessagingHttpRequest): Promise<HttpResponse> {
     const serverId = (request.params as { serverId?: number }).serverId;
 
@@ -136,15 +148,6 @@ export class MessagingController implements Controller {
     return {
       statusCode: 200,
       body: { channels },
-    };
-  }
-
-  private async getCommunityServer(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const server = await this.dependencies.getCommunityServer(getTeacherId(request));
-
-    return {
-      statusCode: 200,
-      body: { server },
     };
   }
 
@@ -169,24 +172,41 @@ export class MessagingController implements Controller {
     };
   }
 
-  private async upsertCommunityServer(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const server = await this.dependencies.upsertCommunityServer(
+  private async startStudentDiscordAuthorization(request: MessagingHttpRequest): Promise<HttpResponse> {
+    const studentId = (request.params as { studentId?: number }).studentId;
+
+    if (typeof studentId !== 'number') {
+      throw new ServiceError('studentId is required', 400);
+    }
+
+    const authorizeUrl = await this.dependencies.startStudentDiscordAuthorization(
       getTeacherId(request),
-      request.body as UpsertCommunityServerInput,
+      studentId,
     );
 
     return {
       statusCode: 200,
-      body: { server },
+      body: { authorize_url: authorizeUrl },
     };
   }
 
-  private async deleteCommunityServer(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const result = await this.dependencies.deleteCommunityServer(getTeacherId(request));
+  private async completeStudentDiscordAuthorization(request: MessagingHttpRequest): Promise<HttpResponse> {
+    const redirectUrl = await this.dependencies.completeStudentDiscordAuthorization(
+      (request.query ?? {}) as {
+        code?: string;
+        state?: string;
+        error?: string;
+      },
+    );
 
     return {
-      statusCode: 200,
-      body: result,
+      statusCode: 302,
+      body: {
+        redirect_to: redirectUrl,
+      },
+      headers: {
+        Location: redirectUrl,
+      },
     };
   }
 

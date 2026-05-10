@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import {
   Plus,
   Search,
   UserX,
   ArrowRightLeft,
   Pencil,
-  Send,
+  Link2,
+  MessageSquare,
   AlertCircle,
   DollarSign,
   CheckCircle,
@@ -19,9 +20,7 @@ import {
   archiveStudent,
   bulkWithdrawStudents,
   bulkTransferStudents,
-  buildStudentNote,
   createStudent,
-  inviteStudentToCurrentClassDiscord,
   withdrawStudent,
   listStudents,
   reinstateStudent,
@@ -29,11 +28,11 @@ import {
   updateStudent as updateStudentById,
   type BackendStudentSummary,
 } from "../services/studentService";
+import { getStudentDiscordAuthorizationUrl, sendBulkDm } from "../services/messagingService";
 
 type StudentView = {
   id: number;
   name: string;
-  email: string;
   discordUsername: string;
   discordUserId: string;
   phone: string;
@@ -67,15 +66,6 @@ function parseAmount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function parseEmailFromNote(note: string | null): string {
-  if (!note) {
-    return "";
-  }
-
-  const match = /^email:(.+)$/im.exec(note);
-  return match ? match[1].trim() : "";
-}
-
 function toStudentView(
   student: BackendStudentSummary,
   classNameById: Map<number, string>,
@@ -83,7 +73,6 @@ function toStudentView(
   return {
     id: student.id,
     name: student.full_name,
-    email: parseEmailFromNote(student.note),
     discordUsername: student.discord_username ?? "",
     discordUserId: student.discord_user_id ?? "",
     phone: student.phone ?? "",
@@ -100,6 +89,7 @@ function toStudentView(
 
 export function Students() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "pending_archive" | "archived">("all");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -110,14 +100,17 @@ export function Students() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBulkTransferModal, setShowBulkTransferModal] = useState(false);
   const [showBulkWithdrawModal, setShowBulkWithdrawModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [students, setStudents] = useState<StudentView[]>([]);
   const [activeClasses, setActiveClasses] = useState<ActiveClassOption[]>([]);
   const [requestError, setRequestError] = useState("");
+  const [requestNotice, setRequestNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const loadData = async (): Promise<void> => {
     setRequestError("");
+    setRequestNotice("");
     try {
       const [classList, studentList] = await Promise.all([
         listClasses("active"),
@@ -137,10 +130,36 @@ export function Students() {
     void loadData();
   }, []);
 
+  useEffect(() => {
+    const status = new URLSearchParams(location.search).get("discord_student");
+    if (!status) {
+      return;
+    }
+
+    if (status === "success") {
+      setRequestNotice("Học sinh đã authorize Discord và đã được add vào server lớp.");
+      return;
+    }
+
+    if (status === "authorized_no_class_server") {
+      setRequestNotice("Học sinh đã authorize Discord. Lớp hiện tại chưa cấu hình server Discord.");
+      return;
+    }
+
+    if (status === "cancelled") {
+      setRequestError("Học sinh đã hủy authorize Discord.");
+      return;
+    }
+
+    setRequestError("Học sinh đã authorize Discord nhưng chưa add được vào server lớp. Kiểm tra quyền bot rồi sync lại.");
+  }, [location.search]);
+
   const filteredStudents = useMemo(
     () => students.filter((student) => {
-      const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase())
-        || student.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const normalizedSearch = searchTerm.toLowerCase();
+      const matchesSearch = student.name.toLowerCase().includes(normalizedSearch)
+        || student.discordUsername.toLowerCase().includes(normalizedSearch)
+        || student.codeforcesHandle.toLowerCase().includes(normalizedSearch);
       const matchesStatus = filterStatus === "all" || student.status === filterStatus;
       return matchesSearch && matchesStatus;
     }),
@@ -286,15 +305,38 @@ export function Students() {
     }
   };
 
-  const handleInviteStudentToDiscord = async (student: StudentView) => {
+  const handleCopyStudentDiscordAuthorizationLink = async (student: StudentView) => {
+    setSubmitting(true);
+    setRequestError("");
+    setRequestNotice("");
+
+    try {
+      const url = await getStudentDiscordAuthorizationUrl(student.id);
+      try {
+        await navigator.clipboard.writeText(url);
+        setRequestNotice(`Đã copy link authorize Discord cho ${student.name}`);
+      } catch {
+        setRequestNotice(`Link authorize Discord cho ${student.name}: ${url}`);
+      }
+    } catch (error) {
+      setRequestError(toErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSendStudentMessage = async (payload: {
+    student_ids: number[];
+    content: string;
+  }) => {
     setSubmitting(true);
     setRequestError("");
 
     try {
-      const result = await inviteStudentToCurrentClassDiscord(student.id);
-      if (!result.sent) {
-        setRequestError(result.reason ?? "Không gửi được lời mời Discord");
-      }
+      await sendBulkDm(payload);
+      setShowMessageModal(false);
+      setSelectedStudent(null);
+      setSelectedStudentIds([]);
     } catch (error) {
       setRequestError(toErrorMessage(error));
     } finally {
@@ -408,6 +450,11 @@ export function Students() {
       {requestError && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {requestError}
+        </div>
+      )}
+      {requestNotice && (
+        <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          {requestNotice}
         </div>
       )}
 
@@ -529,6 +576,13 @@ export function Students() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
+                  onClick={() => setShowMessageModal(true)}
+                  disabled={submitting}
+                  className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg hover:bg-zinc-200 transition-colors text-sm font-medium disabled:opacity-60"
+                >
+                  Nhắn tin
+                </button>
+                <button
                   onClick={() => setShowBulkTransferModal(true)}
                   disabled={submitting}
                   className="px-4 py-2 bg-zinc-100 text-zinc-900 rounded-lg hover:bg-zinc-200 transition-colors text-sm font-medium disabled:opacity-60"
@@ -617,6 +671,17 @@ export function Students() {
                           <button
                             onClick={() => {
                               setSelectedStudent(student);
+                              setShowMessageModal(true);
+                            }}
+                            className="p-2 hover:bg-zinc-200 rounded-lg transition-colors disabled:opacity-50"
+                            title="Nhắn tin học sinh"
+                            disabled={submitting}
+                          >
+                            <MessageSquare className="w-4 h-4 text-zinc-600" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedStudent(student);
                               setShowEditModal(true);
                             }}
                             className="p-2 hover:bg-zinc-200 rounded-lg transition-colors"
@@ -627,12 +692,12 @@ export function Students() {
                           {student.status === "active" && (
                             <>
                               <button
-                                onClick={() => { void handleInviteStudentToDiscord(student); }}
+                                onClick={() => { void handleCopyStudentDiscordAuthorizationLink(student); }}
                                 className="p-2 hover:bg-zinc-200 rounded-lg transition-colors disabled:opacity-50"
-                                title="Gửi lời mời Discord vào server lớp hiện tại"
+                                title="Copy link authorize Discord"
                                 disabled={submitting}
                               >
-                                <Send className="w-4 h-4 text-zinc-600" />
+                                <Link2 className="w-4 h-4 text-zinc-600" />
                               </button>
                               <button
                                 onClick={() => {
@@ -766,6 +831,97 @@ export function Students() {
           error={requestError}
         />
       )}
+
+      {showMessageModal && (
+        <StudentMessageModal
+          title={selectedStudent ? `Nhắn tin ${selectedStudent.name}` : `Nhắn tin ${selectedActiveStudentIds.length} học sinh`}
+          studentIds={selectedStudent ? [selectedStudent.id] : selectedActiveStudentIds}
+          submitting={submitting}
+          error={requestError}
+          onClose={() => {
+            setShowMessageModal(false);
+            setSelectedStudent(null);
+          }}
+          onSubmit={handleSendStudentMessage}
+        />
+      )}
+    </div>
+  );
+}
+
+function StudentMessageModal({
+  title,
+  studentIds,
+  submitting,
+  error,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  studentIds: number[];
+  submitting: boolean;
+  error: string;
+  onClose: () => void;
+  onSubmit: (payload: { student_ids: number[]; content: string }) => Promise<void>;
+}) {
+  const [content, setContent] = useState("");
+  const [localError, setLocalError] = useState("");
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLocalError("");
+
+    if (studentIds.length === 0) {
+      setLocalError("Vui lòng chọn ít nhất một học sinh");
+      return;
+    }
+
+    if (!content.trim()) {
+      setLocalError("Nội dung tin nhắn là bắt buộc");
+      return;
+    }
+
+    await onSubmit({
+      student_ids: studentIds,
+      content: content.trim(),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-white/80 flex items-center justify-center p-4 z-50">
+      <div className="bg-zinc-100 border border-zinc-200 rounded-xl p-6 w-full max-w-lg">
+        <h2 className="text-xl font-semibold text-zinc-900 mb-2">{title}</h2>
+        <p className="text-sm text-zinc-600 mb-6">Tin nhắn sẽ được gửi qua Discord DM.</p>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <textarea
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            rows={8}
+            className="w-full resize-none rounded-lg border border-zinc-200 bg-white px-4 py-3 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            placeholder="Nhập nội dung tin nhắn..."
+          />
+
+          {(localError || error) && <p className="text-sm text-red-600">{localError || error}</p>}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-zinc-100 text-zinc-900 rounded-lg hover:bg-zinc-200 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || studentIds.length === 0}
+              className="flex-1 px-4 py-3 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors font-medium disabled:opacity-60"
+            >
+              {submitting ? "Đang gửi..." : "Gửi tin nhắn"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -897,7 +1053,6 @@ function AddStudentModal({
   error: string;
 }) {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [classId, setClassId] = useState("");
   const [codeforcesHandle, setCodeforcesHandle] = useState("");
   const [discordUsername, setDiscordUsername] = useState("");
@@ -931,7 +1086,7 @@ function AddStudentModal({
       codeforces_handle: codeforcesHandle.trim() || null,
       discord_username: discordUsername.trim(),
       discord_user_id: discordUserId.trim() || null,
-      note: buildStudentNote(email),
+      note: null,
     });
   };
 
@@ -947,16 +1102,6 @@ function AddStudentModal({
               onChange={(event) => setName(event.target.value)}
               className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               placeholder="Nguyễn Văn A"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-600 mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="email@example.com"
             />
           </div>
           <div>
@@ -1050,7 +1195,6 @@ function EditStudentModal({
   error: string;
 }) {
   const [name, setName] = useState(student.name);
-  const [email, setEmail] = useState(student.email);
   const [codeforcesHandle, setCodeforcesHandle] = useState(student.codeforcesHandle);
   const [discordUsername, setDiscordUsername] = useState(student.discordUsername);
   const [discordUserId, setDiscordUserId] = useState(student.discordUserId);
@@ -1078,7 +1222,7 @@ function EditStudentModal({
       discord_username: discordUsername.trim(),
       discord_user_id: discordUserId.trim() || null,
       phone: phone.trim() || null,
-      note: buildStudentNote(email),
+      note: null,
     });
   };
 
@@ -1097,16 +1241,6 @@ function EditStudentModal({
               onChange={(event) => setName(event.target.value)}
               className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               placeholder="Nguyễn Văn A"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-600 mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="email@example.com"
             />
           </div>
           <div>

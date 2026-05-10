@@ -4,7 +4,12 @@ import passport from 'passport';
 import { TeacherRole } from '../../../../entities/enums.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
-import { authorizeOwnedClassBody, authorizeOwnedClassParam, requireRoles } from '../../../identity/index.js';
+import {
+  authorizeOwnedClassBody,
+  authorizeOwnedClassParam,
+  authorizeOwnedStudentParam,
+  requireRoles,
+} from '../../../identity/index.js';
 import { MessagingController } from '../controllers/MessagingController.js';
 import {
   bulkDmBodySchema,
@@ -12,18 +17,18 @@ import {
   classIdParamSchema,
   messageListQuerySchema,
   serverIdParamSchema,
-  upsertCommunityServerBodySchema,
+  studentIdParamSchema,
   upsertDiscordServerBodySchema,
 } from './messaging.schema.js';
 
 type MessagingRouteControllers = {
   listDiscordServers: MessagingController;
   syncDiscordServers: MessagingController;
+  syncDiscordMembership: MessagingController;
   listDiscordChannels: MessagingController;
   completeDiscordInstall: MessagingController;
-  getCommunityServer: MessagingController;
-  upsertCommunityServer: MessagingController;
-  deleteCommunityServer: MessagingController;
+  startStudentDiscordAuthorization: MessagingController;
+  completeStudentDiscordAuthorization: MessagingController;
   getBotInviteLink: MessagingController;
   getSetupStatus: MessagingController;
   upsertDiscordServer: MessagingController;
@@ -37,6 +42,7 @@ export function createMessagingRouter(controllers: MessagingRouteControllers): R
   const router = Router();
 
   router.get('/discord/oauth/callback', adaptExpressRoute(controllers.completeDiscordInstall));
+  router.get('/discord/student/callback', adaptExpressRoute(controllers.completeStudentDiscordAuthorization));
 
   router.use(passport.authenticate('jwt', { session: false }));
   router.use(requireRoles([TeacherRole.Teacher]));
@@ -45,18 +51,18 @@ export function createMessagingRouter(controllers: MessagingRouteControllers): R
   router.get('/discord/setup-status', adaptExpressRoute(controllers.getSetupStatus));
   router.get('/discord/servers', adaptExpressRoute(controllers.listDiscordServers));
   router.post('/discord/servers/sync', adaptExpressRoute(controllers.syncDiscordServers));
+  router.post('/discord/membership/sync', adaptExpressRoute(controllers.syncDiscordMembership));
+  router.get(
+    '/students/:studentId/discord/authorization-url',
+    validate({ params: studentIdParamSchema }),
+    authorizeOwnedStudentParam(),
+    adaptExpressRoute(controllers.startStudentDiscordAuthorization),
+  );
   router.get(
     '/discord/servers/:serverId/channels',
     validate({ params: serverIdParamSchema }),
     adaptExpressRoute(controllers.listDiscordChannels),
   );
-  router.get('/discord/community-server', adaptExpressRoute(controllers.getCommunityServer));
-  router.put(
-    '/discord/community-server/select',
-    validate({ body: upsertCommunityServerBodySchema }),
-    adaptExpressRoute(controllers.upsertCommunityServer),
-  );
-  router.delete('/discord/community-server', adaptExpressRoute(controllers.deleteCommunityServer));
   router.put(
     '/classes/:classId/discord-server/select',
     validate({ params: classIdParamSchema, body: upsertDiscordServerBodySchema }),

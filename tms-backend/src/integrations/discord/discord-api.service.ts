@@ -543,6 +543,58 @@ export async function searchDiscordGuildMembers(input: {
     .filter((item): item is DiscordGuildMemberIdentity => item !== null);
 }
 
+export async function fetchDiscordGuildMember(input: {
+  guildId: string;
+  userId: string;
+  botToken: string;
+}): Promise<DiscordGuildMemberIdentity | null> {
+  const normalizedGuildId = normalizeRequiredString(input.guildId, 'guild_id');
+  const normalizedUserId = normalizeRequiredString(input.userId, 'user_id');
+  const response = await discordApiRequest(
+    `/guilds/${encodeURIComponent(normalizedGuildId)}/members/${encodeURIComponent(normalizedUserId)}`,
+    input.botToken,
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    throw new ServiceError('invalid bot_token or bot has no access to fetch guild member', 400);
+  }
+
+  if (response.status === 429) {
+    throw new ServiceError('discord rate limit exceeded, please retry later', 429);
+  }
+
+  if (!response.ok) {
+    const detail = await getDiscordErrorMessage(response);
+    throw new ServiceError(
+      detail ? `failed to fetch Discord guild member: ${detail}` : 'failed to fetch Discord guild member',
+      502,
+    );
+  }
+
+  const member = await parseJsonSafe(response) as DiscordGuildMemberPayload | null;
+  if (!member?.user || typeof member.user.id !== 'string') {
+    throw new ServiceError('discord guild member response is invalid', 502);
+  }
+
+  return {
+    user_id: member.user.id,
+    username: typeof member.user.username === 'string' && member.user.username.trim().length > 0
+      ? member.user.username.trim()
+      : null,
+    global_name: typeof member.user.global_name === 'string' && member.user.global_name.trim().length > 0
+      ? member.user.global_name.trim()
+      : null,
+    discriminator: typeof member.user.discriminator === 'string' && member.user.discriminator.trim().length > 0
+      ? member.user.discriminator.trim()
+      : null,
+    nick: typeof member.nick === 'string' && member.nick.trim().length > 0 ? member.nick.trim() : null,
+  };
+}
+
 export async function postDiscordChannelMessage(input: {
   botToken: string;
   channelId: string;
@@ -695,6 +747,34 @@ export async function kickGuildMember(input: {
   );
 }
 
+export async function addGuildMember(input: {
+  guildId: string;
+  userId: string;
+  userAccessToken: string;
+  botToken: string;
+}): Promise<void> {
+  const response = await discordApiRequest(
+    `/guilds/${encodeURIComponent(input.guildId)}/members/${encodeURIComponent(input.userId)}`,
+    input.botToken,
+    {
+      method: 'PUT',
+      body: {
+        access_token: normalizeRequiredString(input.userAccessToken, 'user_access_token'),
+      },
+    },
+  );
+
+  if (response.status === 201 || response.status === 204) {
+    return;
+  }
+
+  const errorMessage = await getDiscordErrorMessage(response);
+  throw new ServiceError(
+    errorMessage ?? `failed to add guild member (HTTP ${response.status})`,
+    response.status === 401 || response.status === 403 ? 400 : 502,
+  );
+}
+
 export async function createGuildInvite(input: {
   channelId: string;
   botToken: string;
@@ -784,6 +864,16 @@ export class DiscordClient {
     });
   }
 
+  fetchGuildMember(input: {
+    guildId: string;
+    userId: string;
+  }): Promise<DiscordGuildMemberIdentity | null> {
+    return fetchDiscordGuildMember({
+      ...input,
+      botToken: this.botToken,
+    });
+  }
+
   postChannelMessage(input: {
     channelId: string;
     content: string;
@@ -815,6 +905,17 @@ export class DiscordClient {
     userId: string;
   }): Promise<void> {
     return kickGuildMember({
+      ...input,
+      botToken: this.botToken,
+    });
+  }
+
+  addGuildMember(input: {
+    guildId: string;
+    userId: string;
+    userAccessToken: string;
+  }): Promise<void> {
+    return addGuildMember({
       ...input,
       botToken: this.botToken,
     });

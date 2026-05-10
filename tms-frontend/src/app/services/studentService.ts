@@ -194,15 +194,6 @@ export async function archiveStudent(studentId: number, options?: {
   return data.student;
 }
 
-export function buildStudentNote(email: string): string | null {
-  const normalizedEmail = email.trim();
-  if (!normalizedEmail) {
-    return null;
-  }
-
-  return `email:${normalizedEmail}`;
-}
-
 export function parseStudentId(value: string): number | null {
   const parsed = Number(value);
 

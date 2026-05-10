@@ -3,7 +3,6 @@ export type StudentStatus = 'active' | 'pending_archive' | 'archived';
 export interface Student {
   id: string;
   name: string;
-  email: string;
   classId: string;
   status: StudentStatus;
   balance: number;
@@ -57,7 +56,6 @@ export const mockStudents: Student[] = [
   {
     id: '1',
     name: 'Nguyễn Văn A',
-    email: 'nva@example.com',
     classId: '1',
     status: 'active',
     balance: -500000,
@@ -67,7 +65,6 @@ export const mockStudents: Student[] = [
   {
     id: '2',
     name: 'Trần Thị B',
-    email: 'ttb@example.com',
     classId: '1',
     status: 'active',
     balance: 200000,
@@ -77,7 +74,6 @@ export const mockStudents: Student[] = [
   {
     id: '3',
     name: 'Lê Văn C',
-    email: 'lvc@example.com',
     classId: '2',
     status: 'active',
     balance: -300000,
@@ -87,7 +83,6 @@ export const mockStudents: Student[] = [
   {
     id: '4',
     name: 'Phạm Thị D',
-    email: 'ptd@example.com',
     classId: '2',
     status: 'pending_archive',
     balance: -150000,
@@ -96,7 +91,6 @@ export const mockStudents: Student[] = [
   {
     id: '5',
     name: 'Hoàng Văn E',
-    email: 'hve@example.com',
     classId: '1',
     status: 'pending_archive',
     balance: 100000,

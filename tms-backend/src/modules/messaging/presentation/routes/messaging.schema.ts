@@ -16,6 +16,10 @@ export const classIdParamSchema = z.object({
   classId: positiveIntegerSchema,
 });
 
+export const studentIdParamSchema = z.object({
+  studentId: positiveIntegerSchema,
+});
+
 export const serverIdParamSchema = z.object({
   serverId: positiveIntegerSchema,
 });
@@ -24,12 +28,6 @@ export const upsertDiscordServerBodySchema = z.object({
   server_id: positiveIntegerSchema,
   attendance_voice_channel_id: nullableOptionalTrimmedStringSchema,
   notification_channel_id: nullableOptionalTrimmedStringSchema,
-});
-
-export const upsertCommunityServerBodySchema = z.object({
-  server_id: positiveIntegerSchema,
-  notification_channel_id: nullableOptionalTrimmedStringSchema,
-  voice_channel_id: nullableOptionalTrimmedStringSchema,
 });
 
 export const messageListQuerySchema = z.object({

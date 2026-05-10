@@ -21,8 +21,8 @@ import { TypeOrmBalanceSnapshotPort } from './TypeOrmBalanceSnapshotPort.js';
 import { TypeOrmClassroomPort } from './TypeOrmClassroomPort.js';
 import { TypeOrmEnrollmentRepository } from './TypeOrmEnrollmentRepository.js';
 import { TypeOrmStudentRepository } from './TypeOrmStudentRepository.js';
-import type { StudentCommunityPort } from '../../../application/ports/StudentCommunityPort.js';
-import { StudentCommunityNotifier } from './StudentCommunityNotifier.js';
+import type { StudentDiscordMembershipPort } from '../../../application/ports/StudentDiscordMembershipPort.js';
+import { StudentDiscordMembershipNotifier } from './StudentDiscordMembershipNotifier.js';
 
 type StudentPersistenceContext = {
   students: TypeOrmStudentRepository;
@@ -33,13 +33,13 @@ type StudentPersistenceContext = {
 };
 
 export class TypeOrmStudentCommandHandlers {
-  private readonly studentCommunityNotifier: StudentCommunityNotifier;
+  private readonly studentDiscordMembershipNotifier: StudentDiscordMembershipNotifier;
 
   constructor(
     private readonly dataSource: DataSource,
-    studentCommunityPort?: StudentCommunityPort,
+    studentDiscordMembershipPort?: StudentDiscordMembershipPort,
   ) {
-    this.studentCommunityNotifier = new StudentCommunityNotifier(studentCommunityPort);
+    this.studentDiscordMembershipNotifier = new StudentDiscordMembershipNotifier(studentDiscordMembershipPort);
   }
 
   readonly createStudent = {
@@ -50,7 +50,7 @@ export class TypeOrmStudentCommandHandlers {
         context.classroom,
       ).execute(input));
 
-      this.studentCommunityNotifier.studentEnrolled(input.teacherId, result.id, input.classId);
+      this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, result.id, input.classId);
       return result;
     },
   };
@@ -67,7 +67,7 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly inviteStudentToCurrentClass = {
     execute: async (input: { teacherId: number; studentId: number }) => {
-      return this.studentCommunityNotifier.inviteStudentToCurrentClass(input);
+      return this.studentDiscordMembershipNotifier.inviteStudentToCurrentClass(input);
     },
   };
 
@@ -75,7 +75,7 @@ export class TypeOrmStudentCommandHandlers {
     execute: async (input: TransferStudentCommand) => {
       const result = await this.withTransaction((context) => this.createTransferStudentUseCase(context).execute(input));
 
-      this.studentCommunityNotifier.studentTransferred(input.teacherId, input.studentId, input.toClassId);
+      this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, input.studentId, input.toClassId);
       return result;
     },
   };
@@ -88,7 +88,7 @@ export class TypeOrmStudentCommandHandlers {
       });
 
       result.forEach((student) => {
-        this.studentCommunityNotifier.studentTransferred(input.teacherId, student.id, input.toClassId);
+        this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, student.id, input.toClassId);
       });
 
       return result;
@@ -99,7 +99,7 @@ export class TypeOrmStudentCommandHandlers {
     execute: async (input: WithdrawStudentCommand) => {
       const result = await this.withTransaction((context) => this.createWithdrawStudentUseCase(context).execute(input));
 
-      this.studentCommunityNotifier.studentWithdrawn(input.teacherId, input.studentId);
+      this.studentDiscordMembershipNotifier.studentWithdrawn(input.teacherId, input.studentId);
       return result;
     },
   };
@@ -112,7 +112,7 @@ export class TypeOrmStudentCommandHandlers {
       });
 
       result.forEach((student) => {
-        this.studentCommunityNotifier.studentWithdrawn(input.teacherId, student.id);
+        this.studentDiscordMembershipNotifier.studentWithdrawn(input.teacherId, student.id);
       });
 
       return result;
@@ -128,7 +128,7 @@ export class TypeOrmStudentCommandHandlers {
         context.balanceSnapshots,
       ).execute(input));
 
-      this.studentCommunityNotifier.studentEnrolled(input.teacherId, input.studentId, input.classId);
+      this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, input.studentId, input.classId);
       return result;
     },
   };

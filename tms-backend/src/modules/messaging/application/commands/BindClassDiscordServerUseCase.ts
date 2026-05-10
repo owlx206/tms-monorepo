@@ -38,14 +38,6 @@ export class BindClassDiscordServerUseCase {
       throw new ServiceError('voice channel must be a voice channel', 400);
     }
 
-    const communityBound = await this.messagingWriteRepository.hasCommunityServerByDiscordServerId(
-      teacherId,
-      serverCache.discord_server_id,
-    );
-    if (communityBound) {
-      throw new ServiceError('selected server is already bound as community server', 409);
-    }
-
     const existing = await this.messagingWriteRepository.findDiscordServerByClass(teacherId, classId);
     const existingByServer = await this.messagingWriteRepository.findDiscordServerByDiscordServerId(
       teacherId,

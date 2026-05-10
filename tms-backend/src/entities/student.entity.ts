@@ -41,6 +41,18 @@ export class Student {
   @Column({ type: 'varchar', length: 50, nullable: true })
   discord_user_id!: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  discord_access_token!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  discord_refresh_token!: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  discord_token_expires_at!: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  discord_authorized_at!: Date | null;
+
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone!: string | null;
 

@@ -14,7 +14,6 @@ import { DiscordMessageOrmEntity as DiscordMessage } from './messaging/infrastru
 import { DiscordServerOrmEntity as DiscordServer } from './messaging/infrastructure/persistence/typeorm/DiscordServerOrmEntity.js';
 import { TeacherDiscordChannelCacheOrmEntity as TeacherDiscordChannelCache } from './messaging/infrastructure/persistence/typeorm/TeacherDiscordChannelCacheOrmEntity.js';
 import { TeacherDiscordServerCacheOrmEntity as TeacherDiscordServerCache } from './messaging/infrastructure/persistence/typeorm/TeacherDiscordServerCacheOrmEntity.js';
-import { TeacherCommunityServerOrmEntity as TeacherCommunityServer } from './messaging/infrastructure/persistence/typeorm/TeacherCommunityServerOrmEntity.js';
 import { TopicProblemOrmEntity as TopicProblem } from './topic/infrastructure/persistence/typeorm/TopicProblemOrmEntity.js';
 import { TopicStandingOrmEntity as TopicStanding } from './topic/infrastructure/persistence/typeorm/TopicStandingOrmEntity.js';
 import { TopicOrmEntity as Topic } from './topic/infrastructure/persistence/typeorm/TopicOrmEntity.js';
@@ -33,7 +32,6 @@ export const appEntities = [
   DiscordServer,
   TeacherDiscordServerCache,
   TeacherDiscordChannelCache,
-  TeacherCommunityServer,
   DiscordMessage,
   DiscordMessageRecipient,
   Topic,

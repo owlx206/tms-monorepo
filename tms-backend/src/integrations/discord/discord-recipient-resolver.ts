@@ -36,6 +36,19 @@ function normalizeDiscordName(value: string): string {
   return value.trim().replace(/^@/, '').toLowerCase();
 }
 
+function normalizeComparableDiscordName(value: string | null): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = normalizeDiscordName(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.replace(/\s+/g, ' ');
+}
+
 function parseUsernameWithDiscriminator(value: string): { username: string; discriminator: string } | null {
   const match = /^(.+?)#(\d{4})$/.exec(value.trim().replace(/^@/, ''));
   if (!match) {
@@ -53,6 +66,7 @@ function pickMemberByUsername(
   discordUsername: string,
 ): DiscordRecipientResolution {
   const normalized = normalizeDiscordName(discordUsername);
+  const comparable = normalizeComparableDiscordName(discordUsername);
   const withDiscriminator = parseUsernameWithDiscriminator(discordUsername);
 
   if (withDiscriminator) {
@@ -71,9 +85,9 @@ function pickMemberByUsername(
   }
 
   const exactMatches = members.filter((member) => (
-    member.username?.toLowerCase() === normalized
-    || member.global_name?.toLowerCase() === normalized
-    || member.nick?.toLowerCase() === normalized
+    normalizeComparableDiscordName(member.username) === comparable
+    || normalizeComparableDiscordName(member.global_name) === comparable
+    || normalizeComparableDiscordName(member.nick) === comparable
   ));
 
   if (exactMatches.length === 1) {
@@ -88,7 +102,7 @@ function pickMemberByUsername(
     return { userId: members[0].user_id, error: null };
   }
 
-  return { userId: null, error: 'discord_username not found in this server' };
+  return { userId: null, error: `discord_username "${normalized}" not found in this server` };
 }
 
 function toFailureMessage(error: unknown, fallback: string): string {
@@ -120,7 +134,7 @@ export class DiscordRecipientResolver {
       return { userId: directUserId, error: null };
     }
 
-    const normalizedLookupKey = `${server.id}:${normalizeDiscordName(rawDiscordUsername)}`;
+    const normalizedLookupKey = `${server.discord_server_id}:${normalizeDiscordName(rawDiscordUsername)}`;
     const cached = this.cache.get(normalizedLookupKey);
     if (cached) {
       return cached;

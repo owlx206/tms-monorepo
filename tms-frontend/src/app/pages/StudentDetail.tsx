@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Mail, GraduationCap, DollarSign, BookOpen, ExternalLink, Receipt } from "lucide-react";
+import { ArrowLeft, GraduationCap, DollarSign, BookOpen, ExternalLink, Receipt } from "lucide-react";
 
 import { ApiError } from "../services/apiClient";
 import { listClasses } from "../services/classService";
@@ -29,15 +29,6 @@ function toErrorMessage(error: unknown): string {
 function parseAmount(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function parseEmailFromNote(note: string | null): string {
-  if (!note) {
-    return "";
-  }
-
-  const match = /^email:(.+)$/im.exec(note);
-  return match ? match[1].trim() : "";
 }
 
 export function StudentDetail() {
@@ -188,10 +179,6 @@ export function StudentDetail() {
         <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-3xl font-semibold text-zinc-900 mb-2">{student.full_name}</h1>
-            <div className="flex items-center gap-2 text-zinc-600">
-              <Mail className="w-4 h-4" />
-              <span>{parseEmailFromNote(student.note) || "N/A"}</span>
-            </div>
           </div>
           {statusBadge}
         </div>
