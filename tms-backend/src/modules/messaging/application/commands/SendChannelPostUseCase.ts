@@ -1,7 +1,7 @@
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { ChannelPostInput } from '../dto/MessagingDto.js';
-import type { StoredDiscordGatewayFactory } from '../../infrastructure/discord/StoredDiscordGatewayFactory.js';
-import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
+import type { StoredDiscordGateway } from '../../infrastructure/discord/StoredDiscordGateway.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 
 function normalizeIdArray(values: number[] | undefined): number[] {
   if (!values) {
@@ -25,14 +25,14 @@ function toFailureMessage(error: unknown, fallback: string): string {
 
 export class SendChannelPostUseCase {
   constructor(
-    private readonly messagingWriteRepository: MessagingWriteRepository,
-    private readonly discordGatewayFactory: StoredDiscordGatewayFactory,
+    private readonly messagingWriter: TypeOrmMessagingWriter,
+    private readonly discordGateway: StoredDiscordGateway,
   ) {}
 
   async execute(teacherId: number, input: ChannelPostInput) {
     const { content } = input;
     const serverIds = normalizeIdArray(input.server_ids);
-    const servers = await this.messagingWriteRepository.findDiscordServersByIds(teacherId, serverIds);
+    const servers = await this.messagingWriter.findDiscordServersByIds(teacherId, serverIds);
 
     if (servers.length !== serverIds.length) {
       throw new ServiceError('some servers are invalid', 404);
@@ -53,16 +53,21 @@ export class SendChannelPostUseCase {
       }
 
       try {
-        const discord = this.discordGatewayFactory.create(server.bot_token);
-        await discord.ensureChannelBelongsToGuild({
-          channelId: server.notification_channel_id,
-          guildId: server.discord_server_id,
-          fieldName: 'notification_channel_id',
-        });
-        await discord.postChannelMessage({
-          channelId: server.notification_channel_id,
-          content,
-        });
+        await this.discordGateway.ensureChannelBelongsToGuild(
+          {
+            channelId: server.notification_channel_id,
+            guildId: server.discord_server_id,
+            fieldName: 'notification_channel_id',
+          },
+          server.bot_token,
+        );
+        await this.discordGateway.postChannelMessage(
+          {
+            channelId: server.notification_channel_id,
+            content,
+          },
+          server.bot_token,
+        );
         successfulServers.push(server);
       } catch (error) {
         failures.push({

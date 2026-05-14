@@ -6,7 +6,6 @@ import {
   ClipboardList,
   DollarSign,
   BookOpen,
-  BarChart3,
   LogOut,
   MessageSquare,
   Shield,
@@ -28,9 +27,8 @@ const teacherNavItems: NavItem[] = [
   { path: "/classes", icon: GraduationCap, label: "Lớp học" },
   { path: "/sessions", icon: ClipboardList, label: "Buổi học" },
   { path: "/topics", icon: BookOpen, label: "Chuyên đề" },
-  { path: "/messaging", icon: MessageSquare, label: "Tin nhắn" },
-  { path: "/transactions", icon: DollarSign, label: "Giao dịch" },
-  { path: "/reports", icon: BarChart3, label: "Báo cáo" },
+  { path: "/messaging", icon: MessageSquare, label: "Discord" },
+  { path: "/transactions", icon: DollarSign, label: "Tài chính" },
 ];
 
 const sysAdminNavItems: NavItem[] = [

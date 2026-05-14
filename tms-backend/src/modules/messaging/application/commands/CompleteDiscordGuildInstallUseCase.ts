@@ -1,8 +1,8 @@
 import config from '../../../../config.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
-import type { StoredDiscordGatewayFactory } from '../../infrastructure/discord/StoredDiscordGatewayFactory.js';
-import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
+import type { StoredDiscordGateway } from '../../infrastructure/discord/StoredDiscordGateway.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 import { verifyDiscordInstallState } from '../../infrastructure/discord/DiscordInstallState.js';
 
 async function exchangeDiscordOAuthCode(input: {
@@ -39,8 +39,8 @@ async function exchangeDiscordOAuthCode(input: {
 
 export class CompleteDiscordGuildInstallUseCase {
   constructor(
-    private readonly messagingWriteRepository: MessagingWriteRepository,
-    private readonly discordGatewayFactory: StoredDiscordGatewayFactory,
+    private readonly messagingWriter: TypeOrmMessagingWriter,
+    private readonly discordGateway: StoredDiscordGateway,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
 
@@ -64,7 +64,7 @@ export class CompleteDiscordGuildInstallUseCase {
     }
 
     const installState = verifyDiscordInstallState(input.state);
-    const existingOwner = await this.messagingWriteRepository.findAnyTeacherDiscordServerCacheByDiscordServerId(
+    const existingOwner = await this.messagingWriter.findAnyTeacherDiscordServerCacheByDiscordServerId(
       input.guild_id,
     );
     if (existingOwner && existingOwner.teacher_id !== installState.teacher_id) {
@@ -79,22 +79,21 @@ export class CompleteDiscordGuildInstallUseCase {
       clientSecret: credential.client_secret,
     });
 
-    const discord = this.discordGatewayFactory.create(credential.bot_token);
-    const guild = await discord.fetchGuildMetadata(input.guild_id);
-    const channels = await discord.listGuildChannels(input.guild_id);
+    const guild = await this.discordGateway.fetchGuildMetadata(input.guild_id, credential.bot_token);
+    const channels = await this.discordGateway.listGuildChannels(input.guild_id, credential.bot_token);
 
-    const existing = await this.messagingWriteRepository.findTeacherDiscordServerCacheByDiscordServerId(
+    const existing = await this.messagingWriter.findTeacherDiscordServerCacheByDiscordServerId(
       installState.teacher_id,
       input.guild_id,
     );
-    const server = existing ?? this.messagingWriteRepository.createTeacherDiscordServerCache({
+    const server = existing ?? this.messagingWriter.createTeacherDiscordServerCache({
       teacher_id: installState.teacher_id,
       discord_server_id: input.guild_id,
     });
     server.name = guild.name;
     server.synced_at = new Date();
-    await this.messagingWriteRepository.saveTeacherDiscordServerCache(server);
-    await this.messagingWriteRepository.replaceTeacherDiscordChannelCaches(
+    await this.messagingWriter.saveTeacherDiscordServerCache(server);
+    await this.messagingWriter.replaceTeacherDiscordChannelCaches(
       installState.teacher_id,
       input.guild_id,
       channels.map((channel) => ({

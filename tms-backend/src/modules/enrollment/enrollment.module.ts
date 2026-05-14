@@ -1,8 +1,6 @@
 import type { AppModule } from '../module.types.js';
 import { AppDataSource } from '../../infrastructure/database/data-source.js';
 import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
-import { GetStudentByIdUseCase } from './application/queries/GetStudentByIdUseCase.js';
-import { ListStudentsUseCase } from './application/queries/ListStudentsUseCase.js';
 import { Enrollment } from '../../entities/enrollment.entity.js';
 import { Student } from '../../entities/student.entity.js';
 import { TypeOrmStudentDiscordMembershipService } from './infrastructure/persistence/typeorm/TypeOrmStudentDiscordMembershipService.js';
@@ -24,15 +22,12 @@ const studentDiscordMembershipService = new TypeOrmStudentDiscordMembershipServi
 const studentCommandHandlers = new TypeOrmStudentCommandHandlers(AppDataSource, studentDiscordMembershipService);
 const studentReader = new TypeOrmStudentReader(AppDataSource.manager);
 const studentControllerDependencies = {
-  listStudents: new ListStudentsUseCase(studentReader),
-  getStudentById: new GetStudentByIdUseCase(studentReader),
+  students: studentReader,
   createStudent: studentCommandHandlers.createStudent,
   updateStudent: studentCommandHandlers.updateStudent,
   inviteStudentToCurrentClass: studentCommandHandlers.inviteStudentToCurrentClass,
   transferStudent: studentCommandHandlers.transferStudent,
-  bulkTransferStudents: studentCommandHandlers.bulkTransferStudents,
   withdrawStudent: studentCommandHandlers.withdrawStudent,
-  bulkWithdrawStudents: studentCommandHandlers.bulkWithdrawStudents,
   reinstateStudent: studentCommandHandlers.reinstateStudent,
   archivePendingStudent: studentCommandHandlers.archivePendingStudent,
 };
@@ -43,9 +38,7 @@ const studentControllers = {
   updateStudent: new StudentController('updateStudent', studentControllerDependencies),
   inviteStudentToCurrentClass: new StudentController('inviteStudentToCurrentClass', studentControllerDependencies),
   transferStudent: new StudentController('transferStudent', studentControllerDependencies),
-  bulkTransferStudents: new StudentController('bulkTransferStudents', studentControllerDependencies),
   withdrawStudent: new StudentController('withdrawStudent', studentControllerDependencies),
-  bulkWithdrawStudents: new StudentController('bulkWithdrawStudents', studentControllerDependencies),
   reinstateStudent: new StudentController('reinstateStudent', studentControllerDependencies),
   archivePendingStudent: new StudentController('archivePendingStudent', studentControllerDependencies),
 };

@@ -1,8 +1,9 @@
+import type { EntityManager } from 'typeorm';
+
+import { Class } from '../../../../entities/class.entity.js';
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/TypeOrmClassScheduleService.js';
 import type { ClassSummary, CreateClassInput } from '../dto/ClassDto.js';
-import { ClassroomClass } from '../../domain/models/Class.js';
-import type { ClassRepository } from '../../infrastructure/persistence/typeorm/ClassRepository.js';
 
 type CreateClassCommand = {
   teacherId: number;
@@ -11,9 +12,29 @@ type CreateClassCommand = {
   schedules: CreateClassInput['schedules'];
 };
 
+function normalizeClassName(name: string): string {
+  const normalized = name.trim();
+
+  if (!normalized) {
+    throw new ClassServiceError('class name is required', 400);
+  }
+
+  return normalized;
+}
+
+function normalizeFeePerSession(feePerSession: string): string {
+  const normalized = feePerSession.trim();
+
+  if (!/^\d+$/.test(normalized)) {
+    throw new ClassServiceError('fee_per_session must be a non-negative integer string', 400);
+  }
+
+  return normalized;
+}
+
 export class CreateClassUseCase {
   constructor(
-    private readonly classes: ClassRepository,
+    private readonly manager: EntityManager,
     private readonly classSchedules: TypeOrmClassScheduleService,
   ) {}
 
@@ -22,40 +43,30 @@ export class CreateClassUseCase {
       throw new ClassServiceError('class must have at least one schedule', 400);
     }
 
-    const classroomClass = ClassroomClass.create({
-      teacherId: command.teacherId,
-      name: command.name,
-      feePerSession: command.feePerSession,
+    const classRepository = this.manager.getRepository(Class);
+    const classEntity = classRepository.create({
+      teacher_id: command.teacherId,
+      name: normalizeClassName(command.name),
+      fee_per_session: normalizeFeePerSession(command.feePerSession),
     });
 
-    const savedClass = await this.classes.save(classroomClass);
+    const savedClass = await classRepository.save(classEntity);
     const schedules = command.schedules;
-    const savedClassSnapshot = savedClass.toSnapshot();
 
-    if (savedClassSnapshot.id === null) {
-      throw new Error('saved class is missing id');
-    }
-
-    await this.classSchedules.replaceSchedules(command.teacherId, savedClassSnapshot.id, schedules);
+    await this.classSchedules.replaceSchedules(command.teacherId, savedClass.id, schedules);
 
     return this.toSummary(savedClass);
   }
 
-  private toSummary(classroomClass: ClassroomClass): ClassSummary {
-    const snapshot = classroomClass.toSnapshot();
-
-    if (snapshot.id === null || snapshot.createdAt === null) {
-      throw new Error('saved class is missing persistence fields');
-    }
-
+  private toSummary(classEntity: Class): ClassSummary {
     return {
-      id: snapshot.id,
-      teacher_id: snapshot.teacherId,
-      name: snapshot.name,
-      fee_per_session: snapshot.feePerSession,
-      status: snapshot.status,
-      created_at: snapshot.createdAt,
-      archived_at: snapshot.archivedAt,
+      id: classEntity.id,
+      teacher_id: classEntity.teacher_id,
+      name: classEntity.name,
+      fee_per_session: classEntity.fee_per_session,
+      status: classEntity.status,
+      created_at: classEntity.created_at,
+      archived_at: classEntity.archived_at,
     };
   }
 }

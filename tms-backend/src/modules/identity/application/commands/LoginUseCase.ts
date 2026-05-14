@@ -1,20 +1,20 @@
 import { AuthError } from '../../../../shared/errors/auth.error.js';
 import { toAuthTeacher } from '../mappers/AuthMapper.js';
 import type { LoginInput } from '../dto/AuthDto.js';
-import type { TeacherRepository } from '../../infrastructure/persistence/typeorm/TeacherRepository.js';
+import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
 import type { JwtAccessTokenSigner } from '../../infrastructure/security/JwtAccessTokenSigner.js';
 import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
 
 export class LoginUseCase {
   constructor(
-    private readonly teacherRepository: TeacherRepository,
+    private readonly teacherWriter: TypeOrmTeacherWriter,
     private readonly passwordHasher: BcryptPasswordHasher,
     private readonly accessTokenSigner: JwtAccessTokenSigner,
     private readonly tokenExpiresIn: string | undefined,
   ) {}
 
   async execute(input: LoginInput) {
-    const teacher = await this.teacherRepository.findByUsername(input.username);
+    const teacher = await this.teacherWriter.findByUsername(input.username);
 
     if (!teacher) {
       throw new AuthError('invalid username or password', 401);

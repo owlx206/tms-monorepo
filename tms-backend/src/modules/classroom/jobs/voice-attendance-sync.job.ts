@@ -14,7 +14,7 @@ import {
 import type { IntervalJob } from '../../../jobs/index.js';
 import { ServiceError } from '../../../shared/errors/service.error.js';
 import { UpsertBotSessionAttendanceUseCase } from '../application/commands/UpsertBotSessionAttendanceUseCase.js';
-import { TypeOrmAttendanceRepository } from '../infrastructure/persistence/typeorm/TypeOrmAttendanceRepository.js';
+import { TypeOrmAttendanceWriter } from '../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
 import { TypeOrmSessionFinanceService } from '../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 
 type OpenVoiceAttendanceSession = {
@@ -299,9 +299,9 @@ async function markPresentStudentsForSession(
     }
 
     const attendance = await AppDataSource.transaction(async (manager) => {
-      const attendanceRepository = new TypeOrmAttendanceRepository(manager);
+      const attendanceWriter = new TypeOrmAttendanceWriter(manager);
       const finance = new TypeOrmSessionFinanceService(manager);
-      const useCase = new UpsertBotSessionAttendanceUseCase(attendanceRepository, finance);
+      const useCase = new UpsertBotSessionAttendanceUseCase(attendanceWriter, finance);
 
       return useCase.execute({
         teacherId: session.teacher_id,

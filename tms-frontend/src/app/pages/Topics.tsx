@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ExternalLink, BarChart3, XCircle } from "lucide-react";
+import { Plus, ExternalLink, BarChart3, XCircle, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import { ApiError } from "../services/apiClient";
+import { getMe, updateMe, type AuthTeacher } from "../services/authService";
+import { setStoredTeacher } from "../services/authStorage";
 import { listClasses } from "../services/classService";
 import { closeTopic, createTopic, listTopics, type BackendTopic } from "../services/topicService";
 
@@ -29,20 +31,25 @@ export function Topics() {
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [topics, setTopics] = useState<BackendTopic[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [account, setAccount] = useState<AuthTeacher | null>(null);
   const [requestError, setRequestError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [savingCodeforces, setSavingCodeforces] = useState(false);
 
   const loadData = async () => {
     setRequestError("");
 
     try {
-      const [classList, topicList] = await Promise.all([
+      const [classList, topicList, teacher] = await Promise.all([
         listClasses("active", { readyOnly: true }),
         listTopics(),
+        getMe(),
       ]);
 
       setClasses(classList.map((item) => ({ id: item.id, name: item.name })));
       setTopics(topicList);
+      setAccount(teacher);
+      setStoredTeacher(teacher);
     } catch (error) {
       setRequestError(toErrorMessage(error));
     }
@@ -106,6 +113,28 @@ export function Topics() {
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {requestError}
         </div>
+      )}
+
+      {account && (
+        <CodeforcesSettingsPanel
+          account={account}
+          submitting={savingCodeforces}
+          onSubmit={async (payload) => {
+            setSavingCodeforces(true);
+            setRequestError("");
+
+            try {
+              const updated = await updateMe(payload);
+              setAccount(updated);
+              setStoredTeacher(updated);
+            } catch (error) {
+              setRequestError(toErrorMessage(error));
+              throw error;
+            } finally {
+              setSavingCodeforces(false);
+            }
+          }}
+        />
       )}
 
       <div className="mb-8">
@@ -245,6 +274,121 @@ export function Topics() {
             }
           }}
         />
+      )}
+    </div>
+  );
+}
+
+function CodeforcesSettingsPanel({
+  account,
+  submitting,
+  onSubmit,
+}: {
+  account: AuthTeacher;
+  submitting: boolean;
+  onSubmit: (payload: {
+    codeforces_handle?: string | null;
+    codeforces_api_key?: string | null;
+    codeforces_api_secret?: string | null;
+  }) => Promise<void>;
+}) {
+  const [codeforcesHandle, setCodeforcesHandle] = useState(account.codeforces_handle ?? "");
+  const [codeforcesApiKey, setCodeforcesApiKey] = useState(account.codeforces_api_key ?? "");
+  const [codeforcesApiSecret, setCodeforcesApiSecret] = useState(account.codeforces_api_secret ?? "");
+  const [localError, setLocalError] = useState("");
+  const [savedMessage, setSavedMessage] = useState("");
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLocalError("");
+    setSavedMessage("");
+
+    const payload: {
+      codeforces_handle?: string | null;
+      codeforces_api_key?: string | null;
+      codeforces_api_secret?: string | null;
+    } = {};
+
+    if (codeforcesHandle.trim() !== (account.codeforces_handle ?? "")) {
+      payload.codeforces_handle = codeforcesHandle.trim() || null;
+    }
+
+    if (codeforcesApiKey.trim() !== (account.codeforces_api_key ?? "")) {
+      payload.codeforces_api_key = codeforcesApiKey.trim() || null;
+    }
+
+    if (codeforcesApiSecret.trim() !== (account.codeforces_api_secret ?? "")) {
+      payload.codeforces_api_secret = codeforcesApiSecret.trim() || null;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setLocalError("Không có thay đổi nào để lưu");
+      return;
+    }
+
+    await onSubmit(payload);
+    setSavedMessage("Đã lưu cấu hình Codeforces");
+  };
+
+  return (
+    <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="mb-5 flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700">
+          <KeyRound className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-900">Codeforces API</h2>
+          <p className="text-sm text-zinc-600">Dùng để đồng bộ metadata và standing của GYM contest.</p>
+        </div>
+      </div>
+
+      <form className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_1fr_auto]" onSubmit={handleSubmit}>
+        <div>
+          <label className="block text-sm text-zinc-700 mb-2">Codeforces Handle</label>
+          <input
+            type="text"
+            value={codeforcesHandle}
+            onChange={(event) => setCodeforcesHandle(event.target.value)}
+            className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            placeholder="tourist"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-zinc-700 mb-2">Codeforces API Key</label>
+          <input
+            type="text"
+            value={codeforcesApiKey}
+            onChange={(event) => setCodeforcesApiKey(event.target.value)}
+            className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-zinc-700 mb-2">Codeforces API Secret</label>
+          <input
+            type="password"
+            value={codeforcesApiSecret}
+            onChange={(event) => setCodeforcesApiSecret(event.target.value)}
+            className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+          />
+        </div>
+
+        <div className="flex items-end">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="h-12 w-full rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 lg:w-auto"
+          >
+            {submitting ? "Đang lưu..." : "Lưu"}
+          </button>
+        </div>
+      </form>
+
+      {(localError || savedMessage) && (
+        <p className={`mt-3 text-sm ${localError ? "text-red-600" : "text-emerald-700"}`}>
+          {localError || savedMessage}
+        </p>
       )}
     </div>
   );

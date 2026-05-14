@@ -1,12 +1,12 @@
 import config from '../../../../config.js';
 import { AuthError } from '../../../../shared/errors/auth.error.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
-import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 import { signStudentDiscordAuthorizationState } from '../../infrastructure/discord/StudentDiscordAuthorizationState.js';
 
 export class StartStudentDiscordAuthorizationUseCase {
   constructor(
-    private readonly repository: MessagingWriteRepository,
+    private readonly repository: TypeOrmMessagingWriter,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
 

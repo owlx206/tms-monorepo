@@ -3,7 +3,7 @@ import { ClassScheduleUseCase } from '../../../application/commands/ClassSchedul
 import type {
   ClassScheduleInput,
 } from '../../../application/dto/ClassDto.js';
-import { TypeOrmClassScheduleRepository } from './TypeOrmClassScheduleRepository.js';
+import { TypeOrmClassScheduleWriter } from './TypeOrmClassScheduleWriter.js';
 import { TypeOrmClassScheduleSessionGenerator } from './TypeOrmClassScheduleSessionGenerator.js';
 
 export class TypeOrmClassScheduleCommandHandlers {
@@ -13,7 +13,7 @@ export class TypeOrmClassScheduleCommandHandlers {
     schedule: ClassScheduleInput;
   }) {
     return AppDataSource.transaction(async (manager) => {
-      const schedules = new TypeOrmClassScheduleRepository(manager);
+      const schedules = new TypeOrmClassScheduleWriter(manager);
       const sessionGeneration = new TypeOrmClassScheduleSessionGenerator(manager);
       const useCase = new ClassScheduleUseCase(schedules, sessionGeneration);
       return useCase.create(input);
@@ -27,7 +27,7 @@ export class TypeOrmClassScheduleCommandHandlers {
     schedule: Partial<ClassScheduleInput>;
   }) {
     return AppDataSource.transaction(async (manager) => {
-      const schedules = new TypeOrmClassScheduleRepository(manager);
+      const schedules = new TypeOrmClassScheduleWriter(manager);
       const sessionGeneration = new TypeOrmClassScheduleSessionGenerator(manager);
       const useCase = new ClassScheduleUseCase(schedules, sessionGeneration);
       return useCase.update(input);
@@ -40,7 +40,7 @@ export class TypeOrmClassScheduleCommandHandlers {
     scheduleId: number;
   }) {
     return AppDataSource.transaction(async (manager) => {
-      const schedules = new TypeOrmClassScheduleRepository(manager);
+      const schedules = new TypeOrmClassScheduleWriter(manager);
       const sessionGeneration = new TypeOrmClassScheduleSessionGenerator(manager);
       const useCase = new ClassScheduleUseCase(schedules, sessionGeneration);
       return useCase.delete(input);

@@ -1,9 +1,4 @@
-import {
-  GetFinanceSummaryUseCase,
-  ListStudentBalancesUseCase,
-  ListTransactionsUseCase,
-  TypeOrmTransactionReader,
-} from '../../../../finance/index.js';
+import { TypeOrmTransactionReader } from '../../../../finance/index.js';
 
 export type StudentBalanceRow = {
   balance: string;
@@ -18,9 +13,6 @@ export type StudentTransactionListView = {
 };
 
 const financeReader = new TypeOrmTransactionReader();
-const getFinanceSummary = new GetFinanceSummaryUseCase(financeReader);
-const listStudentBalances = new ListStudentBalancesUseCase(financeReader);
-const listTransactions = new ListTransactionsUseCase(financeReader);
 
 export class TypeOrmFinanceReportReader {
   getFinanceSummary(input: {
@@ -29,7 +21,7 @@ export class TypeOrmFinanceReportReader {
     to: Date;
     includeUnpaid: boolean;
   }): Promise<FinanceSummaryView> {
-    return getFinanceSummary.execute(input.teacherId, {
+    return financeReader.getFinanceSummary(input.teacherId, {
       from: input.from,
       to: input.to,
       include_unpaid: input.includeUnpaid,
@@ -41,7 +33,7 @@ export class TypeOrmFinanceReportReader {
     status: string;
     includePendingArchive: boolean;
   }): Promise<StudentBalanceRow[]> {
-    return listStudentBalances.execute(input.teacherId, {
+    return financeReader.listStudentBalances(input.teacherId, {
       status: input.status as never,
       include_pending_archive: input.includePendingArchive,
     }) as Promise<StudentBalanceRow[]>;
@@ -51,6 +43,6 @@ export class TypeOrmFinanceReportReader {
     teacherId: number;
     studentId: number;
   }): Promise<StudentTransactionListView> {
-    return listTransactions.execute(input.teacherId, { student_id: input.studentId });
+    return financeReader.listTransactions(input.teacherId, { student_id: input.studentId });
   }
 }

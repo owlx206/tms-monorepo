@@ -3,9 +3,9 @@ import { ExtractJwt, Strategy as JwtStrategy } from 'passport-jwt';
 
 import config from '../../../../config.js';
 import type { AuthTokenPayload } from '../../application/dto/AuthDto.js';
-import { TypeOrmTeacherRepository } from '../persistence/typeorm/TypeOrmTeacherRepository.js';
+import { TypeOrmTeacherWriter } from '../persistence/typeorm/TypeOrmTeacherWriter.js';
 
-const teacherRepository = new TypeOrmTeacherRepository();
+const teacherWriter = new TypeOrmTeacherWriter();
 
 export function configurePassport(): typeof passport {
   passport.use(
@@ -18,7 +18,7 @@ export function configurePassport(): typeof passport {
       },
       async (payload: AuthTokenPayload, done) => {
         try {
-          const teacher = await teacherRepository.findById(payload.sub);
+          const teacher = await teacherWriter.findById(payload.sub);
 
           if (!teacher || !teacher.is_active) {
             return done(null, false);

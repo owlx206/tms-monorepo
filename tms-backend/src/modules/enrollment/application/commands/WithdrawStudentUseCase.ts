@@ -2,8 +2,8 @@ import type { UseCase } from '../../../../shared/application/UseCase.js';
 import { DomainError } from '../../../../shared/domain/DomainError.js';
 import { parseAmountToBigInt } from '../../../../shared/helpers/money.js';
 import { EnrollmentPendingArchiveReason } from '../../domain/models/Student.js';
-import type { EnrollmentRepository } from '../../domain/repositories/EnrollmentRepository.js';
-import type { StudentRepository } from '../../domain/repositories/StudentRepository.js';
+import type { EnrollmentWriter } from '../../domain/writers/EnrollmentWriter.js';
+import type { StudentWriter } from '../../domain/writers/StudentWriter.js';
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
@@ -12,8 +12,8 @@ import type { WithdrawStudentCommand } from '../dto/WithdrawStudentCommand.js';
 
 export class WithdrawStudentUseCase implements UseCase<WithdrawStudentCommand, StudentSummary> {
   constructor(
-    private readonly students: StudentRepository,
-    private readonly enrollments: EnrollmentRepository,
+    private readonly students: StudentWriter,
+    private readonly enrollments: EnrollmentWriter,
     private readonly balanceSnapshots: TypeOrmBalanceSnapshotReader,
   ) {}
 

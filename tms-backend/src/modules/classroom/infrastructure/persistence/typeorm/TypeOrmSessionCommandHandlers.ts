@@ -3,7 +3,7 @@ import { CancelSessionUseCase } from '../../../application/commands/CancelSessio
 import { CreateManualSessionUseCase } from '../../../application/commands/CreateManualSessionUseCase.js';
 import type { CreateManualSessionInput, SessionSummary } from '../../../application/dto/ClassDto.js';
 import { TypeOrmSessionFinanceService } from './TypeOrmSessionFinanceService.js';
-import { TypeOrmSessionRepository } from './TypeOrmSessionRepository.js';
+import { TypeOrmSessionWriter } from './TypeOrmSessionWriter.js';
 
 export class TypeOrmSessionCommandHandlers {
   async createManualSession(input: {
@@ -12,7 +12,7 @@ export class TypeOrmSessionCommandHandlers {
     session: CreateManualSessionInput;
   }): Promise<SessionSummary> {
     return AppDataSource.transaction(async (manager) => {
-      const sessions = new TypeOrmSessionRepository(manager);
+      const sessions = new TypeOrmSessionWriter(manager);
       const useCase = new CreateManualSessionUseCase(sessions);
       return useCase.execute(input);
     });
@@ -23,7 +23,7 @@ export class TypeOrmSessionCommandHandlers {
     sessionId: number;
   }): Promise<SessionSummary> {
     return AppDataSource.transaction(async (manager) => {
-      const sessions = new TypeOrmSessionRepository(manager);
+      const sessions = new TypeOrmSessionWriter(manager);
       const finance = new TypeOrmSessionFinanceService(manager);
       const useCase = new CancelSessionUseCase(sessions, finance);
       return useCase.execute({

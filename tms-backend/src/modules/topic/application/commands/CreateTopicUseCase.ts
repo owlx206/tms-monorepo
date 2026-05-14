@@ -1,18 +1,19 @@
 import { ClassStatus } from '../../../../entities/enums.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
-import { extractGymIdFromLink } from '../../../../infrastructure/external/codeforces/codeforces-api.service.js';
+import {
+  CodeforcesClient,
+  extractGymIdFromLink,
+} from '../../../../infrastructure/external/codeforces/codeforces-api.service.js';
 import type { CreateTopicInput } from '../dto/TopicDto.js';
-import type { DefaultCodeforcesGatewayFactory } from '../../infrastructure/codeforces/DefaultCodeforcesGatewayFactory.js';
-import type { TopicWriteRepository } from '../../infrastructure/persistence/typeorm/TopicWriteRepository.js';
+import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTopicWriter.js';
 
 export class CreateTopicUseCase {
   constructor(
-    private readonly topicWriteRepository: TopicWriteRepository,
-    private readonly codeforcesGatewayFactory: DefaultCodeforcesGatewayFactory,
+    private readonly topicWriter: TypeOrmTopicWriter,
   ) {}
 
   async execute(teacherId: number, input: CreateTopicInput) {
-    const classEntity = await this.topicWriteRepository.findClassById(input.class_id);
+    const classEntity = await this.topicWriter.findClassById(input.class_id);
     if (!classEntity) {
       throw new ServiceError('class not found', 404);
     }
@@ -21,7 +22,7 @@ export class CreateTopicUseCase {
       throw new ServiceError('class is archived', 409);
     }
 
-    const teacher = await this.topicWriteRepository.findTeacherById(teacherId);
+    const teacher = await this.topicWriter.findTeacherById(teacherId);
     if (!teacher) {
       throw new ServiceError('teacher not found', 404);
     }
@@ -31,12 +32,10 @@ export class CreateTopicUseCase {
       throw new ServiceError('gym_link must contain a valid gym id', 400);
     }
 
-    const codeforces = this.codeforcesGatewayFactory.create(
-      this.topicWriteRepository.resolveTeacherCodeforcesCredentials(teacher),
-    );
+    const codeforces = new CodeforcesClient(this.topicWriter.resolveTeacherCodeforcesCredentials(teacher));
     const gymMetadata = await codeforces.fetchGymMetadata(gymId);
 
-    const existing = await this.topicWriteRepository.findTopicByGym(
+    const existing = await this.topicWriter.findTopicByGym(
       teacherId,
       input.class_id,
       gymMetadata.gym_id,
@@ -47,10 +46,10 @@ export class CreateTopicUseCase {
       existing.gym_link = input.gym_link;
       existing.closed_at = null;
       existing.pull_interval_minutes = input.pull_interval_minutes ?? existing.pull_interval_minutes;
-      return this.topicWriteRepository.saveTopic(existing);
+      return this.topicWriter.saveTopic(existing);
     }
 
-    const topic = this.topicWriteRepository.createTopic({
+    const topic = this.topicWriter.createTopic({
       teacher_id: teacherId,
       class_id: input.class_id,
       title: gymMetadata.title,
@@ -61,6 +60,6 @@ export class CreateTopicUseCase {
       last_pulled_at: null,
     });
 
-    return this.topicWriteRepository.saveTopic(topic);
+    return this.topicWriter.saveTopic(topic);
   }
 }

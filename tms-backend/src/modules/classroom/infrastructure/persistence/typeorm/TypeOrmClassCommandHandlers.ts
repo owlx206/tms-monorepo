@@ -5,7 +5,6 @@ import { UpdateClassUseCase } from '../../../application/commands/UpdateClassUse
 import type { CreateClassInput } from '../../../application/dto/ClassDto.js';
 import type { UpdateClassInput } from '../../../application/dto/ClassDto.js';
 import { TypeOrmClassArchiveGuard } from './TypeOrmClassArchiveGuard.js';
-import { TypeOrmClassRepository } from './TypeOrmClassRepository.js';
 import { TypeOrmClassScheduleService } from './TypeOrmClassScheduleService.js';
 import { TypeOrmClassSessionLifecycle } from './TypeOrmClassSessionLifecycle.js';
 
@@ -17,9 +16,8 @@ export class TypeOrmClassCommandHandlers {
     schedules: CreateClassInput['schedules'];
   }) {
     return AppDataSource.transaction(async (manager) => {
-      const classes = new TypeOrmClassRepository(manager);
       const classSchedules = new TypeOrmClassScheduleService(manager);
-      const useCase = new CreateClassUseCase(classes, classSchedules);
+      const useCase = new CreateClassUseCase(manager, classSchedules);
 
       return useCase.execute(input);
     });
@@ -33,9 +31,8 @@ export class TypeOrmClassCommandHandlers {
     schedules?: UpdateClassInput['schedules'];
   }) {
     return AppDataSource.transaction(async (manager) => {
-      const classes = new TypeOrmClassRepository(manager);
       const classSchedules = new TypeOrmClassScheduleService(manager);
-      const useCase = new UpdateClassUseCase(classes, classSchedules);
+      const useCase = new UpdateClassUseCase(manager, classSchedules);
 
       return useCase.execute(input);
     });
@@ -47,10 +44,9 @@ export class TypeOrmClassCommandHandlers {
     archivedAt: Date;
   }) {
     return AppDataSource.transaction(async (manager) => {
-      const classes = new TypeOrmClassRepository(manager);
       const archiveGuard = new TypeOrmClassArchiveGuard(manager);
       const sessionLifecycle = new TypeOrmClassSessionLifecycle(manager);
-      const useCase = new ArchiveClassUseCase(classes, archiveGuard, sessionLifecycle);
+      const useCase = new ArchiveClassUseCase(manager, archiveGuard, sessionLifecycle);
 
       return useCase.execute(input);
     });

@@ -44,11 +44,40 @@ export interface BackendClassDetailStudent {
   enrolled_at: string;
 }
 
+export interface BackendClassDetailTopic {
+  id: number;
+  teacher_id: number;
+  class_id: number;
+  title: string;
+  gym_link: string;
+  gym_id: string | null;
+  closed_at: string | null;
+  pull_interval_minutes: number;
+  last_pulled_at: string | null;
+  created_at: string;
+  status: "active" | "closed";
+  problems: Array<{
+    id: number;
+    teacher_id: number;
+    topic_id: number;
+    problem_index: string;
+    problem_name: string | null;
+  }>;
+  progress: {
+    total_students: number;
+    total_problems: number;
+    solved_count: number;
+    completed_students: number;
+    average_solved: number;
+  };
+}
+
 export interface BackendClassDetails {
   class: BackendClass;
   schedules: BackendClassSchedule[];
   discord_server: BackendClassDiscordServer | null;
   active_students: BackendClassDetailStudent[];
+  topics: BackendClassDetailTopic[];
   is_ready: boolean;
 }
 

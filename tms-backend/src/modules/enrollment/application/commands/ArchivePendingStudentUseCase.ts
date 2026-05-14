@@ -1,21 +1,19 @@
 import { parseAmountToBigInt } from '../../../../shared/helpers/money.js';
 import type { UseCase } from '../../../../shared/application/UseCase.js';
 import { DomainError } from '../../../../shared/domain/DomainError.js';
-import type { EnrollmentRepository } from '../../domain/repositories/EnrollmentRepository.js';
-import type { StudentRepository } from '../../domain/repositories/StudentRepository.js';
+import type { EnrollmentWriter } from '../../domain/writers/EnrollmentWriter.js';
+import type { StudentWriter } from '../../domain/writers/StudentWriter.js';
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
-import type { TypeOrmArchiveFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmArchiveFinanceService.js';
 import type { TypeOrmBalanceSnapshotReader } from '../../infrastructure/persistence/typeorm/TypeOrmBalanceSnapshotReader.js';
 import type { ArchivePendingStudentCommand } from '../dto/ArchivePendingStudentCommand.js';
 
 export class ArchivePendingStudentUseCase implements UseCase<ArchivePendingStudentCommand, StudentSummary> {
   constructor(
-    private readonly students: StudentRepository,
-    private readonly enrollments: EnrollmentRepository,
+    private readonly students: StudentWriter,
+    private readonly enrollments: EnrollmentWriter,
     private readonly balanceSnapshots: TypeOrmBalanceSnapshotReader,
-    private readonly archiveFinance: TypeOrmArchiveFinanceService,
   ) {}
 
   async execute(command: ArchivePendingStudentCommand): Promise<StudentSummary> {
@@ -23,17 +21,8 @@ export class ArchivePendingStudentUseCase implements UseCase<ArchivePendingStude
     const student = await this.students.requireById(studentId);
     student.assertPendingArchive();
 
-    let balanceSnapshot = await this.balanceSnapshots.loadForStudent(command.teacherId, command.studentId);
-    let balanceAmount = parseAmountToBigInt(balanceSnapshot.balance);
-
-    if (balanceAmount !== 0n && command.settleFinance) {
-      balanceSnapshot = await this.archiveFinance.settleForArchive({
-        teacherId: command.teacherId,
-        studentId: command.studentId,
-        archivedAt: command.archivedAt,
-      });
-      balanceAmount = parseAmountToBigInt(balanceSnapshot.balance);
-    }
+    const balanceSnapshot = await this.balanceSnapshots.loadForStudent(command.teacherId, command.studentId);
+    const balanceAmount = parseAmountToBigInt(balanceSnapshot.balance);
 
     if (balanceAmount !== 0n) {
       throw new DomainError('student_balance_must_be_zero_before_archive', 'student balance must be zero before archive');

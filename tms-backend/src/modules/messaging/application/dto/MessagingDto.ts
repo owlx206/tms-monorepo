@@ -74,7 +74,7 @@ export type TeacherDiscordChannelOption = {
   synced_at: Date;
 };
 
-export type BulkDmInput = {
+export type StudentMessageInput = {
   content: string;
   student_ids?: number[];
   class_id?: number;

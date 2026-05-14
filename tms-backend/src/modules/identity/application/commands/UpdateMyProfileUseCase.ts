@@ -1,17 +1,17 @@
 import { AuthError } from '../../../../shared/errors/auth.error.js';
 import { toAuthTeacher, isUniqueViolation } from '../mappers/AuthMapper.js';
 import type { UpdateTeacherInput } from '../dto/AuthDto.js';
-import type { TeacherRepository } from '../../infrastructure/persistence/typeorm/TeacherRepository.js';
+import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
 import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
 
 export class UpdateMyProfileUseCase {
   constructor(
-    private readonly teacherRepository: TeacherRepository,
+    private readonly teacherWriter: TypeOrmTeacherWriter,
     private readonly passwordHasher: BcryptPasswordHasher,
   ) {}
 
   async execute(teacherId: number, input: UpdateTeacherInput) {
-    const teacher = await this.teacherRepository.findById(teacherId);
+    const teacher = await this.teacherWriter.findById(teacherId);
 
     if (!teacher) {
       throw new AuthError('teacher not found', 404);
@@ -38,7 +38,7 @@ export class UpdateMyProfileUseCase {
     }
 
     try {
-      const saved = await this.teacherRepository.save(teacher);
+      const saved = await this.teacherWriter.save(teacher);
       return toAuthTeacher(saved);
     } catch (error) {
       if (isUniqueViolation(error)) {

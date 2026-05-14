@@ -10,8 +10,8 @@ import type {
 } from '../dto/MessagingDto.js';
 import type {
   DiscordMembershipSyncStudent,
-  MessagingWriteRepository,
-} from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
+  TypeOrmMessagingWriter,
+} from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 import { refreshStudentDiscordToken } from '../../infrastructure/discord/DiscordStudentOAuth.js';
 import { SyncTeacherDiscordServersUseCase } from './SyncTeacherDiscordServersUseCase.js';
 
@@ -52,7 +52,7 @@ function withToken(server: DiscordServerContext, token: string): DiscordServer {
 
 export class SyncDiscordMembershipUseCase {
   constructor(
-    private readonly repository: MessagingWriteRepository,
+    private readonly repository: TypeOrmMessagingWriter,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
     private readonly syncDiscordServers: SyncTeacherDiscordServersUseCase,
   ) {}

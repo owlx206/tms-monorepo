@@ -4,16 +4,16 @@ import { isUniqueViolation } from '../mappers/AuthMapper.js';
 import { toAdminTeacher } from '../mappers/AdminMapper.js';
 import type { UpdateTeacherByAdminInput } from '../dto/AdminDto.js';
 import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
-import type { TeacherRepository } from '../../infrastructure/persistence/typeorm/TeacherRepository.js';
+import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
 
 export class UpdateTeacherByAdminUseCase {
   constructor(
-    private readonly teacherRepository: TeacherRepository,
+    private readonly teacherWriter: TypeOrmTeacherWriter,
     private readonly passwordHasher: BcryptPasswordHasher,
   ) {}
 
   async execute(actorTeacherId: number, teacherId: number, input: UpdateTeacherByAdminInput) {
-    const teacher = await this.teacherRepository.findById(teacherId);
+    const teacher = await this.teacherWriter.findById(teacherId);
 
     if (!teacher) {
       throw new ServiceError('teacher not found', 404);
@@ -56,7 +56,7 @@ export class UpdateTeacherByAdminUseCase {
     }
 
     try {
-      const saved = await this.teacherRepository.save(teacher);
+      const saved = await this.teacherWriter.save(teacher);
       return toAdminTeacher(saved);
     } catch (error) {
       if (isUniqueViolation(error)) {

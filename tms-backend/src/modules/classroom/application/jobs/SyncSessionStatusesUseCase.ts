@@ -1,6 +1,6 @@
 import { AppDataSource } from '../../../../infrastructure/database/data-source.js';
 import { MaterializeSessionAttendanceUseCase } from '../commands/MaterializeSessionAttendanceUseCase.js';
-import { TypeOrmAttendanceRepository } from '../../infrastructure/persistence/typeorm/TypeOrmAttendanceRepository.js';
+import { TypeOrmAttendanceWriter } from '../../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
 import { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 
 type UpdatedSessionRow = {
@@ -46,9 +46,9 @@ export class SyncSessionStatusesUseCase {
     let feeRecordsSynced = 0;
     for (const row of materializeRows) {
       const result = await AppDataSource.transaction(async (manager) => {
-        const attendanceRepository = new TypeOrmAttendanceRepository(manager);
+        const attendanceWriter = new TypeOrmAttendanceWriter(manager);
         const finance = new TypeOrmSessionFinanceService(manager);
-        const useCase = new MaterializeSessionAttendanceUseCase(attendanceRepository, finance);
+        const useCase = new MaterializeSessionAttendanceUseCase(attendanceWriter, finance);
 
         return useCase.execute({
           teacherId: Number(row.teacher_id),

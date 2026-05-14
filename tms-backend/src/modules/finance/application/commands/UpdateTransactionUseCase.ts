@@ -3,7 +3,7 @@ import { QueryFailedError } from 'typeorm';
 import { TransactionType } from '../../../../entities/enums.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import { parseAmountToBigInt } from '../../../../shared/helpers/money.js';
-import type { TransactionRepository } from '../../infrastructure/persistence/typeorm/TransactionRepository.js';
+import type { TypeOrmTransactionWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTransactionWriter.js';
 
 function isRefundBalanceConstraintError(error: unknown): boolean {
   if (!(error instanceof QueryFailedError)) {
@@ -29,7 +29,7 @@ function validateTransactionAmount(type: TransactionType, amount: bigint): void 
 }
 
 export class UpdateTransactionUseCase {
-  constructor(private readonly transactionRepository: TransactionRepository) {}
+  constructor(private readonly transactionWriter: TypeOrmTransactionWriter) {}
 
   async execute(input: {
     teacherId: number;
@@ -41,7 +41,7 @@ export class UpdateTransactionUseCase {
     recordedAt?: Date;
     updateReason?: string | null;
   }) {
-    const transaction = await this.transactionRepository.findOwnedTransaction(
+    const transaction = await this.transactionWriter.findOwnedTransaction(
       input.teacherId,
       input.transactionId,
     );
@@ -50,7 +50,7 @@ export class UpdateTransactionUseCase {
       throw new ServiceError('transaction not found', 404);
     }
 
-    const student = await this.transactionRepository.findOwnedStudent(input.teacherId, input.studentId);
+    const student = await this.transactionWriter.findOwnedStudent(input.teacherId, input.studentId);
 
     if (!student) {
       throw new ServiceError('student not found', 404);
@@ -59,7 +59,7 @@ export class UpdateTransactionUseCase {
     const amount = parseAmountToBigInt(input.amount);
     validateTransactionAmount(input.type, amount);
 
-    const totals = await this.transactionRepository.getStudentTransactionTotals(input.teacherId, input.studentId, {
+    const totals = await this.transactionWriter.getStudentTransactionTotals(input.teacherId, input.studentId, {
       excludeTransactionId: input.transactionId,
     });
     const totalPayments = totals.payments + (input.type === TransactionType.Payment ? amount : 0n);
@@ -84,7 +84,7 @@ export class UpdateTransactionUseCase {
     transaction.recorded_at = input.recordedAt ?? transaction.recorded_at;
 
     try {
-      return await this.transactionRepository.saveWithAuditLog(
+      return await this.transactionWriter.saveWithAuditLog(
         input.teacherId,
         input.transactionId,
         transaction,

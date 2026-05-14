@@ -1,20 +1,20 @@
 import config from '../../../../config.js';
 import { TeacherRole } from '../../../../entities/enums.js';
 import { BcryptPasswordHasher } from '../security/BcryptPasswordHasher.js';
-import { TypeOrmTeacherRepository } from '../persistence/typeorm/TypeOrmTeacherRepository.js';
+import { TypeOrmTeacherWriter } from '../persistence/typeorm/TypeOrmTeacherWriter.js';
 
-const teacherRepository = new TypeOrmTeacherRepository();
+const teacherWriter = new TypeOrmTeacherWriter();
 const passwordHasher = new BcryptPasswordHasher();
 
 export async function ensureSystemAdminAccount(): Promise<void> {
   const sysAdminUsername = config.auth.sysAdminUsername;
   const sysAdminPassword = config.auth.sysAdminPassword ?? 'gaheocho123';
 
-  let sysAdmin = await teacherRepository.findByUsername(sysAdminUsername);
+  let sysAdmin = await teacherWriter.findByUsername(sysAdminUsername);
   const passwordHash = await passwordHasher.hash(sysAdminPassword);
 
   if (!sysAdmin) {
-    sysAdmin = teacherRepository.create({
+    sysAdmin = teacherWriter.create({
       username: sysAdminUsername,
       password_hash: passwordHash,
       role: TeacherRole.SysAdmin,
@@ -24,7 +24,7 @@ export async function ensureSystemAdminAccount(): Promise<void> {
       codeforces_api_secret: null,
     });
 
-    await teacherRepository.save(sysAdmin);
+    await teacherWriter.save(sysAdmin);
     return;
   }
 
@@ -47,6 +47,6 @@ export async function ensureSystemAdminAccount(): Promise<void> {
   }
 
   if (hasChanges) {
-    await teacherRepository.save(sysAdmin);
+    await teacherWriter.save(sysAdmin);
   }
 }

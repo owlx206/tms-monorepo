@@ -1,16 +1,16 @@
 import { ServiceError } from '../../../../shared/errors/service.error.js';
-import type { TopicWriteRepository } from '../../infrastructure/persistence/typeorm/TopicWriteRepository.js';
+import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTopicWriter.js';
 
 export class CloseTopicUseCase {
-  constructor(private readonly topicWriteRepository: TopicWriteRepository) {}
+  constructor(private readonly topicWriter: TypeOrmTopicWriter) {}
 
   async execute(teacherId: number, topicId: number) {
-    const topic = await this.topicWriteRepository.findOwnedTopic(teacherId, topicId);
+    const topic = await this.topicWriter.findOwnedTopic(teacherId, topicId);
     if (!topic) {
       throw new ServiceError('topic not found', 404);
     }
 
     topic.closed_at = new Date();
-    return this.topicWriteRepository.saveTopic(topic);
+    return this.topicWriter.saveTopic(topic);
   }
 }

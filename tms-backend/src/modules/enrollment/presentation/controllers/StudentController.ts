@@ -5,8 +5,6 @@ import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
 import type {
   ArchivePendingStudentInput,
-  BulkTransferStudentsInput,
-  BulkWithdrawStudentsInput,
   CreateStudentInput,
   ReinstateStudentInput,
   StudentListFilters,
@@ -15,13 +13,13 @@ import type {
   UpdateStudentInput,
   WithdrawStudentInput,
 } from '../../application/dto/StudentDto.js';
-import { GetStudentByIdUseCase } from '../../application/queries/GetStudentByIdUseCase.js';
-import { ListStudentsUseCase } from '../../application/queries/ListStudentsUseCase.js';
 import { getStudentId, getTeacherId } from './request-context.js';
 
 type StudentControllerDependencies = {
-  listStudents: ListStudentsUseCase;
-  getStudentById: GetStudentByIdUseCase;
+  students: {
+    listStudents(teacherId: number, filters: StudentListFilters): Promise<StudentSummary[]>;
+    getStudentById(teacherId: number, studentId: number): Promise<StudentSummary>;
+  };
   createStudent: {
     execute(input: {
       teacherId: number;
@@ -57,27 +55,12 @@ type StudentControllerDependencies = {
       transferredAt: Date;
     }): Promise<StudentSummary>;
   };
-  bulkTransferStudents: {
-    execute(input: {
-      teacherId: number;
-      studentIds: number[];
-      toClassId: number;
-      transferredAt: Date;
-    }): Promise<StudentSummary[]>;
-  };
   withdrawStudent: {
     execute(input: {
       teacherId: number;
       studentId: number;
       withdrawnAt: Date;
     }): Promise<StudentSummary>;
-  };
-  bulkWithdrawStudents: {
-    execute(input: {
-      teacherId: number;
-      studentIds: number[];
-      withdrawnAt: Date;
-    }): Promise<StudentSummary[]>;
   };
   reinstateStudent: {
     execute(input: {
@@ -92,7 +75,6 @@ type StudentControllerDependencies = {
       teacherId: number;
       studentId: number;
       archivedAt: Date;
-      settleFinance: boolean;
     }): Promise<StudentSummary>;
   };
 };
@@ -104,9 +86,7 @@ type StudentControllerAction =
   | 'updateStudent'
   | 'inviteStudentToCurrentClass'
   | 'transferStudent'
-  | 'bulkTransferStudents'
   | 'withdrawStudent'
-  | 'bulkWithdrawStudents'
   | 'reinstateStudent'
   | 'archivePendingStudent';
 
@@ -114,9 +94,7 @@ type StudentHttpRequest = HttpRequest<
   | CreateStudentInput
   | UpdateStudentInput
   | TransferStudentInput
-  | BulkTransferStudentsInput
   | WithdrawStudentInput
-  | BulkWithdrawStudentsInput
   | ReinstateStudentInput
   | ArchivePendingStudentInput,
   { studentId?: number },
@@ -144,12 +122,8 @@ export class StudentController implements Controller {
           return this.inviteStudentToCurrentClass(request);
         case 'transferStudent':
           return this.transferStudent(request);
-        case 'bulkTransferStudents':
-          return this.bulkTransferStudents(request);
         case 'withdrawStudent':
           return this.withdrawStudent(request);
-        case 'bulkWithdrawStudents':
-          return this.bulkWithdrawStudents(request);
         case 'reinstateStudent':
           return this.reinstateStudent(request);
         case 'archivePendingStudent':
@@ -159,7 +133,7 @@ export class StudentController implements Controller {
   }
 
   private async listStudents(request: StudentHttpRequest): Promise<HttpResponse> {
-    const students = await this.dependencies.listStudents.execute(
+    const students = await this.dependencies.students.listStudents(
       getTeacherId(request),
       request.query ?? {},
     );
@@ -171,7 +145,7 @@ export class StudentController implements Controller {
   }
 
   private async getStudentById(request: StudentHttpRequest): Promise<HttpResponse> {
-    const student = await this.dependencies.getStudentById.execute(
+    const student = await this.dependencies.students.getStudentById(
       getTeacherId(request),
       getStudentId(request),
     );
@@ -246,21 +220,6 @@ export class StudentController implements Controller {
     };
   }
 
-  private async bulkTransferStudents(request: StudentHttpRequest): Promise<HttpResponse> {
-    const input = request.body as BulkTransferStudentsInput;
-    const students = await this.dependencies.bulkTransferStudents.execute({
-      teacherId: getTeacherId(request),
-      studentIds: input.student_ids,
-      toClassId: input.to_class_id,
-      transferredAt: input.transferred_at,
-    });
-
-    return {
-      statusCode: 200,
-      body: { students },
-    };
-  }
-
   private async withdrawStudent(request: StudentHttpRequest): Promise<HttpResponse> {
     const input = request.body as WithdrawStudentInput;
     const teacherId = getTeacherId(request);
@@ -274,20 +233,6 @@ export class StudentController implements Controller {
     return {
       statusCode: 200,
       body: { student },
-    };
-  }
-
-  private async bulkWithdrawStudents(request: StudentHttpRequest): Promise<HttpResponse> {
-    const input = request.body as BulkWithdrawStudentsInput;
-    const students = await this.dependencies.bulkWithdrawStudents.execute({
-      teacherId: getTeacherId(request),
-      studentIds: input.student_ids,
-      withdrawnAt: input.withdrawn_at,
-    });
-
-    return {
-      statusCode: 200,
-      body: { students },
     };
   }
 
@@ -312,7 +257,6 @@ export class StudentController implements Controller {
       teacherId: getTeacherId(request),
       studentId: getStudentId(request),
       archivedAt: input.archived_at,
-      settleFinance: input.settle_finance,
     });
 
     return {

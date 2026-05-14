@@ -1,7 +1,7 @@
 import { ClassStatus } from '../../../../entities/enums.js';
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
-import type { ClassScheduleRepository } from '../../infrastructure/persistence/typeorm/ClassScheduleRepository.js';
 import { ClassScheduleMapper } from '../../infrastructure/persistence/typeorm/ClassScheduleMapper.js';
+import type { TypeOrmClassScheduleWriter } from '../../infrastructure/persistence/typeorm/TypeOrmClassScheduleWriter.js';
 import type { TypeOrmClassScheduleSessionGenerator } from '../../infrastructure/persistence/typeorm/TypeOrmClassScheduleSessionGenerator.js';
 import type {
   ClassScheduleInput,
@@ -29,7 +29,7 @@ type DeleteClassScheduleCommand = {
 
 export class ClassScheduleUseCase {
   constructor(
-    private readonly schedules: ClassScheduleRepository,
+    private readonly schedules: TypeOrmClassScheduleWriter,
     private readonly sessionGeneration: TypeOrmClassScheduleSessionGenerator,
   ) {}
 

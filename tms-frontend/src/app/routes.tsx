@@ -3,12 +3,12 @@ import { Dashboard } from "./pages/Dashboard";
 import { Students } from "./pages/Students";
 import { StudentDetail } from "./pages/StudentDetail";
 import { Classes } from "./pages/Classes";
+import { ClassDetail } from "./pages/ClassDetail";
 import { Sessions } from "./pages/Sessions";
 import { SessionDetail } from "./pages/SessionDetail";
 import { Transactions } from "./pages/Transactions";
 import { Topics } from "./pages/Topics";
 import { TopicStanding } from "./pages/TopicStanding";
-import { Reports } from "./pages/Reports";
 import { Messaging } from "./pages/Messaging";
 import { Login } from "./pages/Login";
 import { Layout } from "./components/Layout";
@@ -90,13 +90,14 @@ export const router = createBrowserRouter([
       { path: "students", Component: Students, loader: requireRoleLoader(["teacher"]) },
       { path: "students/:id", Component: StudentDetail, loader: requireRoleLoader(["teacher"]) },
       { path: "classes", Component: Classes, loader: requireRoleLoader(["teacher"]) },
+      { path: "classes/:classId", Component: ClassDetail, loader: requireRoleLoader(["teacher"]) },
       { path: "sessions", Component: Sessions, loader: requireRoleLoader(["teacher"]) },
       { path: "sessions/:sessionId", Component: SessionDetail, loader: requireRoleLoader(["teacher"]) },
       { path: "transactions", Component: Transactions, loader: requireRoleLoader(["teacher"]) },
       { path: "topics", Component: Topics, loader: requireRoleLoader(["teacher"]) },
       { path: "topics/:id/standing", Component: TopicStanding, loader: requireRoleLoader(["teacher"]) },
       { path: "messaging", Component: Messaging, loader: requireRoleLoader(["teacher"]) },
-      { path: "reports", Component: Reports, loader: requireRoleLoader(["teacher"]) },
+      { path: "reports", loader: () => redirect("/transactions") },
       { path: "admin/teachers", Component: AdminTeachers, loader: requireRoleLoader(["sysadmin"]) },
     ],
   },

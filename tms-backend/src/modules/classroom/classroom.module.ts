@@ -1,8 +1,4 @@
 import type { AppModule } from '../module.types.js';
-import { AttendanceUseCase } from './application/queries/AttendanceUseCase.js';
-import { ClassScheduleUseCase as ClassScheduleQueryUseCase } from './application/queries/ClassScheduleUseCase.js';
-import { ClassroomUseCase } from './application/queries/ClassroomUseCase.js';
-import { SessionUseCase as SessionQueryUseCase } from './application/queries/SessionUseCase.js';
 import { Attendance } from '../../entities/attendance.entity.js';
 import { ClassSchedule } from '../../entities/class-schedule.entity.js';
 import { Class } from '../../entities/class.entity.js';
@@ -33,44 +29,40 @@ const classReader = new TypeOrmClassReader(AppDataSource.manager);
 const classScheduleReader = new TypeOrmClassScheduleReader(AppDataSource.manager);
 const sessionReader = new TypeOrmSessionReader(AppDataSource.manager);
 const attendanceReader = new TypeOrmAttendanceReader(AppDataSource.manager);
-const classroom = new ClassroomUseCase(classReader);
-const classSchedules = new ClassScheduleQueryUseCase(classScheduleReader);
-const sessions = new SessionQueryUseCase(sessionReader);
-const attendance = new AttendanceUseCase(attendanceReader);
 
 const classroomRouter = createClassroomRouter({
   listClasses: new ClassController('listClasses', {
-    classroom,
+    classes: classReader,
     createClass: classCommandHandlers,
     updateClass: classCommandHandlers,
     archiveClass: classCommandHandlers,
   }),
   getClassById: new ClassController('getClassById', {
-    classroom,
+    classes: classReader,
     createClass: classCommandHandlers,
     updateClass: classCommandHandlers,
     archiveClass: classCommandHandlers,
   }),
   getClassDetails: new ClassController('getClassDetails', {
-    classroom,
+    classes: classReader,
     createClass: classCommandHandlers,
     updateClass: classCommandHandlers,
     archiveClass: classCommandHandlers,
   }),
   createClass: new ClassController('createClass', {
-    classroom,
+    classes: classReader,
     createClass: classCommandHandlers,
     updateClass: classCommandHandlers,
     archiveClass: classCommandHandlers,
   }),
   updateClass: new ClassController('updateClass', {
-    classroom,
+    classes: classReader,
     createClass: classCommandHandlers,
     updateClass: classCommandHandlers,
     archiveClass: classCommandHandlers,
   }),
   archiveClass: new ClassController('archiveClass', {
-    classroom,
+    classes: classReader,
     createClass: classCommandHandlers,
     updateClass: classCommandHandlers,
     archiveClass: classCommandHandlers,
@@ -79,61 +71,61 @@ const classroomRouter = createClassroomRouter({
 
 const classScheduleRouter = createClassScheduleRouter({
   listClassSchedules: new ClassScheduleController('listClassSchedules', {
-    classSchedules,
+    classSchedules: classScheduleReader,
     commandHandlers: classScheduleCommandHandlers,
   }),
   createClassSchedule: new ClassScheduleController('createClassSchedule', {
-    classSchedules,
+    classSchedules: classScheduleReader,
     commandHandlers: classScheduleCommandHandlers,
   }),
   updateClassSchedule: new ClassScheduleController('updateClassSchedule', {
-    classSchedules,
+    classSchedules: classScheduleReader,
     commandHandlers: classScheduleCommandHandlers,
   }),
   deleteClassSchedule: new ClassScheduleController('deleteClassSchedule', {
-    classSchedules,
+    classSchedules: classScheduleReader,
     commandHandlers: classScheduleCommandHandlers,
   }),
 });
 
 const sessionRouter = createSessionRouter({
   listSessions: new SessionController('listSessions', {
-    sessions,
+    sessions: sessionReader,
     commandHandlers: sessionCommandHandlers,
   }),
   listClassSessions: new SessionController('listClassSessions', {
-    sessions,
+    sessions: sessionReader,
     commandHandlers: sessionCommandHandlers,
   }),
   createManualSession: new SessionController('createManualSession', {
-    sessions,
+    sessions: sessionReader,
     commandHandlers: sessionCommandHandlers,
   }),
   cancelSession: new SessionController('cancelSession', {
-    sessions,
+    sessions: sessionReader,
     commandHandlers: sessionCommandHandlers,
   }),
 });
 
 const attendanceRouter = createAttendanceRouter({
   getSessionAttendance: new AttendanceController('getSessionAttendance', {
-    attendance,
+    attendance: attendanceReader,
     commandHandlers: attendanceCommandHandlers,
   }),
   syncSessionAttendance: new AttendanceController('syncSessionAttendance', {
-    attendance,
+    attendance: attendanceReader,
     commandHandlers: attendanceCommandHandlers,
   }),
   upsertSessionAttendance: new AttendanceController('upsertSessionAttendance', {
-    attendance,
+    attendance: attendanceReader,
     commandHandlers: attendanceCommandHandlers,
   }),
   listAttendanceRecords: new AttendanceController('listAttendanceRecords', {
-    attendance,
+    attendance: attendanceReader,
     commandHandlers: attendanceCommandHandlers,
   }),
   resetSessionAttendance: new AttendanceController('resetSessionAttendance', {
-    attendance,
+    attendance: attendanceReader,
     commandHandlers: attendanceCommandHandlers,
   }),
 });

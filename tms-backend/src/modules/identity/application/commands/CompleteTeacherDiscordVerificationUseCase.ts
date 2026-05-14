@@ -2,7 +2,7 @@ import config from '../../../../config.js';
 import { AuthError } from '../../../../shared/errors/auth.error.js';
 import { verifyDiscordVerificationState } from '../../infrastructure/auth/DiscordVerificationState.js';
 import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
-import type { TeacherRepository } from '../../infrastructure/persistence/typeorm/TeacherRepository.js';
+import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
 
 type DiscordTokenPayload = {
   access_token?: string;
@@ -80,7 +80,7 @@ async function fetchDiscordUser(accessToken: string): Promise<{ id: string; user
 
 export class CompleteTeacherDiscordVerificationUseCase {
   constructor(
-    private readonly teacherRepository: TeacherRepository,
+    private readonly teacherWriter: TypeOrmTeacherWriter,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
 
@@ -103,7 +103,7 @@ export class CompleteTeacherDiscordVerificationUseCase {
     }
 
     const verificationState = verifyDiscordVerificationState(input.state);
-    const teacher = await this.teacherRepository.findById(verificationState.teacher_id);
+    const teacher = await this.teacherWriter.findById(verificationState.teacher_id);
     if (!teacher) {
       throw new AuthError('teacher not found', 404);
     }
@@ -119,7 +119,7 @@ export class CompleteTeacherDiscordVerificationUseCase {
     teacher.discord_user_id = discordUser.id;
     teacher.discord_username = discordUser.username;
     teacher.discord_verified_at = new Date();
-    await this.teacherRepository.save(teacher);
+    await this.teacherWriter.save(teacher);
 
     return `${config.frontendUrl}/messaging?discord_verification=success`;
   }

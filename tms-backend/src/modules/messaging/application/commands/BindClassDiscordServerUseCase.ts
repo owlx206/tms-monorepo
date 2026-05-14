@@ -1,12 +1,12 @@
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { SelectClassDiscordServerInput } from '../dto/MessagingDto.js';
-import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 
 export class BindClassDiscordServerUseCase {
-  constructor(private readonly messagingWriteRepository: MessagingWriteRepository) {}
+  constructor(private readonly messagingWriter: TypeOrmMessagingWriter) {}
 
   async execute(teacherId: number, classId: number, input: SelectClassDiscordServerInput) {
-    const serverCache = await this.messagingWriteRepository.findTeacherDiscordServerCacheById(
+    const serverCache = await this.messagingWriter.findTeacherDiscordServerCacheById(
       teacherId,
       input.server_id,
     );
@@ -16,10 +16,10 @@ export class BindClassDiscordServerUseCase {
     }
 
     const notificationChannel = input.notification_channel_id
-      ? await this.messagingWriteRepository.findTeacherDiscordChannelCacheById(teacherId, Number(input.notification_channel_id))
+      ? await this.messagingWriter.findTeacherDiscordChannelCacheById(teacherId, Number(input.notification_channel_id))
       : null;
     const voiceChannel = input.attendance_voice_channel_id
-      ? await this.messagingWriteRepository.findTeacherDiscordChannelCacheById(teacherId, Number(input.attendance_voice_channel_id))
+      ? await this.messagingWriter.findTeacherDiscordChannelCacheById(teacherId, Number(input.attendance_voice_channel_id))
       : null;
 
     if (notificationChannel && notificationChannel.discord_server_id !== serverCache.discord_server_id) {
@@ -38,8 +38,8 @@ export class BindClassDiscordServerUseCase {
       throw new ServiceError('voice channel must be a voice channel', 400);
     }
 
-    const existing = await this.messagingWriteRepository.findDiscordServerByClass(teacherId, classId);
-    const existingByServer = await this.messagingWriteRepository.findDiscordServerByDiscordServerId(
+    const existing = await this.messagingWriter.findDiscordServerByClass(teacherId, classId);
+    const existingByServer = await this.messagingWriter.findDiscordServerByDiscordServerId(
       teacherId,
       serverCache.discord_server_id,
     );
@@ -57,11 +57,11 @@ export class BindClassDiscordServerUseCase {
       existing.name = serverCache.name;
       existing.notification_channel_id = notificationChannel?.discord_channel_id ?? null;
       existing.attendance_voice_channel_id = voiceChannel?.discord_channel_id ?? null;
-      return this.messagingWriteRepository.saveDiscordServer(existing);
+      return this.messagingWriter.saveDiscordServer(existing);
     }
 
-    return this.messagingWriteRepository.saveDiscordServer(
-      this.messagingWriteRepository.createDiscordServer({
+    return this.messagingWriter.saveDiscordServer(
+      this.messagingWriter.createDiscordServer({
         teacher_id: teacherId,
         class_id: classId,
         discord_server_id: serverCache.discord_server_id,

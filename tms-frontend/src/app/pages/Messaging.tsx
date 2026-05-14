@@ -13,7 +13,6 @@ import {
   Send,
   Server,
   Settings,
-  Trash2,
   TriangleAlert,
   Users,
   X,
@@ -27,12 +26,11 @@ import { getDiscordVerificationAuthorizeUrl, getMe } from "../services/authServi
 import { listClasses, listSessions } from "../services/classService";
 import { listStudentBalances } from "../services/financeService";
 import {
-  deleteDiscordServer,
   getDiscordBotInviteLink,
   getDiscordSetupStatus,
   listDiscordChannels,
   listDiscordServers,
-  sendBulkDm,
+  sendStudentMessages,
   sendChannelPost,
   syncDiscordMembership,
   syncDiscordServers,
@@ -337,8 +335,8 @@ export function Messaging() {
     <div className="p-8">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="mb-2 text-3xl font-semibold text-zinc-900">Tin nhắn</h1>
-          <p className="text-zinc-600">Gửi và theo dõi thông báo qua Discord</p>
+          <h1 className="mb-2 text-3xl font-semibold text-zinc-900">Discord</h1>
+          <p className="text-zinc-600">Cấu hình Discord server, bot và kênh thông báo cho lớp học</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -474,19 +472,6 @@ export function Messaging() {
                           setSelectedServer(server);
                           setShowConfigModal(true);
                         }}
-                        onDelete={async () => {
-                          if (!confirm(`Xóa server cấu hình cho lớp ${cls.name}?`)) return;
-                          setSubmitting(true);
-                          setRequestError("");
-                          try {
-                            await deleteDiscordServer(cls.id);
-                            await loadData();
-                          } catch (error) {
-                            setRequestError(toErrorMessage(error));
-                          } finally {
-                            setSubmitting(false);
-                          }
-                        }}
                       />
                     ) : (
                       <p className="text-sm text-zinc-500">Chưa gắn server Discord</p>
@@ -513,18 +498,6 @@ export function Messaging() {
                     }}
                   />
                 ))}
-              </div>
-            </section>
-          )}
-
-          {discordStatus && (
-            <section className="rounded-xl border border-zinc-200 bg-white p-5">
-              <h2 className="mb-4 text-lg font-semibold text-zinc-900">Tổng quan</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <MetricCard label="Học sinh active" value={discordStatus.metrics.active_students} />
-                <MetricCard label="Có Discord username" value={discordStatus.metrics.students_with_discord_username} />
-                <MetricCard label="Thiếu Discord username" value={discordStatus.metrics.students_missing_discord_username} />
-                <MetricCard label="Server đã đồng bộ" value={discordStatus.metrics.synced_servers} />
               </div>
             </section>
           )}
@@ -700,13 +673,11 @@ function ServerCard({
   subtitle,
   compact = false,
   onConfig,
-  onDelete,
 }: {
   server: BackendDiscordServer;
   subtitle: string;
   compact?: boolean;
   onConfig: () => void;
-  onDelete?: () => void | Promise<void>;
 }) {
   const textChannel = server.binding.notification_channel_name || server.binding.notification_channel_id;
 
@@ -753,16 +724,6 @@ function ServerCard({
               <Settings className="h-3.5 w-3.5" />
               Cấu hình channel
             </button>
-            {onDelete && (
-              <button
-                type="button"
-                onClick={() => { void onDelete(); }}
-                className="flex items-center gap-1 rounded bg-red-50 px-3 py-1.5 text-sm text-red-700 transition-colors hover:bg-red-100"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Xóa
-              </button>
-            )}
           </div>
         </div>
       </div>

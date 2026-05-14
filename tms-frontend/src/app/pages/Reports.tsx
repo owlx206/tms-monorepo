@@ -99,7 +99,7 @@ type DebtStudent = {
 
 type ReportStudentStatusFilter = "all" | "active" | "pending_archive" | "archived";
 
-export function Reports() {
+export function Reports({ embedded = false }: { embedded?: boolean }) {
   const presets = getDatePresets();
 
   const [startDate, setStartDate] = useState(presets[0].from);
@@ -212,24 +212,25 @@ export function Reports() {
   };
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Báo cáo tài chính</h1>
-          <p className="text-zinc-600">
-            {loading ? "Đang tải..." : `${new Date(startDate).toLocaleDateString("vi-VN")} — ${new Date(endDate).toLocaleDateString("vi-VN")}`}
-          </p>
+    <div className={embedded ? "" : "p-8"}>
+      {!embedded && (
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Báo cáo tài chính</h1>
+            <p className="text-zinc-600">
+              {loading ? "Đang tải..." : `${new Date(startDate).toLocaleDateString("vi-VN")} — ${new Date(endDate).toLocaleDateString("vi-VN")}`}
+            </p>
+          </div>
+          <button
+            onClick={handleExport}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors disabled:opacity-60"
+          >
+            <Download className="w-5 h-5" />
+            Xuất CSV
+          </button>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors disabled:opacity-60"
-        >
-          <Download className="w-5 h-5" />
-          Xuất CSV
-        </button>
-      </div>
+      )}
 
       {/* Error */}
       {requestError && (
@@ -238,18 +239,35 @@ export function Reports() {
         </div>
       )}
 
-      {/* Filters */}
       <div className="bg-white border border-zinc-200 rounded-xl p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Date presets */}
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Báo cáo tài chính</h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              {loading ? "Đang tải..." : `${new Date(startDate).toLocaleDateString("vi-VN")} — ${new Date(endDate).toLocaleDateString("vi-VN")}`}
+            </p>
+          </div>
+          {embedded && (
+            <button
+              onClick={handleExport}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" />
+              Xuất CSV
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
           <div className="flex gap-2">
             {presets.map((preset) => (
               <button
                 key={preset.label}
                 onClick={() => { setStartDate(preset.from); setEndDate(preset.to); }}
-                className={`px-4 py-3 rounded-lg font-medium transition-colors ${
+                className={`rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
                   startDate === preset.from && endDate === preset.to
-                    ? "bg-zinc-200 text-zinc-900"
+                    ? "bg-zinc-900 text-white"
                     : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
                 }`}
               >
@@ -258,20 +276,19 @@ export function Reports() {
             ))}
           </div>
 
-          {/* Custom date inputs */}
           <div className="flex gap-2 items-center">
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="px-3 py-3 bg-zinc-100 border border-zinc-200 rounded-lg text-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              className="rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             />
             <span className="text-zinc-400">—</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="px-3 py-3 bg-zinc-100 border border-zinc-200 rounded-lg text-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              className="rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             />
           </div>
 
@@ -279,7 +296,7 @@ export function Reports() {
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-lg text-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              className="rounded-lg border border-zinc-200 bg-zinc-100 px-4 py-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             >
               <option value="all">Tất cả lớp</option>
               {classOptions.map((cls) => (
@@ -291,7 +308,7 @@ export function Reports() {
           <select
             value={studentStatusFilter}
             onChange={(e) => setStudentStatusFilter(e.target.value as ReportStudentStatusFilter)}
-            className="px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-lg text-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            className="rounded-lg border border-zinc-200 bg-zinc-100 px-4 py-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
           >
             <option value="all">Tất cả trạng thái học sinh</option>
             <option value="active">Đang học</option>
@@ -299,7 +316,7 @@ export function Reports() {
             <option value="archived">Đã archive</option>
           </select>
 
-          <label className="flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-700">
+          <label className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-100 px-4 py-3 text-sm text-zinc-700">
             <input
               type="checkbox"
               checked={includeUnpaid}

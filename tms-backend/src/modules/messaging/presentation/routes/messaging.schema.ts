@@ -29,7 +29,7 @@ export const upsertDiscordServerBodySchema = z.object({
   notification_channel_id: nullableOptionalTrimmedStringSchema,
 });
 
-export const bulkDmBodySchema = z.object({
+export const studentMessageBodySchema = z.object({
   content: requiredTrimmedStringSchema,
   class_id: positiveIntegerSchema.optional(),
   student_ids: optionalPositiveIntegerArraySchema,

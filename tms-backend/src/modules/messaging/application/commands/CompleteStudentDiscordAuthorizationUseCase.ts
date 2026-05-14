@@ -8,11 +8,11 @@ import {
   fetchStudentDiscordUser,
 } from '../../infrastructure/discord/DiscordStudentOAuth.js';
 import { verifyStudentDiscordAuthorizationState } from '../../infrastructure/discord/StudentDiscordAuthorizationState.js';
-import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 
 export class CompleteStudentDiscordAuthorizationUseCase {
   constructor(
-    private readonly repository: MessagingWriteRepository,
+    private readonly repository: TypeOrmMessagingWriter,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
 

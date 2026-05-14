@@ -1,8 +1,8 @@
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { SessionSummary } from '../dto/ClassDto.js';
 import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
-import type { SessionRepository } from '../../infrastructure/persistence/typeorm/SessionRepository.js';
 import { SessionMapper } from '../../infrastructure/persistence/typeorm/SessionMapper.js';
+import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/TypeOrmSessionWriter.js';
 
 type CancelSessionCommand = {
   teacherId: number;
@@ -12,7 +12,7 @@ type CancelSessionCommand = {
 
 export class CancelSessionUseCase {
   constructor(
-    private readonly sessions: SessionRepository,
+    private readonly sessions: TypeOrmSessionWriter,
     private readonly finance: TypeOrmSessionFinanceService,
   ) {}
 

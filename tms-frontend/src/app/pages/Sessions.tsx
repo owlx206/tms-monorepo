@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Calendar, Plus, Trash2 } from "lucide-react";
 
@@ -78,12 +78,14 @@ export function Sessions() {
   const [submitting, setSubmitting] = useState(false);
   const [showAllSessions, setShowAllSessions] = useState(false);
 
-  const loadData = async (): Promise<void> => {
+  const rangeToggleVisible = filterStatus === 'all' || filterStatus === 'scheduled' || filterStatus === 'in_progress';
+
+  const loadData = useCallback(async (): Promise<void> => {
     setRequestError("");
 
     try {
       const dateFilters: { from?: string; to?: string } = {};
-      if (!showAllSessions) {
+      if (rangeToggleVisible && !showAllSessions) {
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const sevenDaysLater = new Date(startOfToday.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -94,7 +96,10 @@ export function Sessions() {
 
       const [classList, sessionList] = await Promise.all([
         listClasses(),
-        listSessions({ ...dateFilters }),
+        listSessions({
+          ...dateFilters,
+          status: filterStatus === 'all' ? undefined : filterStatus,
+        }),
       ]);
 
       setClasses(classList);
@@ -102,11 +107,11 @@ export function Sessions() {
     } catch (error) {
       setRequestError(toErrorMessage(error));
     }
-  };
+  }, [filterStatus, rangeToggleVisible, showAllSessions]);
 
   useEffect(() => {
     void loadData();
-  }, [showAllSessions]);
+  }, [loadData]);
 
   const filteredSessions = useMemo(
     () => (filterStatus === 'all' ? sessions : sessions.filter((session) => session.status === filterStatus)),
@@ -173,20 +178,28 @@ export function Sessions() {
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Buổi học</h1>
           <p className="text-zinc-600">
-            {showAllSessions ? "Tất cả buổi học" : "Buổi học trong 7 ngày tới"}
+            {filterStatus === 'completed'
+              ? "Tất cả buổi học đã hoàn thành"
+              : filterStatus === 'cancelled'
+                ? "Tất cả buổi học đã hủy"
+                : showAllSessions
+                  ? "Tất cả buổi học"
+                  : "Buổi học trong 7 ngày tới"}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowAllSessions(!showAllSessions)}
-            className={`px-4 py-3 rounded-lg font-medium transition-colors ${
-              showAllSessions
-                ? "bg-zinc-200 text-zinc-900"
-                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-            }`}
-          >
-            {showAllSessions ? "7 ngày tới" : "Xem tất cả"}
-          </button>
+          {rangeToggleVisible && (
+            <button
+              onClick={() => setShowAllSessions(!showAllSessions)}
+              className={`px-4 py-3 rounded-lg font-medium transition-colors ${
+                showAllSessions
+                  ? "bg-zinc-200 text-zinc-900"
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              }`}
+            >
+              {showAllSessions ? "7 ngày tới" : "Xem tất cả"}
+            </button>
+          )}
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors"

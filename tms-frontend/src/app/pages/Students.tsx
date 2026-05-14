@@ -18,8 +18,6 @@ import { ApiError } from "../services/apiClient";
 import { listClasses } from "../services/classService";
 import {
   archiveStudent,
-  bulkWithdrawStudents,
-  bulkTransferStudents,
   createStudent,
   withdrawStudent,
   listStudents,
@@ -28,7 +26,7 @@ import {
   updateStudent as updateStudentById,
   type BackendStudentSummary,
 } from "../services/studentService";
-import { getStudentDiscordAuthorizationUrl, sendBulkDm } from "../services/messagingService";
+import { getStudentDiscordAuthorizationUrl, sendStudentMessages } from "../services/messagingService";
 
 type StudentView = {
   id: number;
@@ -329,7 +327,7 @@ export function Students() {
     setRequestError("");
 
     try {
-      await sendBulkDm(payload);
+      await sendStudentMessages(payload);
       setShowMessageModal(false);
       setSelectedStudent(null);
       setSelectedStudentIds([]);
@@ -367,7 +365,12 @@ export function Students() {
     setRequestError("");
 
     try {
-      await bulkTransferStudents(payload);
+      for (const studentId of payload.student_ids) {
+        await transferStudent({
+          student_id: studentId,
+          to_class_id: payload.to_class_id,
+        });
+      }
       setShowBulkTransferModal(false);
       await loadData();
     } catch (error) {
@@ -382,7 +385,9 @@ export function Students() {
     setRequestError("");
 
     try {
-      await bulkWithdrawStudents(studentIds);
+      for (const studentId of studentIds) {
+        await withdrawStudent(studentId);
+      }
       setShowBulkWithdrawModal(false);
       await loadData();
     } catch (error) {
@@ -397,7 +402,7 @@ export function Students() {
     setRequestError("");
 
     try {
-      await archiveStudent(student.id, { settle_finance: student.balance !== 0 });
+      await archiveStudent(student.id);
       await loadData();
     } catch (error) {
       setRequestError(toErrorMessage(error));

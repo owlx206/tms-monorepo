@@ -3,12 +3,12 @@ import { AuthError } from '../../../../shared/errors/auth.error.js';
 import { toAuthTeacher, isUniqueViolation } from '../mappers/AuthMapper.js';
 import type { JwtAccessTokenSigner } from '../../infrastructure/security/JwtAccessTokenSigner.js';
 import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
-import type { TeacherRepository } from '../../infrastructure/persistence/typeorm/TeacherRepository.js';
+import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
 import type { RegisterInput } from '../dto/AuthDto.js';
 
 export class RegisterUseCase {
   constructor(
-    private readonly teacherRepository: TeacherRepository,
+    private readonly teacherWriter: TypeOrmTeacherWriter,
     private readonly passwordHasher: BcryptPasswordHasher,
     private readonly accessTokenSigner: JwtAccessTokenSigner,
     private readonly tokenExpiresIn: string | undefined,
@@ -17,7 +17,7 @@ export class RegisterUseCase {
   async execute(input: RegisterInput) {
     const passwordHash = await this.passwordHasher.hash(input.password);
 
-    const teacher = this.teacherRepository.create({
+    const teacher = this.teacherWriter.create({
       username: input.username,
       password_hash: passwordHash,
       role: TeacherRole.Teacher,
@@ -28,7 +28,7 @@ export class RegisterUseCase {
     });
 
     try {
-      const savedTeacher = await this.teacherRepository.save(teacher);
+      const savedTeacher = await this.teacherWriter.save(teacher);
 
       return {
         accessToken: this.accessTokenSigner.sign({

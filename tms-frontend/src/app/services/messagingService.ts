@@ -138,13 +138,7 @@ export async function upsertDiscordServerByClass(
   return data.server;
 }
 
-export async function deleteDiscordServer(classId: number): Promise<void> {
-  await apiRequest<{ removed: boolean }>(`/classes/${classId}/discord-server`, {
-    method: "DELETE",
-  });
-}
-
-export async function sendBulkDm(payload: {
+export async function sendStudentMessages(payload: {
   content: string;
   student_ids?: number[];
   class_id?: number;
@@ -158,7 +152,7 @@ export async function sendBulkDm(payload: {
       student_name: string;
       error: string;
     }>;
-  }>("/discord/messages/bulk-dm", {
+  }>("/discord/messages/students", {
     method: "POST",
     body: JSON.stringify(payload),
   });

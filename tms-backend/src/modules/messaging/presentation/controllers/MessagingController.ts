@@ -3,7 +3,7 @@ import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
 import type {
-  BulkDmInput,
+  StudentMessageInput,
   ChannelPostInput,
   SelectClassDiscordServerInput,
 } from '../../application/dto/MessagingDto.js';
@@ -20,8 +20,7 @@ type MessagingControllerAction =
   | 'getBotInviteLink'
   | 'getSetupStatus'
   | 'upsertDiscordServer'
-  | 'deleteDiscordServer'
-  | 'sendBulkDm'
+  | 'sendStudentMessages'
   | 'sendChannelPost';
 
 type MessagingControllerDependencies = {
@@ -48,13 +47,12 @@ type MessagingControllerDependencies = {
     classId: number,
     input: SelectClassDiscordServerInput,
   ): Promise<unknown>;
-  deleteDiscordServer(teacherId: number, classId: number): Promise<unknown>;
-  sendBulkDm(teacherId: number, input: BulkDmInput): Promise<unknown>;
+  sendStudentMessages(teacherId: number, input: StudentMessageInput): Promise<unknown>;
   sendChannelPost(teacherId: number, input: ChannelPostInput): Promise<unknown>;
 };
 
 type MessagingHttpRequest = HttpRequest<
-  SelectClassDiscordServerInput | BulkDmInput | ChannelPostInput,
+  SelectClassDiscordServerInput | StudentMessageInput | ChannelPostInput,
   { classId?: number; serverId?: number; studentId?: number },
   { code?: string; state?: string; guild_id?: string; error?: string }
 >;
@@ -129,10 +127,8 @@ export class MessagingController implements Controller {
           return this.getSetupStatus(request);
         case 'upsertDiscordServer':
           return this.upsertDiscordServer(request);
-        case 'deleteDiscordServer':
-          return this.deleteDiscordServer(request);
-        case 'sendBulkDm':
-          return this.sendBulkDm(request);
+        case 'sendStudentMessages':
+          return this.sendStudentMessages(request);
         case 'sendChannelPost':
           return this.sendChannelPost(request);
       }
@@ -275,22 +271,10 @@ export class MessagingController implements Controller {
     };
   }
 
-  private async deleteDiscordServer(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const result = await this.dependencies.deleteDiscordServer(
+  private async sendStudentMessages(request: MessagingHttpRequest): Promise<HttpResponse> {
+    const result = await this.dependencies.sendStudentMessages(
       getTeacherId(request),
-      getClassId(request),
-    );
-
-    return {
-      statusCode: 200,
-      body: result,
-    };
-  }
-
-  private async sendBulkDm(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const result = await this.dependencies.sendBulkDm(
-      getTeacherId(request),
-      request.body as BulkDmInput,
+      request.body as StudentMessageInput,
     );
 
     return {

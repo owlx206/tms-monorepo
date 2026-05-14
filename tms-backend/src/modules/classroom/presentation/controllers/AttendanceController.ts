@@ -3,9 +3,10 @@ import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
 import type {
   AttendanceListFilters,
+  AttendanceRecordSummary,
+  SessionAttendanceSummary,
   UpsertSessionAttendanceInput,
 } from '../../application/dto/AttendanceDto.js';
-import { AttendanceUseCase } from '../../application/queries/AttendanceUseCase.js';
 import {
   getSessionId,
   getStudentId,
@@ -25,7 +26,10 @@ type AttendanceParams = {
 };
 
 type AttendanceDependencies = {
-  attendance: AttendanceUseCase;
+  attendance: {
+    getSessionAttendance(teacherId: number, sessionId: number): Promise<SessionAttendanceSummary>;
+    listAttendanceRecords(teacherId: number, filters: AttendanceListFilters): Promise<AttendanceRecordSummary[]>;
+  };
   commandHandlers: {
     upsertSessionAttendance(input: {
       teacherId: number;
@@ -70,7 +74,7 @@ export class AttendanceController implements Controller {
   private async getSessionAttendance(
     request: HttpRequest<unknown, AttendanceParams>,
   ): Promise<HttpResponse> {
-    const data = await this.dependencies.attendance.getForSession(
+    const data = await this.dependencies.attendance.getSessionAttendance(
       getTeacherId(request),
       getSessionId(request),
     );
@@ -114,7 +118,7 @@ export class AttendanceController implements Controller {
   private async listAttendanceRecords(
     request: HttpRequest<unknown, AttendanceParams, AttendanceListFilters>,
   ): Promise<HttpResponse> {
-    const attendance = await this.dependencies.attendance.listRecords(
+    const attendance = await this.dependencies.attendance.listAttendanceRecords(
       getTeacherId(request),
       request.query ?? {},
     );

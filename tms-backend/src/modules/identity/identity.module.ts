@@ -14,7 +14,7 @@ import { GetSysadminDiscordBotCredentialUseCase } from './application/queries/Ge
 import { SysadminDiscordBotCredential } from '../../entities/sysadmin-discord-bot-credential.entity.js';
 import { TypeOrmSysadminDiscordBotCredentialStore } from './infrastructure/persistence/typeorm/TypeOrmSysadminDiscordBotCredentialStore.js';
 import { Teacher } from '../../entities/teacher.entity.js';
-import { TypeOrmTeacherRepository } from './infrastructure/persistence/typeorm/TypeOrmTeacherRepository.js';
+import { TypeOrmTeacherWriter } from './infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
 import { BcryptPasswordHasher } from './infrastructure/security/BcryptPasswordHasher.js';
 import { JwtAccessTokenSigner } from './infrastructure/security/JwtAccessTokenSigner.js';
 import { AdminController } from './presentation/controllers/AdminController.js';
@@ -22,33 +22,33 @@ import { AuthController } from './presentation/controllers/AuthController.js';
 import { createAdminRouter } from './presentation/routes/admin.routes.js';
 import { createAuthRouter } from './presentation/routes/auth.routes.js';
 
-const teacherRepository = new TypeOrmTeacherRepository();
+const teacherWriter = new TypeOrmTeacherWriter();
 const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore();
 const passwordHasher = new BcryptPasswordHasher();
 const accessTokenSigner = new JwtAccessTokenSigner();
 const getCurrentTeacher = new GetCurrentTeacherUseCase();
-const listTeachers = new ListTeachersUseCase(teacherRepository);
+const listTeachers = new ListTeachersUseCase(teacherWriter);
 const getDiscordBotCredential = new GetSysadminDiscordBotCredentialUseCase(discordBotCredentialStore);
 const registerUseCase = new RegisterUseCase(
-  teacherRepository,
+  teacherWriter,
   passwordHasher,
   accessTokenSigner,
   config.auth.jwtExpiresIn,
 );
 const loginUseCase = new LoginUseCase(
-  teacherRepository,
+  teacherWriter,
   passwordHasher,
   accessTokenSigner,
   config.auth.jwtExpiresIn,
 );
-const updateMyProfileUseCase = new UpdateMyProfileUseCase(teacherRepository, passwordHasher);
-const createTeacherByAdminUseCase = new CreateTeacherByAdminUseCase(teacherRepository, passwordHasher);
-const updateTeacherByAdminUseCase = new UpdateTeacherByAdminUseCase(teacherRepository, passwordHasher);
+const updateMyProfileUseCase = new UpdateMyProfileUseCase(teacherWriter, passwordHasher);
+const createTeacherByAdminUseCase = new CreateTeacherByAdminUseCase(teacherWriter, passwordHasher);
+const updateTeacherByAdminUseCase = new UpdateTeacherByAdminUseCase(teacherWriter, passwordHasher);
 const startTeacherDiscordVerificationUseCase = new StartTeacherDiscordVerificationUseCase(
   discordBotCredentialStore,
 );
 const completeTeacherDiscordVerificationUseCase = new CompleteTeacherDiscordVerificationUseCase(
-  teacherRepository,
+  teacherWriter,
   discordBotCredentialStore,
 );
 const upsertSysadminDiscordBotCredentialUseCase = new UpsertSysadminDiscordBotCredentialUseCase(

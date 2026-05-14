@@ -9,11 +9,14 @@ import type {
   CreateClassInput,
   UpdateClassInput,
 } from '../../application/dto/ClassDto.js';
-import { ClassroomUseCase } from '../../application/queries/ClassroomUseCase.js';
 import { getClassId, getTeacherId } from './request-context.js';
 
 type ClassroomControllerDependencies = {
-  classroom: ClassroomUseCase;
+  classes: {
+    listClasses(teacherId: number, filters: ClassListFilters): Promise<ClassSummary[]>;
+    getClassById(teacherId: number, classId: number): Promise<ClassSummary | null>;
+    getClassDetails(teacherId: number, classId: number): Promise<ClassDetails | null>;
+  };
   createClass: {
     createClass(input: {
       teacherId: number;
@@ -82,7 +85,7 @@ export class ClassController implements Controller {
   }
 
   private async listClasses(request: ClassroomHttpRequest): Promise<HttpResponse> {
-    const classes = await this.dependencies.classroom.list(
+    const classes = await this.dependencies.classes.listClasses(
       getTeacherId(request),
       request.query ?? {},
     );
@@ -94,10 +97,14 @@ export class ClassController implements Controller {
   }
 
   private async getClassById(request: ClassroomHttpRequest): Promise<HttpResponse> {
-    const classEntity = await this.dependencies.classroom.getById(
+    const classEntity = await this.dependencies.classes.getClassById(
       getTeacherId(request),
       getClassId(request),
     );
+
+    if (!classEntity) {
+      throw new ClassServiceError('class not found', 404);
+    }
 
     return {
       statusCode: 200,
@@ -106,10 +113,14 @@ export class ClassController implements Controller {
   }
 
   private async getClassDetails(request: ClassroomHttpRequest): Promise<HttpResponse> {
-    const details: ClassDetails = await this.dependencies.classroom.getDetails(
+    const details = await this.dependencies.classes.getClassDetails(
       getTeacherId(request),
       getClassId(request),
     );
+
+    if (!details) {
+      throw new ClassServiceError('class not found', 404);
+    }
 
     return {
       statusCode: 200,

@@ -81,6 +81,33 @@ export type ClassDetails = {
   schedules: ClassScheduleSummary[];
   discord_server: ClassDiscordServerSummary | null;
   active_students: ClassDetailStudentSummary[];
+  topics: Array<{
+    id: number;
+    teacher_id: number;
+    class_id: number;
+    title: string;
+    gym_link: string;
+    gym_id: string | null;
+    closed_at: Date | null;
+    pull_interval_minutes: number;
+    last_pulled_at: Date | null;
+    created_at: Date;
+    status: 'active' | 'closed';
+    problems: Array<{
+      id: number;
+      teacher_id: number;
+      topic_id: number;
+      problem_index: string;
+      problem_name: string | null;
+    }>;
+    progress: {
+      total_students: number;
+      total_problems: number;
+      solved_count: number;
+      completed_students: number;
+      average_solved: number;
+    };
+  }>;
   is_ready: boolean;
 };
 

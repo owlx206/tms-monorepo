@@ -5,7 +5,6 @@ import type {
   ClassScheduleInput,
   ClassScheduleSummary,
 } from '../../application/dto/ClassDto.js';
-import { ClassScheduleUseCase } from '../../application/queries/ClassScheduleUseCase.js';
 import { getClassId, getTeacherId } from './request-context.js';
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 
@@ -15,7 +14,9 @@ type ScheduleParams = {
 };
 
 type ScheduleDependencies = {
-  classSchedules: ClassScheduleUseCase;
+  classSchedules: {
+    listClassSchedules(teacherId: number, classId: number): Promise<ClassScheduleSummary[]>;
+  };
   commandHandlers: {
     createClassSchedule(input: {
       teacherId: number;
@@ -74,7 +75,7 @@ export class ClassScheduleController implements Controller {
   private async listClassSchedules(
     request: HttpRequest<unknown, ScheduleParams>,
   ): Promise<HttpResponse> {
-    const schedules = await this.dependencies.classSchedules.list(
+    const schedules = await this.dependencies.classSchedules.listClassSchedules(
       getTeacherId(request),
       getClassId(request),
     );

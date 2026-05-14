@@ -36,24 +36,12 @@ export type TransferStudentInput = {
   transferred_at: Date;
 };
 
-export type BulkTransferStudentsInput = {
-  student_ids: number[];
-  to_class_id: number;
-  transferred_at: Date;
-};
-
 export type WithdrawStudentInput = {
-  withdrawn_at: Date;
-};
-
-export type BulkWithdrawStudentsInput = {
-  student_ids: number[];
   withdrawn_at: Date;
 };
 
 export type ArchivePendingStudentInput = {
   archived_at: Date;
-  settle_finance: boolean;
 };
 
 export type StudentBalanceSnapshot = {

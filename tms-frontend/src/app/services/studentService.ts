@@ -133,18 +133,6 @@ export async function transferStudent(payload: {
   return data.student;
 }
 
-export async function bulkTransferStudents(payload: {
-  student_ids: number[];
-  to_class_id: number;
-}): Promise<BackendStudentSummary[]> {
-  const data = await apiRequest<ListStudentsResponse>("/students/bulk/transfer", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-  return data.students;
-}
-
 export async function withdrawStudent(studentId: number): Promise<BackendStudentSummary> {
   const data = await apiRequest<StudentResponse>(`/students/${studentId}/withdraw`, {
     method: "POST",
@@ -152,15 +140,6 @@ export async function withdrawStudent(studentId: number): Promise<BackendStudent
   });
 
   return data.student;
-}
-
-export async function bulkWithdrawStudents(student_ids: number[]): Promise<BackendStudentSummary[]> {
-  const data = await apiRequest<ListStudentsResponse>("/students/bulk/withdraw", {
-    method: "POST",
-    body: JSON.stringify({ student_ids }),
-  });
-
-  return data.students;
 }
 
 export async function reinstateStudent(payload: {
@@ -177,14 +156,9 @@ export async function reinstateStudent(payload: {
   return data.student;
 }
 
-export async function archiveStudent(studentId: number, options?: {
-  settle_finance?: boolean;
-}): Promise<BackendStudentSummary> {
+export async function archiveStudent(studentId: number): Promise<BackendStudentSummary> {
   const data = await apiRequest<StudentResponse>(`/students/${studentId}/archive`, {
     method: "POST",
-    body: JSON.stringify({
-      settle_finance: options?.settle_finance ?? false,
-    }),
   });
 
   return data.student;

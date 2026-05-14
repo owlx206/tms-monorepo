@@ -331,16 +331,10 @@ function AccountSettingsModal({
   onSubmit: (payload: {
     username?: string;
     password?: string;
-    codeforces_handle?: string | null;
-    codeforces_api_key?: string | null;
-    codeforces_api_secret?: string | null;
   }) => Promise<void>;
 }) {
   const [username, setUsername] = useState(account.username);
   const [password, setPassword] = useState("");
-  const [codeforcesHandle, setCodeforcesHandle] = useState(account.codeforces_handle ?? "");
-  const [codeforcesApiKey, setCodeforcesApiKey] = useState(account.codeforces_api_key ?? "");
-  const [codeforcesApiSecret, setCodeforcesApiSecret] = useState(account.codeforces_api_secret ?? "");
   const [localError, setLocalError] = useState("");
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -350,9 +344,6 @@ function AccountSettingsModal({
     const payload: {
       username?: string;
       password?: string;
-      codeforces_handle?: string | null;
-      codeforces_api_key?: string | null;
-      codeforces_api_secret?: string | null;
     } = {};
 
     const normalizedUsername = username.trim();
@@ -367,18 +358,6 @@ function AccountSettingsModal({
 
     if (password.trim().length > 0) {
       payload.password = password;
-    }
-
-    if (codeforcesHandle.trim() !== (account.codeforces_handle ?? "")) {
-      payload.codeforces_handle = codeforcesHandle.trim() || null;
-    }
-
-    if (codeforcesApiKey.trim() !== (account.codeforces_api_key ?? "")) {
-      payload.codeforces_api_key = codeforcesApiKey.trim() || null;
-    }
-
-    if (codeforcesApiSecret.trim() !== (account.codeforces_api_secret ?? "")) {
-      payload.codeforces_api_secret = codeforcesApiSecret.trim() || null;
     }
 
     if (Object.keys(payload).length === 0) {
@@ -412,37 +391,6 @@ function AccountSettingsModal({
               onChange={(event) => setPassword(event.target.value)}
               className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               placeholder="Để trống nếu không đổi"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Codeforces Handle</label>
-            <input
-              type="text"
-              value={codeforcesHandle}
-              onChange={(event) => setCodeforcesHandle(event.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="tourist"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Codeforces API Key (optional)</label>
-            <input
-              type="text"
-              value={codeforcesApiKey}
-              onChange={(event) => setCodeforcesApiKey(event.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Codeforces API Secret (optional)</label>
-            <input
-              type="password"
-              value={codeforcesApiSecret}
-              onChange={(event) => setCodeforcesApiSecret(event.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             />
           </div>
 

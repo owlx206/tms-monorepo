@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Search } from "lucide-react";
+import { BarChart3, List, Pencil, Plus, Search } from "lucide-react";
 
 import { ApiError } from "../services/apiClient";
 import {
   createTransaction,
-  listFeeRecords,
   listTransactions,
   updateTransaction,
   type BackendTransactionType,
 } from "../services/financeService";
 import { listStudents } from "../services/studentService";
+import { Reports } from "./Reports";
 
-type TransactionFilterType = "all" | "fee" | "payment" | "refund";
+type TransactionFilterType = "all" | "payment" | "refund";
+type FinanceTab = "transactions" | "reports";
 
 type TransactionRow = {
   id: string;
@@ -19,7 +20,7 @@ type TransactionRow = {
   studentId: number;
   studentName: string;
   amount: number;
-  type: "fee" | "payment" | "refund";
+  type: "payment" | "refund";
   date: string;
   description: string;
 };
@@ -52,6 +53,7 @@ function defaultTransactionNotes(type: BackendTransactionType): string {
 }
 
 export function Transactions() {
+  const [activeTab, setActiveTab] = useState<FinanceTab>("transactions");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<TransactionFilterType>("all");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -65,10 +67,9 @@ export function Transactions() {
     setRequestError("");
 
     try {
-      const [studentList, transactionList, feeRecords] = await Promise.all([
+      const [studentList, transactionList] = await Promise.all([
         listStudents(),
         listTransactions({ limit: 200 }),
-        listFeeRecords({ status: "active", limit: 200 }),
       ]);
 
       const studentNameById = new Map<number, string>();
@@ -92,18 +93,7 @@ export function Transactions() {
         description: tx.notes || (tx.type === "payment" ? "Thu tiền học phí" : "Hoàn trả học phí"),
       }));
 
-      const feeRows: TransactionRow[] = feeRecords.map((fee) => ({
-        id: `fee-${fee.id}`,
-        transactionId: null,
-        studentId: fee.student_id,
-        studentName: studentNameById.get(fee.student_id) ?? `Học sinh #${fee.student_id}`,
-        amount: parseAmount(fee.amount) * -1,
-        type: "fee",
-        date: fee.created_at,
-        description: `Học phí buổi #${fee.session_id}`,
-      }));
-
-      const merged = [...transactionRows, ...feeRows].sort(
+      const merged = [...transactionRows].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
 
@@ -121,7 +111,7 @@ export function Transactions() {
   const filteredTransactions = useMemo(
     () => rows.filter((row) => {
       const normalizedSearch = searchTerm.trim().toLowerCase();
-      const typeLabel = row.type === "payment" ? "thu tiền" : row.type === "fee" ? "học phí" : "hoàn trả";
+      const typeLabel = row.type === "payment" ? "thu tiền" : "hoàn trả";
       const searchableText = [
         row.studentName,
         row.description,
@@ -140,16 +130,20 @@ export function Transactions() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Giao dịch tài chính</h1>
-          <p className="text-zinc-600">{filteredTransactions.length} giao dịch</p>
+          <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Tài chính</h1>
+          <p className="text-zinc-600">
+            {activeTab === "transactions" ? `${filteredTransactions.length} giao dịch` : "Báo cáo thu chi và công nợ"}
+          </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Ghi nhận giao dịch
-        </button>
+        {activeTab === "transactions" && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Ghi nhận giao dịch
+          </button>
+        )}
       </div>
 
       {requestError && (
@@ -158,37 +152,72 @@ export function Transactions() {
         </div>
       )}
 
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600" />
-            <input
-              type="text"
-              placeholder="Tìm học sinh, mô tả, loại giao dịch..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-zinc-100 border border-zinc-200 rounded-lg text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            />
-          </div>
-          <div className="flex gap-2">
-            {(["all", "payment", "fee", "refund"] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setFilterType(type)}
-                className={`px-4 py-3 rounded-lg font-medium transition-colors ${
-                  filterType === type
-                    ? "bg-zinc-700 text-zinc-900"
-                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-100"
-                }`}
-              >
-                {type === "all" ? "Tất cả" : type === "payment" ? "Thu tiền" : type === "fee" ? "Học phí" : "Hoàn trả"}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="mb-6 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("transactions")}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            activeTab === "transactions"
+              ? "bg-zinc-900 text-white"
+              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+          }`}
+        >
+          <List className="h-4 w-4" />
+          Giao dịch
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("reports")}
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            activeTab === "reports"
+              ? "bg-zinc-900 text-white"
+              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          Báo cáo
+        </button>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+      {activeTab === "reports" ? (
+        <Reports embedded />
+      ) : (
+        <>
+          <div className="mb-6 rounded-xl border border-zinc-200 bg-white p-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-zinc-900">Giao dịch</h2>
+              <p className="mt-1 text-sm text-zinc-600">Tra cứu thu tiền, học phí phát sinh và hoàn trả.</p>
+            </div>
+            <div className="flex flex-col gap-4 md:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-600" />
+                <input
+                  type="text"
+                  placeholder="Tìm học sinh, mô tả, loại giao dịch..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-100 py-3 pl-12 pr-4 text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(["all", "payment", "refund"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setFilterType(type)}
+                    className={`rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                      filterType === type
+                        ? "bg-zinc-900 text-white"
+                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                    }`}
+                  >
+                    {type === "all" ? "Tất cả" : type === "payment" ? "Thu tiền" : "Hoàn trả"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
         <table className="w-full">
           <thead className="bg-zinc-100 border-b border-zinc-200">
             <tr>
@@ -297,18 +326,18 @@ export function Transactions() {
           }}
         />
       )}
+        </>
+      )}
     </div>
   );
 }
 
-function getTypeBadge(type: "payment" | "refund" | "fee") {
+function getTypeBadge(type: "payment" | "refund") {
   switch (type) {
     case "payment":
-      return <span className="px-3 py-1 bg-white text-black rounded-full text-sm">Thu tiền</span>;
-    case "refund":
-      return <span className="px-3 py-1 bg-zinc-700 text-zinc-300 rounded-full text-sm">Hoàn trả</span>;
+      return <span className="rounded-full bg-zinc-900 px-3 py-1 text-sm text-white">Thu tiền</span>;
     default:
-      return <span className="px-3 py-1 bg-zinc-100 text-zinc-600 rounded-full text-sm">Học phí</span>;
+      return <span className="rounded-full bg-zinc-200 px-3 py-1 text-sm text-zinc-700">Hoàn trả</span>;
   }
 }
 

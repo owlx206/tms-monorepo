@@ -3,8 +3,7 @@ import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
 import { BindClassDiscordServerUseCase } from './application/commands/BindClassDiscordServerUseCase.js';
 import { CompleteDiscordGuildInstallUseCase } from './application/commands/CompleteDiscordGuildInstallUseCase.js';
 import { CompleteStudentDiscordAuthorizationUseCase } from './application/commands/CompleteStudentDiscordAuthorizationUseCase.js';
-import { DeleteDiscordServerUseCase } from './application/commands/DeleteDiscordServerUseCase.js';
-import { SendBulkDmUseCase } from './application/commands/SendBulkDmUseCase.js';
+import { SendStudentMessagesUseCase } from './application/commands/SendStudentMessagesUseCase.js';
 import { SendChannelPostUseCase } from './application/commands/SendChannelPostUseCase.js';
 import { StartStudentDiscordAuthorizationUseCase } from './application/commands/StartStudentDiscordAuthorizationUseCase.js';
 import { SyncDiscordMembershipUseCase } from './application/commands/SyncDiscordMembershipUseCase.js';
@@ -13,13 +12,13 @@ import { GetBotInviteLinkUseCase } from './application/queries/GetBotInviteLinkU
 import { GetDiscordSetupStatusUseCase } from './application/queries/GetDiscordSetupStatusUseCase.js';
 import { ListTeacherDiscordChannelsUseCase } from './application/queries/ListTeacherDiscordChannelsUseCase.js';
 import { ListTeacherDiscordServersUseCase } from './application/queries/ListTeacherDiscordServersUseCase.js';
-import { StoredDiscordGatewayFactory } from './infrastructure/discord/StoredDiscordGatewayFactory.js';
+import { StoredDiscordGateway } from './infrastructure/discord/StoredDiscordGateway.js';
 import { StoredDiscordRecipientResolver } from './infrastructure/discord/StoredDiscordRecipientResolver.js';
 import { DiscordServer } from '../../entities/discord-server.entity.js';
 import { TeacherDiscordChannelCache } from '../../entities/teacher-discord-channel-cache.entity.js';
 import { TeacherDiscordServerCache } from '../../entities/teacher-discord-server-cache.entity.js';
 import { TypeOrmMessagingReader } from './infrastructure/persistence/typeorm/TypeOrmMessagingReader.js';
-import { TypeOrmMessagingWriteRepository } from './infrastructure/persistence/typeorm/TypeOrmMessagingWriteRepository.js';
+import { TypeOrmMessagingWriter } from './infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 import { MessagingController } from './presentation/controllers/MessagingController.js';
 import { createMessagingRouter } from './presentation/routes/messaging.routes.js';
 
@@ -33,42 +32,41 @@ const getDiscordSetupStatusUseCase = new GetDiscordSetupStatusUseCase(
   discordBotCredentialStore,
   getBotInviteLinkUseCase,
 );
-const messagingWriteRepository = new TypeOrmMessagingWriteRepository();
-const discordGatewayFactory = new StoredDiscordGatewayFactory(discordBotCredentialStore);
+const messagingWriter = new TypeOrmMessagingWriter();
+const discordGateway = new StoredDiscordGateway(discordBotCredentialStore);
 const discordRecipientResolver = new StoredDiscordRecipientResolver(discordBotCredentialStore);
 const syncTeacherDiscordServersUseCase = new SyncTeacherDiscordServersUseCase(
-  messagingWriteRepository,
-  discordGatewayFactory,
+  messagingWriter,
+  discordGateway,
   discordBotCredentialStore,
 );
 const syncDiscordMembershipUseCase = new SyncDiscordMembershipUseCase(
-  messagingWriteRepository,
+  messagingWriter,
   discordBotCredentialStore,
   syncTeacherDiscordServersUseCase,
 );
 const completeDiscordGuildInstallUseCase = new CompleteDiscordGuildInstallUseCase(
-  messagingWriteRepository,
-  discordGatewayFactory,
+  messagingWriter,
+  discordGateway,
   discordBotCredentialStore,
 );
 const startStudentDiscordAuthorizationUseCase = new StartStudentDiscordAuthorizationUseCase(
-  messagingWriteRepository,
+  messagingWriter,
   discordBotCredentialStore,
 );
 const completeStudentDiscordAuthorizationUseCase = new CompleteStudentDiscordAuthorizationUseCase(
-  messagingWriteRepository,
+  messagingWriter,
   discordBotCredentialStore,
 );
-const bindClassDiscordServerUseCase = new BindClassDiscordServerUseCase(messagingWriteRepository);
-const deleteDiscordServerUseCase = new DeleteDiscordServerUseCase(messagingWriteRepository);
-const sendBulkDmUseCase = new SendBulkDmUseCase(
-  messagingWriteRepository,
-  discordGatewayFactory,
+const bindClassDiscordServerUseCase = new BindClassDiscordServerUseCase(messagingWriter);
+const sendStudentMessagesUseCase = new SendStudentMessagesUseCase(
+  messagingWriter,
+  discordGateway,
   discordRecipientResolver,
 );
 const sendChannelPostUseCase = new SendChannelPostUseCase(
-  messagingWriteRepository,
-  discordGatewayFactory,
+  messagingWriter,
+  discordGateway,
 );
 const messagingControllerDependencies = {
   listDiscordServers: (teacherId: number) => listTeacherDiscordServersUseCase.execute(teacherId),
@@ -81,7 +79,7 @@ const messagingControllerDependencies = {
   completeStudentDiscordAuthorization: (input: { code?: string; state?: string; error?: string }) =>
     completeStudentDiscordAuthorizationUseCase.execute(input),
   listDiscordChannels: async (teacherId: number, serverId: number) => {
-    const server = await messagingWriteRepository.findTeacherDiscordServerCacheById(teacherId, serverId);
+    const server = await messagingWriter.findTeacherDiscordServerCacheById(teacherId, serverId);
     if (!server) {
       return [];
     }
@@ -95,10 +93,8 @@ const messagingControllerDependencies = {
     classId: number,
     input: Parameters<BindClassDiscordServerUseCase['execute']>[2],
   ) => bindClassDiscordServerUseCase.execute(teacherId, classId, input),
-  deleteDiscordServer: (teacherId: number, classId: number) =>
-    deleteDiscordServerUseCase.execute(teacherId, classId),
-  sendBulkDm: (teacherId: number, input: Parameters<SendBulkDmUseCase['execute']>[1]) =>
-    sendBulkDmUseCase.execute(teacherId, input),
+  sendStudentMessages: (teacherId: number, input: Parameters<SendStudentMessagesUseCase['execute']>[1]) =>
+    sendStudentMessagesUseCase.execute(teacherId, input),
   sendChannelPost: (teacherId: number, input: Parameters<SendChannelPostUseCase['execute']>[1]) =>
     sendChannelPostUseCase.execute(teacherId, input),
 };
@@ -120,8 +116,7 @@ const messagingRouter = createMessagingRouter({
   getBotInviteLink: new MessagingController('getBotInviteLink', messagingControllerDependencies),
   getSetupStatus: new MessagingController('getSetupStatus', messagingControllerDependencies),
   upsertDiscordServer: new MessagingController('upsertDiscordServer', messagingControllerDependencies),
-  deleteDiscordServer: new MessagingController('deleteDiscordServer', messagingControllerDependencies),
-  sendBulkDm: new MessagingController('sendBulkDm', messagingControllerDependencies),
+  sendStudentMessages: new MessagingController('sendStudentMessages', messagingControllerDependencies),
   sendChannelPost: new MessagingController('sendChannelPost', messagingControllerDependencies),
 });
 

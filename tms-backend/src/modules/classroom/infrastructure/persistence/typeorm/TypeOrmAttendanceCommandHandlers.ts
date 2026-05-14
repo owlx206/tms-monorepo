@@ -3,7 +3,7 @@ import { AppDataSource } from '../../../../../infrastructure/database/data-sourc
 import { ResetSessionAttendanceUseCase } from '../../../application/commands/ResetSessionAttendanceUseCase.js';
 import { UpsertSessionAttendanceUseCase } from '../../../application/commands/UpsertSessionAttendanceUseCase.js';
 import { syncVoiceAttendanceForSession } from '../../../jobs/voice-attendance-sync.job.js';
-import { TypeOrmAttendanceRepository } from './TypeOrmAttendanceRepository.js';
+import { TypeOrmAttendanceWriter } from './TypeOrmAttendanceWriter.js';
 import { TypeOrmSessionFinanceService } from './TypeOrmSessionFinanceService.js';
 
 export class TypeOrmAttendanceCommandHandlers {
@@ -14,9 +14,9 @@ export class TypeOrmAttendanceCommandHandlers {
     attendance: UpsertSessionAttendanceInput;
   }): Promise<AttendanceRecordSummary | null> {
     return AppDataSource.transaction(async (manager) => {
-      const attendanceRepository = new TypeOrmAttendanceRepository(manager);
+      const attendanceWriter = new TypeOrmAttendanceWriter(manager);
       const finance = new TypeOrmSessionFinanceService(manager);
-      const useCase = new UpsertSessionAttendanceUseCase(attendanceRepository, finance);
+      const useCase = new UpsertSessionAttendanceUseCase(attendanceWriter, finance);
       return useCase.execute(input);
     });
   }
@@ -26,9 +26,9 @@ export class TypeOrmAttendanceCommandHandlers {
     sessionId: number;
   }): Promise<void> {
     return AppDataSource.transaction(async (manager) => {
-      const attendanceRepository = new TypeOrmAttendanceRepository(manager);
+      const attendanceWriter = new TypeOrmAttendanceWriter(manager);
       const finance = new TypeOrmSessionFinanceService(manager);
-      const useCase = new ResetSessionAttendanceUseCase(attendanceRepository, finance);
+      const useCase = new ResetSessionAttendanceUseCase(attendanceWriter, finance);
       return useCase.execute(input);
     });
   }

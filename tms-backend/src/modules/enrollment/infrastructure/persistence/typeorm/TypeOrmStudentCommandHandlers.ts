@@ -2,26 +2,21 @@ import type { DataSource, EntityManager } from 'typeorm';
 
 import { ServiceError } from '../../../../../shared/errors/service.error.js';
 import { ArchivePendingStudentUseCase } from '../../../application/commands/ArchivePendingStudentUseCase.js';
-import { BulkTransferStudentsUseCase } from '../../../application/commands/BulkTransferStudentsUseCase.js';
-import { BulkWithdrawStudentsUseCase } from '../../../application/commands/BulkWithdrawStudentsUseCase.js';
 import { CreateStudentUseCase } from '../../../application/commands/CreateStudentUseCase.js';
 import { ReinstateStudentUseCase } from '../../../application/commands/ReinstateStudentUseCase.js';
 import { TransferStudentUseCase } from '../../../application/commands/TransferStudentUseCase.js';
 import { UpdateStudentUseCase } from '../../../application/commands/UpdateStudentUseCase.js';
 import { WithdrawStudentUseCase } from '../../../application/commands/WithdrawStudentUseCase.js';
 import type { ArchivePendingStudentCommand } from '../../../application/dto/ArchivePendingStudentCommand.js';
-import type { BulkTransferStudentsCommand } from '../../../application/dto/BulkTransferStudentsCommand.js';
-import type { BulkWithdrawStudentsCommand } from '../../../application/dto/BulkWithdrawStudentsCommand.js';
 import type { CreateStudentCommand } from '../../../application/dto/CreateStudentCommand.js';
 import type { ReinstateStudentCommand } from '../../../application/dto/ReinstateStudentCommand.js';
 import type { TransferStudentCommand } from '../../../application/dto/TransferStudentCommand.js';
 import type { UpdateStudentCommand } from '../../../application/dto/UpdateStudentCommand.js';
 import type { WithdrawStudentCommand } from '../../../application/dto/WithdrawStudentCommand.js';
-import { TypeOrmArchiveFinanceService } from './TypeOrmArchiveFinanceService.js';
 import { TypeOrmBalanceSnapshotReader } from './TypeOrmBalanceSnapshotReader.js';
 import { TypeOrmClassroomAccess } from './TypeOrmClassroomAccess.js';
-import { TypeOrmEnrollmentRepository } from './TypeOrmEnrollmentRepository.js';
-import { TypeOrmStudentRepository } from './TypeOrmStudentRepository.js';
+import { TypeOrmEnrollmentWriter } from './TypeOrmEnrollmentWriter.js';
+import { TypeOrmStudentWriter } from './TypeOrmStudentWriter.js';
 import type {
   StudentDiscordInviteResult,
   TypeOrmStudentDiscordMembershipService,
@@ -29,11 +24,10 @@ import type {
 import { StudentDiscordMembershipNotifier } from './StudentDiscordMembershipNotifier.js';
 
 type StudentPersistenceContext = {
-  students: TypeOrmStudentRepository;
-  enrollments: TypeOrmEnrollmentRepository;
+  students: TypeOrmStudentWriter;
+  enrollments: TypeOrmEnrollmentWriter;
   classroom: TypeOrmClassroomAccess;
   balanceSnapshots: TypeOrmBalanceSnapshotReader;
-  archiveFinance: TypeOrmArchiveFinanceService;
 };
 
 export class TypeOrmStudentCommandHandlers {
@@ -86,43 +80,11 @@ export class TypeOrmStudentCommandHandlers {
     },
   };
 
-  readonly bulkTransferStudents = {
-    execute: async (input: BulkTransferStudentsCommand) => {
-      const result = await this.withTransaction((context) => {
-        const transferStudent = this.createTransferStudentUseCase(context);
-        return new BulkTransferStudentsUseCase(transferStudent).execute(input);
-      });
-
-      for (const student of result) {
-        this.assertDiscordMembershipAdded(
-          await this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, student.id, input.toClassId),
-        );
-      }
-
-      return result;
-    },
-  };
-
   readonly withdrawStudent = {
     execute: async (input: WithdrawStudentCommand) => {
       const result = await this.withTransaction((context) => this.createWithdrawStudentUseCase(context).execute(input));
 
       this.studentDiscordMembershipNotifier.studentWithdrawn(input.teacherId, input.studentId);
-      return result;
-    },
-  };
-
-  readonly bulkWithdrawStudents = {
-    execute: async (input: BulkWithdrawStudentsCommand) => {
-      const result = await this.withTransaction((context) => {
-        const withdrawStudent = this.createWithdrawStudentUseCase(context);
-        return new BulkWithdrawStudentsUseCase(withdrawStudent).execute(input);
-      });
-
-      result.forEach((student) => {
-        this.studentDiscordMembershipNotifier.studentWithdrawn(input.teacherId, student.id);
-      });
-
       return result;
     },
   };
@@ -149,7 +111,6 @@ export class TypeOrmStudentCommandHandlers {
         context.students,
         context.enrollments,
         context.balanceSnapshots,
-        context.archiveFinance,
       ).execute(input);
     }),
   };
@@ -160,11 +121,10 @@ export class TypeOrmStudentCommandHandlers {
 
   private createPersistenceContext(manager: EntityManager): StudentPersistenceContext {
     return {
-      students: new TypeOrmStudentRepository(manager),
-      enrollments: new TypeOrmEnrollmentRepository(manager),
+      students: new TypeOrmStudentWriter(manager),
+      enrollments: new TypeOrmEnrollmentWriter(manager),
       classroom: new TypeOrmClassroomAccess(manager),
       balanceSnapshots: new TypeOrmBalanceSnapshotReader(manager),
-      archiveFinance: new TypeOrmArchiveFinanceService(manager),
     };
   }
 

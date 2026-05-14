@@ -1,19 +1,23 @@
+import type { EntityManager } from 'typeorm';
+
 import type { FeeRecordStatus } from '../../../../entities/enums.js';
+import { FeeRecord } from '../../../../entities/fee-record.entity.js';
+import { AppDataSource } from '../../../../infrastructure/database/data-source.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
-import type { FeeRecordRepository } from '../../infrastructure/persistence/typeorm/FeeRecordRepository.js';
 
 export class UpdateFeeRecordStatusUseCase {
-  constructor(private readonly feeRecordRepository: FeeRecordRepository) {}
+  constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
 
   async execute(input: {
     teacherId: number;
     feeRecordId: number;
     status: FeeRecordStatus;
   }) {
-    const feeRecord = await this.feeRecordRepository.findOwnedFeeRecord(
-      input.teacherId,
-      input.feeRecordId,
-    );
+    const feeRecordWriter = this.manager.getRepository(FeeRecord);
+    const feeRecord = await feeRecordWriter.findOneBy({
+      id: input.feeRecordId,
+      teacher_id: input.teacherId,
+    });
 
     if (!feeRecord) {
       throw new ServiceError('fee record not found', 404);
@@ -24,6 +28,6 @@ export class UpdateFeeRecordStatusUseCase {
     }
 
     feeRecord.setStatus(input.status);
-    return this.feeRecordRepository.save(feeRecord);
+    return feeRecordWriter.save(feeRecord);
   }
 }

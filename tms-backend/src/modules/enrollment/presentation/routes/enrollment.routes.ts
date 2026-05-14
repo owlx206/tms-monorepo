@@ -7,14 +7,11 @@ import { validate } from '../../../../shared/middlewares/validate.js';
 import {
   authorizeOwnedClassBody,
   authorizeOwnedClassQuery,
-  authorizeOwnedStudentBody,
   authorizeOwnedStudentParam,
   requireRoles,
 } from '../../../identity/index.js';
 import {
   archivePendingStudentBodySchema,
-  bulkWithdrawStudentsBodySchema,
-  bulkTransferStudentsBodySchema,
   createStudentBodySchema,
   withdrawStudentBodySchema,
   reinstateStudentBodySchema,
@@ -32,9 +29,7 @@ type StudentRouteControllers = {
   updateStudent: StudentController;
   inviteStudentToCurrentClass: StudentController;
   transferStudent: StudentController;
-  bulkTransferStudents: StudentController;
   withdrawStudent: StudentController;
-  bulkWithdrawStudents: StudentController;
   reinstateStudent: StudentController;
   archivePendingStudent: StudentController;
 };
@@ -48,10 +43,6 @@ export function createStudentRouter(controllers: StudentRouteControllers): Route
   studentRouter.get('/students', validate({ query: studentListQuerySchema }), authorizeOwnedClassQuery(), adaptExpressRoute(controllers.listStudents));
 
   studentRouter.post('/students', validate({ body: createStudentBodySchema }), authorizeOwnedClassBody('class_id'), adaptExpressRoute(controllers.createStudent));
-
-  studentRouter.post('/students/bulk/transfer', validate({ body: bulkTransferStudentsBodySchema }), authorizeOwnedClassBody('to_class_id'), authorizeOwnedStudentBody('student_ids'), adaptExpressRoute(controllers.bulkTransferStudents));
-
-  studentRouter.post('/students/bulk/withdraw', validate({ body: bulkWithdrawStudentsBodySchema }), authorizeOwnedStudentBody('student_ids'), adaptExpressRoute(controllers.bulkWithdrawStudents));
 
   studentRouter.get('/students/:studentId', validate({ params: studentIdParamSchema }), authorizeOwnedStudentParam(), adaptExpressRoute(controllers.getStudentById));
 

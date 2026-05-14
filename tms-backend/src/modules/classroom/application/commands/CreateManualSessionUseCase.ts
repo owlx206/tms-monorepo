@@ -4,8 +4,8 @@ import type {
   CreateManualSessionInput,
   SessionSummary,
 } from '../dto/ClassDto.js';
-import type { SessionRepository } from '../../infrastructure/persistence/typeorm/SessionRepository.js';
 import { SessionMapper } from '../../infrastructure/persistence/typeorm/SessionMapper.js';
+import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/TypeOrmSessionWriter.js';
 
 type CreateManualSessionCommand = {
   teacherId: number;
@@ -14,7 +14,7 @@ type CreateManualSessionCommand = {
 };
 
 export class CreateManualSessionUseCase {
-  constructor(private readonly sessions: SessionRepository) {}
+  constructor(private readonly sessions: TypeOrmSessionWriter) {}
 
   async execute(command: CreateManualSessionCommand): Promise<SessionSummary> {
     const classEntity = await this.sessions.findClassById(command.teacherId, command.classId);

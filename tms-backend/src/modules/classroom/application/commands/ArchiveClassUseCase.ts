@@ -1,6 +1,8 @@
+import type { EntityManager } from 'typeorm';
+
+import { Class } from '../../../../entities/class.entity.js';
+import { ClassStatus } from '../../../../entities/enums.js';
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
-import type { ClassroomClass } from '../../domain/models/Class.js';
-import type { ClassRepository } from '../../infrastructure/persistence/typeorm/ClassRepository.js';
 import type { TypeOrmClassArchiveGuard } from '../../infrastructure/persistence/typeorm/TypeOrmClassArchiveGuard.js';
 import type { TypeOrmClassSessionLifecycle } from '../../infrastructure/persistence/typeorm/TypeOrmClassSessionLifecycle.js';
 import type { ClassSummary } from '../dto/ClassDto.js';
@@ -13,28 +15,32 @@ type ArchiveClassCommand = {
 
 export class ArchiveClassUseCase {
   constructor(
-    private readonly classes: ClassRepository,
+    private readonly manager: EntityManager,
     private readonly archiveGuard: TypeOrmClassArchiveGuard,
     private readonly sessionLifecycle: TypeOrmClassSessionLifecycle,
   ) {}
 
   async execute(command: ArchiveClassCommand): Promise<ClassSummary> {
-    const classroomClass = await this.classes.findById(command.classId);
+    const classRepository = this.manager.getRepository(Class);
+    const classEntity = await classRepository.findOneBy({
+      id: command.classId,
+      teacher_id: command.teacherId,
+    });
 
-    if (!classroomClass) {
+    if (!classEntity) {
       throw new ClassServiceError('class not found', 404);
     }
 
-    const snapshot = classroomClass.toSnapshot();
-    if (snapshot.status === 'archived') {
-      return this.toSummary(classroomClass);
+    if (classEntity.status === ClassStatus.Archived) {
+      return this.toSummary(classEntity);
     }
 
     await this.archiveGuard.assertArchivable(command.teacherId, command.classId);
 
-    classroomClass.archive(command.archivedAt);
+    classEntity.status = ClassStatus.Archived;
+    classEntity.archived_at = command.archivedAt;
 
-    const savedClass = await this.classes.save(classroomClass);
+    const savedClass = await classRepository.save(classEntity);
     await this.sessionLifecycle.cancelUpcomingScheduledSessions(
       command.teacherId,
       command.classId,
@@ -44,21 +50,15 @@ export class ArchiveClassUseCase {
     return this.toSummary(savedClass);
   }
 
-  private toSummary(classroomClass: ClassroomClass): ClassSummary {
-    const snapshot = classroomClass.toSnapshot();
-
-    if (snapshot.id === null || snapshot.createdAt === null) {
-      throw new Error('saved class is missing persistence fields');
-    }
-
+  private toSummary(classEntity: Class): ClassSummary {
     return {
-      id: snapshot.id,
-      teacher_id: snapshot.teacherId,
-      name: snapshot.name,
-      fee_per_session: snapshot.feePerSession,
-      status: snapshot.status,
-      created_at: snapshot.createdAt,
-      archived_at: snapshot.archivedAt,
+      id: classEntity.id,
+      teacher_id: classEntity.teacher_id,
+      name: classEntity.name,
+      fee_per_session: classEntity.fee_per_session,
+      status: classEntity.status,
+      created_at: classEntity.created_at,
+      archived_at: classEntity.archived_at,
     };
   }
 }

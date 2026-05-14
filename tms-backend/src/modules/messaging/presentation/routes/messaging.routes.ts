@@ -12,7 +12,7 @@ import {
 } from '../../../identity/index.js';
 import { MessagingController } from '../controllers/MessagingController.js';
 import {
-  bulkDmBodySchema,
+  studentMessageBodySchema,
   channelPostBodySchema,
   classIdParamSchema,
   serverIdParamSchema,
@@ -31,8 +31,7 @@ type MessagingRouteControllers = {
   getBotInviteLink: MessagingController;
   getSetupStatus: MessagingController;
   upsertDiscordServer: MessagingController;
-  deleteDiscordServer: MessagingController;
-  sendBulkDm: MessagingController;
+  sendStudentMessages: MessagingController;
   sendChannelPost: MessagingController;
 };
 
@@ -71,19 +70,12 @@ export function createMessagingRouter(controllers: MessagingRouteControllers): R
     authorizeOwnedClassParam(),
     adaptExpressRoute(controllers.upsertDiscordServer),
   );
-  router.delete(
-    '/classes/:classId/discord-server',
-    ...teacherAuth,
-    validate({ params: classIdParamSchema }),
-    authorizeOwnedClassParam(),
-    adaptExpressRoute(controllers.deleteDiscordServer),
-  );
   router.post(
-    '/discord/messages/bulk-dm',
+    '/discord/messages/students',
     ...teacherAuth,
-    validate({ body: bulkDmBodySchema }),
+    validate({ body: studentMessageBodySchema }),
     authorizeOwnedClassBody('class_id'),
-    adaptExpressRoute(controllers.sendBulkDm),
+    adaptExpressRoute(controllers.sendStudentMessages),
   );
   router.post(
     '/discord/messages/channel-post',

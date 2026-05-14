@@ -2,8 +2,8 @@ import { AttendanceSource, AttendanceStatus } from '../../../../entities/enums.j
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { AttendanceRecordSummary } from '../dto/AttendanceDto.js';
 import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
-import type { AttendanceRepository } from '../../infrastructure/persistence/typeorm/AttendanceRepository.js';
 import { AttendanceMapper } from '../../infrastructure/persistence/typeorm/AttendanceMapper.js';
+import type { TypeOrmAttendanceWriter } from '../../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
 
 type UpsertBotSessionAttendanceCommand = {
   teacherId: number;
@@ -13,30 +13,30 @@ type UpsertBotSessionAttendanceCommand = {
 
 export class UpsertBotSessionAttendanceUseCase {
   constructor(
-    private readonly attendanceRepository: AttendanceRepository,
+    private readonly attendanceWriter: TypeOrmAttendanceWriter,
     private readonly finance: TypeOrmSessionFinanceService,
   ) {}
 
   async execute(command: UpsertBotSessionAttendanceCommand): Promise<AttendanceRecordSummary | null> {
-    const session = await this.attendanceRepository.findSessionById(command.teacherId, command.sessionId);
+    const session = await this.attendanceWriter.findSessionById(command.teacherId, command.sessionId);
 
     if (!session) {
       throw new ClassServiceError('session not found', 404);
     }
 
-    const classEntity = await this.attendanceRepository.findClassById(command.teacherId, session.class_id);
+    const classEntity = await this.attendanceWriter.findClassById(command.teacherId, session.class_id);
 
     if (!classEntity) {
       throw new ClassServiceError('class not found', 404);
     }
 
-    const student = await this.attendanceRepository.findStudentById(command.teacherId, command.studentId);
+    const student = await this.attendanceWriter.findStudentById(command.teacherId, command.studentId);
 
     if (!student) {
       throw new ClassServiceError('student not found', 404);
     }
 
-    const enrollment = await this.attendanceRepository.findEnrollmentAtSessionTime(
+    const enrollment = await this.attendanceWriter.findEnrollmentAtSessionTime(
       command.teacherId,
       command.studentId,
       session.class_id,
@@ -51,7 +51,7 @@ export class UpsertBotSessionAttendanceUseCase {
       throw new ClassServiceError('cannot update attendance for a cancelled session', 409);
     }
 
-    let attendance = await this.attendanceRepository.findAttendanceForStudent(
+    let attendance = await this.attendanceWriter.findAttendanceForStudent(
       command.teacherId,
       command.sessionId,
       command.studentId,
@@ -73,7 +73,7 @@ export class UpsertBotSessionAttendanceUseCase {
     }
 
     if (!attendance) {
-      attendance = this.attendanceRepository.create({
+      attendance = this.attendanceWriter.create({
         teacher_id: command.teacherId,
         session_id: command.sessionId,
         student_id: command.studentId,
@@ -88,7 +88,7 @@ export class UpsertBotSessionAttendanceUseCase {
       attendance.overridden_at = null;
     }
 
-    const saved = await this.attendanceRepository.save(attendance);
+    const saved = await this.attendanceWriter.save(attendance);
 
     await this.finance.syncAttendanceFeeRecord({
       teacherId: command.teacherId,

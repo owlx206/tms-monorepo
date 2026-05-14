@@ -13,6 +13,12 @@ import { Transaction } from '../../../../../entities/transaction.entity.js';
 export class TypeOrmTransactionReader {
   constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
 
+  private validateDateRange(filters: { from?: Date; to?: Date }) {
+    if (filters.from && filters.to && filters.from > filters.to) {
+      throw new ServiceError('from must be earlier than or equal to to', 400);
+    }
+  }
+
   async findOwnedStudent(teacherId: number, studentId: number): Promise<boolean> {
     return (await this.manager.getRepository(Student).count({
       where: {
@@ -33,6 +39,16 @@ export class TypeOrmTransactionReader {
       offset?: number;
     },
   ) {
+    this.validateDateRange(filters);
+
+    if (filters.student_id !== undefined) {
+      const exists = await this.findOwnedStudent(teacherId, filters.student_id);
+
+      if (!exists) {
+        throw new ServiceError('student not found', 404);
+      }
+    }
+
     const queryBuilder = this.manager.getRepository(Transaction)
       .createQueryBuilder('transaction')
       .where('transaction.teacher_id = :teacherId', { teacherId });
@@ -111,6 +127,16 @@ export class TypeOrmTransactionReader {
       offset?: number;
     },
   ) {
+    this.validateDateRange(filters);
+
+    if (filters.student_id !== undefined) {
+      const exists = await this.findOwnedStudent(teacherId, filters.student_id);
+
+      if (!exists) {
+        throw new ServiceError('student not found', 404);
+      }
+    }
+
     const queryBuilder = this.manager.getRepository(FeeRecord)
       .createQueryBuilder('fee_record')
       .where('fee_record.teacher_id = :teacherId', { teacherId });
@@ -232,6 +258,8 @@ export class TypeOrmTransactionReader {
       include_unpaid?: boolean;
     },
   ) {
+    this.validateDateRange(filters);
+
     let scopedStudentIds: number[] | null = null;
     if (filters.class_ids && filters.class_ids.length > 0) {
       const enrollments = await this.manager.getRepository(Enrollment).find({

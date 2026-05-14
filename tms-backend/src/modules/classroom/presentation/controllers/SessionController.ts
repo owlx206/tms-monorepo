@@ -5,8 +5,8 @@ import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.
 import type {
   CreateManualSessionInput,
   SessionListFilters,
+  SessionSummary,
 } from '../../application/dto/ClassDto.js';
-import { SessionUseCase } from '../../application/queries/SessionUseCase.js';
 import {
   getClassId,
   getSessionId,
@@ -14,7 +14,9 @@ import {
 } from './request-context.js';
 
 type SessionDependencies = {
-  sessions: SessionUseCase;
+  sessions: {
+    listSessions(teacherId: number, filters: SessionListFilters): Promise<SessionSummary[]>;
+  };
   commandHandlers: {
     createManualSession(input: {
       teacherId: number;
@@ -71,7 +73,7 @@ export class SessionController implements Controller {
   private async listSessions(
     request: HttpRequest<unknown, SessionParams, SessionListFilters>,
   ): Promise<HttpResponse> {
-    const sessions = await this.dependencies.sessions.list(
+    const sessions = await this.dependencies.sessions.listSessions(
       getTeacherId(request),
       request.query ?? {},
     );
@@ -86,10 +88,14 @@ export class SessionController implements Controller {
     request: HttpRequest<unknown, SessionParams, SessionListFilters>,
   ): Promise<HttpResponse> {
     const { status, from, to } = request.query ?? {};
-    const sessions = await this.dependencies.sessions.listForClass(
+    const sessions = await this.dependencies.sessions.listSessions(
       getTeacherId(request),
-      getClassId(request),
-      { status, from, to },
+      {
+        status,
+        from,
+        to,
+        class_id: getClassId(request),
+      },
     );
 
     return {

@@ -1,22 +1,22 @@
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { UpsertTopicStandingInput } from '../dto/TopicDto.js';
-import type { TopicWriteRepository } from '../../infrastructure/persistence/typeorm/TopicWriteRepository.js';
+import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTopicWriter.js';
 
 export class UpsertTopicStandingUseCase {
-  constructor(private readonly topicWriteRepository: TopicWriteRepository) {}
+  constructor(private readonly topicWriter: TypeOrmTopicWriter) {}
 
   async execute(teacherId: number, topicId: number, input: UpsertTopicStandingInput) {
-    const topic = await this.topicWriteRepository.findOwnedTopic(teacherId, topicId);
+    const topic = await this.topicWriter.findOwnedTopic(teacherId, topicId);
     if (!topic) {
       throw new ServiceError('topic not found', 404);
     }
 
-    const student = await this.topicWriteRepository.findOwnedStudent(teacherId, input.student_id);
+    const student = await this.topicWriter.findOwnedStudent(teacherId, input.student_id);
     if (!student) {
       throw new ServiceError('student not found', 404);
     }
 
-    const problem = await this.topicWriteRepository.findOwnedTopicProblem(
+    const problem = await this.topicWriter.findOwnedTopicProblem(
       teacherId,
       topicId,
       input.problem_id,
@@ -25,7 +25,7 @@ export class UpsertTopicStandingUseCase {
       throw new ServiceError('topic problem not found', 404);
     }
 
-    const existing = await this.topicWriteRepository.findTopicStanding(
+    const existing = await this.topicWriter.findTopicStanding(
       teacherId,
       topic.id,
       input.student_id,
@@ -36,10 +36,10 @@ export class UpsertTopicStandingUseCase {
       existing.solved = input.solved;
       existing.penalty_minutes = input.penalty_minutes ?? null;
       existing.pulled_at = input.pulled_at ?? new Date();
-      return this.topicWriteRepository.saveTopicStanding(existing);
+      return this.topicWriter.saveTopicStanding(existing);
     }
 
-    const standing = this.topicWriteRepository.createTopicStanding({
+    const standing = this.topicWriter.createTopicStanding({
       teacher_id: teacherId,
       topic_id: topic.id,
       student_id: input.student_id,
@@ -49,6 +49,6 @@ export class UpsertTopicStandingUseCase {
       pulled_at: input.pulled_at ?? new Date(),
     });
 
-    return this.topicWriteRepository.saveTopicStanding(standing);
+    return this.topicWriter.saveTopicStanding(standing);
   }
 }

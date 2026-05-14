@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CheckCircle, DollarSign } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { AlertCircle, CheckCircle, CheckCircle2, DollarSign, UserPlus } from "lucide-react";
 
 import { ApiError } from "../services/apiClient";
-import { archiveStudent, listStudents, type BackendStudentSummary } from "../services/studentService";
+import { listClasses, type BackendClass } from "../services/classService";
+import {
+  archiveStudent,
+  listStudents,
+  reinstateStudent,
+  type BackendStudentSummary,
+} from "../services/studentService";
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -27,6 +33,8 @@ function formatMoney(amount: number): string {
 
 export function PendingArchive() {
   const [pendingStudents, setPendingStudents] = useState<BackendStudentSummary[]>([]);
+  const [activeClasses, setActiveClasses] = useState<BackendClass[]>([]);
+  const [reinstatingStudent, setReinstatingStudent] = useState<BackendStudentSummary | null>(null);
   const [requestError, setRequestError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submittingStudentId, setSubmittingStudentId] = useState<number | null>(null);
@@ -36,8 +44,12 @@ export function PendingArchive() {
     setRequestError("");
 
     try {
-      const students = await listStudents({ status: "pending_archive" });
+      const [students, classes] = await Promise.all([
+        listStudents({ status: "pending_archive" }),
+        listClasses("active", { readyOnly: true }),
+      ]);
       setPendingStudents(students);
+      setActiveClasses(classes);
     } catch (error) {
       setRequestError(toErrorMessage(error));
     } finally {
@@ -62,12 +74,12 @@ export function PendingArchive() {
     [pendingStudents],
   );
 
-  const handleSettleAndArchive = async (student: BackendStudentSummary) => {
+  const handleArchiveZeroBalance = async (student: BackendStudentSummary) => {
     setSubmittingStudentId(student.id);
     setRequestError("");
 
     try {
-      await archiveStudent(student.id, { settle_finance: true });
+      await archiveStudent(student.id);
       await loadData();
     } catch (error) {
       setRequestError(toErrorMessage(error));
@@ -76,12 +88,16 @@ export function PendingArchive() {
     }
   };
 
-  const handleArchiveZeroBalance = async (student: BackendStudentSummary) => {
+  const handleReinstateStudent = async (student: BackendStudentSummary, classId: number) => {
     setSubmittingStudentId(student.id);
     setRequestError("");
 
     try {
-      await archiveStudent(student.id);
+      await reinstateStudent({
+        student_id: student.id,
+        class_id: classId,
+      });
+      setReinstatingStudent(null);
       await loadData();
     } catch (error) {
       setRequestError(toErrorMessage(error));
@@ -144,27 +160,27 @@ export function PendingArchive() {
         title="Cần đòi nợ"
         students={needCollect}
         amountLabel="Số nợ"
-        actionLabel="Đã thu nợ"
         submittingStudentId={submittingStudentId}
-        onAction={handleSettleAndArchive}
+        onReinstate={setReinstatingStudent}
+        onComplete={handleArchiveZeroBalance}
       />
 
       <PendingTable
         title="Cần hoàn trả"
         students={needRefund}
         amountLabel="Số dư"
-        actionLabel="Đã hoàn trả"
         submittingStudentId={submittingStudentId}
-        onAction={handleSettleAndArchive}
+        onReinstate={setReinstatingStudent}
+        onComplete={handleArchiveZeroBalance}
       />
 
       <PendingTable
         title="Không còn tồn đọng"
         students={zeroBalance}
         amountLabel="Số dư"
-        actionLabel="Archive"
         submittingStudentId={submittingStudentId}
-        onAction={handleArchiveZeroBalance}
+        onReinstate={setReinstatingStudent}
+        onComplete={handleArchiveZeroBalance}
       />
 
       {!loading && pendingStudents.length === 0 && (
@@ -174,6 +190,16 @@ export function PendingArchive() {
           <p className="text-zinc-600 text-sm">Tất cả học sinh đã được xử lý xong</p>
         </div>
       )}
+
+      {reinstatingStudent && (
+        <ReinstatePendingStudentModal
+          student={reinstatingStudent}
+          classes={activeClasses}
+          submitting={submittingStudentId === reinstatingStudent.id}
+          onClose={() => setReinstatingStudent(null)}
+          onSubmit={(classId) => handleReinstateStudent(reinstatingStudent, classId)}
+        />
+      )}
     </div>
   );
 }
@@ -182,16 +208,16 @@ function PendingTable({
   title,
   students,
   amountLabel,
-  actionLabel,
   submittingStudentId,
-  onAction,
+  onReinstate,
+  onComplete,
 }: {
   title: string;
   students: BackendStudentSummary[];
   amountLabel: string;
-  actionLabel: string;
   submittingStudentId: number | null;
-  onAction: (student: BackendStudentSummary) => Promise<void>;
+  onReinstate: (student: BackendStudentSummary) => void;
+  onComplete: (student: BackendStudentSummary) => Promise<void>;
 }) {
   if (students.length === 0) {
     return null;
@@ -213,6 +239,8 @@ function PendingTable({
           <tbody className="divide-y divide-zinc-100">
             {students.map((student) => {
               const amount = parseAmount(student.balance);
+              const canComplete = amount === 0;
+              const isSubmitting = submittingStudentId === student.id;
               return (
                 <tr key={student.id} className="hover:bg-zinc-100/50 transition-colors">
                   <td className="px-6 py-4">
@@ -228,13 +256,26 @@ function PendingTable({
                     <span className="text-zinc-900 font-semibold">{formatMoney(Math.abs(amount))}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => void onAction(student)}
-                        disabled={submittingStudentId === student.id}
-                        className="px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-60"
+                        type="button"
+                        onClick={() => onReinstate(student)}
+                        disabled={isSubmitting}
+                        title="Thêm lại"
+                        aria-label={`Thêm lại ${student.full_name}`}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 transition-colors disabled:opacity-60"
                       >
-                        {submittingStudentId === student.id ? "Đang xử lý..." : actionLabel}
+                        <UserPlus className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void onComplete(student)}
+                        disabled={!canComplete || isSubmitting}
+                        title={canComplete ? "Hoàn thành" : "Cần nhập giao dịch để số dư về 0 trước"}
+                        aria-label={`Hoàn thành ${student.full_name}`}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 transition-colors disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-500"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -243,6 +284,85 @@ function PendingTable({
             })}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function ReinstatePendingStudentModal({
+  student,
+  classes,
+  submitting,
+  onClose,
+  onSubmit,
+}: {
+  student: BackendStudentSummary;
+  classes: BackendClass[];
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (classId: number) => Promise<void>;
+}) {
+  const [classId, setClassId] = useState("");
+  const [localError, setLocalError] = useState("");
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setLocalError("");
+
+    const parsedClassId = Number(classId);
+    if (!Number.isInteger(parsedClassId) || parsedClassId <= 0) {
+      setLocalError("Vui lòng chọn lớp hợp lệ");
+      return;
+    }
+
+    await onSubmit(parsedClassId);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-white/80 flex items-center justify-center p-4 z-50">
+      <div className="bg-zinc-100 border border-zinc-200 rounded-xl p-6 w-full max-w-md">
+        <h2 className="text-xl font-semibold text-zinc-900 mb-2">Thêm lại học sinh</h2>
+        <p className="text-zinc-600 mb-6">Học sinh: {student.full_name}</p>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-sm text-zinc-600 mb-2">Lớp</label>
+            <select
+              value={classId}
+              onChange={(event) => setClassId(event.target.value)}
+              disabled={submitting || classes.length === 0}
+              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 disabled:opacity-60"
+            >
+              <option value="">Chọn lớp</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {classes.length === 0 && (
+            <p className="text-sm text-zinc-600">Chưa có lớp active sẵn sàng để thêm học sinh.</p>
+          )}
+          {localError && <p className="text-sm text-red-600">{localError}</p>}
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-zinc-100 text-zinc-900 rounded-lg hover:bg-zinc-200 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || classes.length === 0}
+              className="flex-1 px-4 py-3 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors font-medium disabled:opacity-60"
+            >
+              {submitting ? "Đang xử lý..." : "Xác nhận"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

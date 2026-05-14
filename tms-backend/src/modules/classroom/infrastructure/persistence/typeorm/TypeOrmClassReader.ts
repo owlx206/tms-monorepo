@@ -12,6 +12,9 @@ import type {
 import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
 import { ClassSchedule } from '../../../../../entities/class-schedule.entity.js';
 import { Class } from '../../../../../entities/class.entity.js';
+import { Topic } from '../../../../../entities/topic.entity.js';
+import { TopicProblem } from '../../../../../entities/topic-problem.entity.js';
+import { TopicStanding } from '../../../../../entities/topic-standing.entity.js';
 
 export class TypeOrmClassReader {
   constructor(private readonly manager: EntityManager) {}
@@ -80,7 +83,7 @@ export class TypeOrmClassReader {
       return null;
     }
 
-    const [schedules, discordServer, activeStudents] = await Promise.all([
+    const [schedules, discordServer, activeStudents, topics] = await Promise.all([
       this.manager.getRepository(ClassSchedule).find({
         where: {
           teacher_id: teacherId,
@@ -128,7 +131,63 @@ export class TypeOrmClassReader {
           status: string;
           enrolled_at: Date;
         }>(),
+      this.manager.getRepository(Topic).find({
+        where: {
+          teacher_id: teacherId,
+          class_id: classId,
+        },
+        order: {
+          closed_at: 'ASC',
+          created_at: 'DESC',
+        },
+      }),
     ]);
+
+    const topicIds = topics.map((topic) => topic.id);
+    const [topicProblems, topicStandings] = topicIds.length === 0
+      ? [[], []] as [TopicProblem[], TopicStanding[]]
+      : await Promise.all([
+        this.manager.getRepository(TopicProblem)
+          .createQueryBuilder('problem')
+          .where('problem.teacher_id = :teacherId', { teacherId })
+          .andWhere('problem.topic_id IN (:...topicIds)', { topicIds })
+          .orderBy('problem.topic_id', 'ASC')
+          .addOrderBy('problem.problem_index', 'ASC')
+          .getMany(),
+        this.manager.getRepository(TopicStanding)
+          .createQueryBuilder('standing')
+          .where('standing.teacher_id = :teacherId', { teacherId })
+          .andWhere('standing.topic_id IN (:...topicIds)', { topicIds })
+          .getMany(),
+      ]);
+
+    const activeStudentIds = new Set(activeStudents.map((student) => Number(student.id)));
+    const problemsByTopicId = new Map<number, TopicProblem[]>();
+    topicProblems.forEach((problem) => {
+      const problems = problemsByTopicId.get(problem.topic_id);
+      if (problems) {
+        problems.push(problem);
+        return;
+      }
+
+      problemsByTopicId.set(problem.topic_id, [problem]);
+    });
+
+    const solvedProblemIdsByTopicStudent = new Map<string, Set<number>>();
+    topicStandings.forEach((standing) => {
+      if (!standing.solved || !activeStudentIds.has(standing.student_id)) {
+        return;
+      }
+
+      const key = `${standing.topic_id}:${standing.student_id}`;
+      const solvedProblemIds = solvedProblemIdsByTopicStudent.get(key);
+      if (solvedProblemIds) {
+        solvedProblemIds.add(standing.problem_id);
+        return;
+      }
+
+      solvedProblemIdsByTopicStudent.set(key, new Set([standing.problem_id]));
+    });
 
     return {
       class: this.toSummary(classEntity),
@@ -145,6 +204,49 @@ export class TypeOrmClassReader {
         status: student.status,
         enrolled_at: student.enrolled_at,
       })),
+      topics: topics.map((topic) => {
+        const problems = problemsByTopicId.get(topic.id) ?? [];
+        let solvedCount = 0;
+        let completedStudents = 0;
+
+        activeStudentIds.forEach((studentId) => {
+          const solvedProblemIds = solvedProblemIdsByTopicStudent.get(`${topic.id}:${studentId}`);
+          const studentSolvedCount = solvedProblemIds?.size ?? 0;
+          solvedCount += studentSolvedCount;
+
+          if (problems.length > 0 && studentSolvedCount >= problems.length) {
+            completedStudents += 1;
+          }
+        });
+
+        return {
+          id: topic.id,
+          teacher_id: topic.teacher_id,
+          class_id: topic.class_id,
+          title: topic.title,
+          gym_link: topic.gym_link,
+          gym_id: topic.gym_id,
+          closed_at: topic.closed_at,
+          pull_interval_minutes: topic.pull_interval_minutes,
+          last_pulled_at: topic.last_pulled_at,
+          created_at: topic.created_at,
+          status: topic.closed_at ? 'closed' as const : 'active' as const,
+          problems: problems.map((problem) => ({
+            id: problem.id,
+            teacher_id: problem.teacher_id,
+            topic_id: problem.topic_id,
+            problem_index: problem.problem_index,
+            problem_name: problem.problem_name,
+          })),
+          progress: {
+            total_students: activeStudentIds.size,
+            total_problems: problems.length,
+            solved_count: solvedCount,
+            completed_students: completedStudents,
+            average_solved: activeStudentIds.size > 0 ? solvedCount / activeStudentIds.size : 0,
+          },
+        };
+      }),
       is_ready: schedules.length > 0 && discordServer !== null,
     };
   }
