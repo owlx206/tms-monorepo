@@ -1,15 +1,15 @@
 import { In, type EntityManager } from 'typeorm';
 
 import { FeeRecordStatus } from '../../../../../entities/enums.js';
-import { FeeRecordOrmEntity } from './FeeRecordOrmEntity.js';
+import { FeeRecord } from '../../../../../entities/fee-record.entity.js';
 
 export function findFeeRecordForAttendance(
   manager: EntityManager,
   teacherId: number,
   sessionId: number,
   studentId: number,
-): Promise<FeeRecordOrmEntity | null> {
-  return manager.getRepository(FeeRecordOrmEntity).findOneBy({
+): Promise<FeeRecord | null> {
+  return manager.getRepository(FeeRecord).findOneBy({
     teacher_id: teacherId,
     session_id: sessionId,
     student_id: studentId,
@@ -25,8 +25,8 @@ export function createFeeRecord(
     enrollment_id: number;
     amount: string;
   },
-): FeeRecordOrmEntity {
-  const feeRecord = manager.getRepository(FeeRecordOrmEntity).create({
+): FeeRecord {
+  const feeRecord = manager.getRepository(FeeRecord).create({
     teacher_id: input.teacher_id,
     student_id: input.student_id,
     session_id: input.session_id,
@@ -41,21 +41,21 @@ export function createFeeRecord(
 
 export function saveFeeRecord(
   manager: EntityManager,
-  feeRecord: FeeRecordOrmEntity,
-): Promise<FeeRecordOrmEntity> {
-  return manager.getRepository(FeeRecordOrmEntity).save(feeRecord);
+  feeRecord: FeeRecord,
+): Promise<FeeRecord> {
+  return manager.getRepository(FeeRecord).save(feeRecord);
 }
 
 export function findActiveFeeRecordsBySessionIds(
   manager: EntityManager,
   teacherId: number,
   sessionIds: number[],
-): Promise<FeeRecordOrmEntity[]> {
+): Promise<FeeRecord[]> {
   if (sessionIds.length === 0) {
     return Promise.resolve([]);
   }
 
-  return manager.getRepository(FeeRecordOrmEntity).find({
+  return manager.getRepository(FeeRecord).find({
     where: {
       teacher_id: teacherId,
       session_id: In(sessionIds),
@@ -66,7 +66,7 @@ export function findActiveFeeRecordsBySessionIds(
 
 export function saveFeeRecords(
   manager: EntityManager,
-  feeRecords: FeeRecordOrmEntity[],
-): Promise<FeeRecordOrmEntity[]> {
-  return manager.getRepository(FeeRecordOrmEntity).save(feeRecords);
+  feeRecords: FeeRecord[],
+): Promise<FeeRecord[]> {
+  return manager.getRepository(FeeRecord).save(feeRecords);
 }

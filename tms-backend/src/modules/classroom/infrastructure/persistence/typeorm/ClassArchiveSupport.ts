@@ -8,9 +8,9 @@ import {
 } from '../../../../../entities/index.js';
 import { SessionStatus } from '../../../../../entities/enums.js';
 import { ClassServiceError } from '../../../../../shared/errors/class.error.js';
-import { TypeOrmFinanceFeeSync, type FinanceFeeSync } from '../../../../finance/index.js';
+import { TypeOrmFinanceFeeSync } from '../../../../finance/index.js';
 
-const financeFeeSync: FinanceFeeSync = new TypeOrmFinanceFeeSync();
+const financeFeeSync = new TypeOrmFinanceFeeSync();
 
 export async function assertClassArchivable(
   manager: EntityManager,

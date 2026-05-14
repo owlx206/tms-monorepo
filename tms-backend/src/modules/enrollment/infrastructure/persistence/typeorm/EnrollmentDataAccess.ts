@@ -6,8 +6,8 @@ import { FeeRecordStatus } from '../../../../../entities/enums.js';
 import { Transaction } from '../../../../../entities/transaction.entity.js';
 import { parseAmountToBigInt } from '../../../../../shared/helpers/money.js';
 import type { StudentBalanceSnapshot, StudentListFilters } from '../../../application/dto/StudentDto.js';
-import { Enrollment } from './EnrollmentOrmEntity.js';
-import { Student } from './StudentOrmEntity.js';
+import { Enrollment } from '../../../../../entities/enrollment.entity.js';
+import { Student } from '../../../../../entities/student.entity.js';
 
 export function createZeroBalanceSnapshot(): StudentBalanceSnapshot {
   return {

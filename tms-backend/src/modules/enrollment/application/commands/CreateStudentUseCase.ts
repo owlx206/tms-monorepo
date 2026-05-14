@@ -8,21 +8,25 @@ import { CodeforcesHandle } from '../../domain/value-objects/CodeforcesHandle.js
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
-import type { ClassroomPort } from '../ports/ClassroomPort.js';
+import type { TypeOrmClassroomAccess } from '../../infrastructure/persistence/typeorm/TypeOrmClassroomAccess.js';
 import type { CreateStudentCommand } from '../dto/CreateStudentCommand.js';
 
 export class CreateStudentUseCase implements UseCase<CreateStudentCommand, StudentSummary> {
   constructor(
     private readonly students: StudentRepository,
     private readonly enrollments: EnrollmentRepository,
-    private readonly classroom: ClassroomPort,
+    private readonly classroom: TypeOrmClassroomAccess,
   ) {}
 
   async execute(command: CreateStudentCommand): Promise<StudentSummary> {
-    await this.classroom.ensureActiveClass(command.classId);
+    await this.classroom.ensureActiveClass(command.teacherId, command.classId);
 
     const codeforcesHandle = CodeforcesHandle.fromNullable(command.codeforcesHandle);
-    if (codeforcesHandle && await this.students.codeforcesHandleExists(command.teacherId, codeforcesHandle.value)) {
+    if (!codeforcesHandle) {
+      throw new DomainError('codeforces_handle_required', 'codeforces_handle is required');
+    }
+
+    if (await this.students.codeforcesHandleExists(command.teacherId, codeforcesHandle.value)) {
       throw new DomainError('codeforces_handle_already_exists', 'codeforces_handle already exists');
     }
 
@@ -30,8 +34,8 @@ export class CreateStudentUseCase implements UseCase<CreateStudentCommand, Stude
       teacherId: command.teacherId,
       fullName: command.fullName,
       codeforcesHandle,
-      discordUsername: command.discordUsername,
-      discordUserId: command.discordUserId,
+      discordUsername: null,
+      discordUserId: null,
       phone: command.phone,
       note: command.note,
     });

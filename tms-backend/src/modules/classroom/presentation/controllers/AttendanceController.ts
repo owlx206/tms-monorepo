@@ -5,7 +5,7 @@ import type {
   AttendanceListFilters,
   UpsertSessionAttendanceInput,
 } from '../../application/dto/AttendanceDto.js';
-import { AttendanceReadService } from '../../application/queries/AttendanceReadService.js';
+import { AttendanceUseCase } from '../../application/queries/AttendanceUseCase.js';
 import {
   getSessionId,
   getStudentId,
@@ -25,7 +25,7 @@ type AttendanceParams = {
 };
 
 type AttendanceDependencies = {
-  readService: AttendanceReadService;
+  attendance: AttendanceUseCase;
   commandHandlers: {
     upsertSessionAttendance(input: {
       teacherId: number;
@@ -70,7 +70,7 @@ export class AttendanceController implements Controller {
   private async getSessionAttendance(
     request: HttpRequest<unknown, AttendanceParams>,
   ): Promise<HttpResponse> {
-    const data = await this.dependencies.readService.getSessionAttendance(
+    const data = await this.dependencies.attendance.getForSession(
       getTeacherId(request),
       getSessionId(request),
     );
@@ -114,7 +114,7 @@ export class AttendanceController implements Controller {
   private async listAttendanceRecords(
     request: HttpRequest<unknown, AttendanceParams, AttendanceListFilters>,
   ): Promise<HttpResponse> {
-    const attendance = await this.dependencies.readService.listAttendanceRecords(
+    const attendance = await this.dependencies.attendance.listRecords(
       getTeacherId(request),
       request.query ?? {},
     );

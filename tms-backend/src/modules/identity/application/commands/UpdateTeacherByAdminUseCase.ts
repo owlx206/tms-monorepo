@@ -3,13 +3,13 @@ import { ServiceError } from '../../../../shared/errors/service.error.js';
 import { isUniqueViolation } from '../mappers/AuthMapper.js';
 import { toAdminTeacher } from '../mappers/AdminMapper.js';
 import type { UpdateTeacherByAdminInput } from '../dto/AdminDto.js';
-import type { PasswordHasher } from '../ports/PasswordHasher.js';
+import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
 import type { TeacherRepository } from '../../infrastructure/persistence/typeorm/TeacherRepository.js';
 
 export class UpdateTeacherByAdminUseCase {
   constructor(
     private readonly teacherRepository: TeacherRepository,
-    private readonly passwordHasher: PasswordHasher,
+    private readonly passwordHasher: BcryptPasswordHasher,
   ) {}
 
   async execute(actorTeacherId: number, teacherId: number, input: UpdateTeacherByAdminInput) {

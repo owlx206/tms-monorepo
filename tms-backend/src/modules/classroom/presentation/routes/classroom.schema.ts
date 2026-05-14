@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 import { ClassStatus, SessionStatus } from '../../../../entities/index.js';
-import { dateTimeSchema, positiveIntegerSchema, requiredTrimmedStringSchema } from '../../../../shared/schemas/common.schemas.js';
+import {
+  booleanSchema,
+  dateTimeSchema,
+  positiveIntegerSchema,
+  requiredTrimmedStringSchema,
+} from '../../../../shared/schemas/common.schemas.js';
 
 const dateOnlyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
 const timePattern = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
@@ -80,6 +85,7 @@ export const sessionIdParamSchema = z.object({
 
 export const classListQuerySchema = z.object({
   status: z.nativeEnum(ClassStatus).optional(),
+  ready_only: booleanSchema.optional(),
 });
 
 export const classScheduleBodySchema = z.object({
@@ -94,13 +100,13 @@ export const classScheduleBodySchema = z.object({
 export const createClassBodySchema = z.object({
   name: requiredTrimmedStringSchema,
   fee_per_session: feePerSessionSchema,
-  schedules: z.array(classScheduleBodySchema).optional(),
+  schedules: z.array(classScheduleBodySchema).min(1, 'class must have at least one schedule'),
 });
 
 export const updateClassBodySchema = z.object({
   name: requiredTrimmedStringSchema.optional(),
   fee_per_session: feePerSessionSchema.optional(),
-  schedules: z.array(classScheduleBodySchema).optional(),
+  schedules: z.array(classScheduleBodySchema).min(1, 'class must have at least one schedule').optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: 'at least one field is required',
 });

@@ -6,14 +6,14 @@ import { CodeforcesHandle } from '../../domain/value-objects/CodeforcesHandle.js
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
-import type { BalanceSnapshotPort } from '../ports/BalanceSnapshotPort.js';
+import type { TypeOrmBalanceSnapshotReader } from '../../infrastructure/persistence/typeorm/TypeOrmBalanceSnapshotReader.js';
 import type { UpdateStudentCommand } from '../dto/UpdateStudentCommand.js';
 
 export class UpdateStudentUseCase implements UseCase<UpdateStudentCommand, StudentSummary> {
   constructor(
     private readonly students: StudentRepository,
     private readonly enrollments: EnrollmentRepository,
-    private readonly balanceSnapshots: BalanceSnapshotPort,
+    private readonly balanceSnapshots: TypeOrmBalanceSnapshotReader,
   ) {}
 
   async execute(command: UpdateStudentCommand): Promise<StudentSummary> {
@@ -26,22 +26,17 @@ export class UpdateStudentUseCase implements UseCase<UpdateStudentCommand, Stude
 
     if (command.codeforcesHandle !== undefined) {
       const codeforcesHandle = CodeforcesHandle.fromNullable(command.codeforcesHandle);
+      if (!codeforcesHandle) {
+        throw new DomainError('codeforces_handle_required', 'codeforces_handle is required');
+      }
+
       if (
-        codeforcesHandle
-        && await this.students.codeforcesHandleExists(command.teacherId, codeforcesHandle.value, command.studentId)
+        await this.students.codeforcesHandleExists(command.teacherId, codeforcesHandle.value, command.studentId)
       ) {
         throw new DomainError('codeforces_handle_already_exists', 'codeforces_handle already exists');
       }
 
       student.updateCodeforcesHandle(codeforcesHandle);
-    }
-
-    if (command.discordUsername !== undefined) {
-      student.updateDiscordUsername(command.discordUsername);
-    }
-
-    if (command.discordUserId !== undefined) {
-      student.updateDiscordUserId(command.discordUserId);
     }
 
     if (command.phone !== undefined) {

@@ -1,16 +1,13 @@
-import { DiscordRecipientResolver } from '../../../../integrations/discord/discord-recipient-resolver.js';
-import type {
-  DiscordRecipientResolverPort,
-  DiscordServerContext,
-} from '../../application/ports/DiscordRecipientResolverPort.js';
+import { DiscordRecipientResolver } from '../../../../infrastructure/external/discord/discord-recipient-resolver.js';
+import type { DiscordServerContext, ResolvedDiscordRecipient } from './discord.types.js';
 
-export class DefaultDiscordRecipientResolver implements DiscordRecipientResolverPort {
+export class DefaultDiscordRecipientResolver {
   constructor(
     private readonly defaultBotToken: string | null | undefined = null,
     private readonly discordRecipientResolver = new DiscordRecipientResolver(),
   ) {}
 
-  resolve(server: DiscordServerContext, discordUsername: string | null) {
+  resolve(server: DiscordServerContext, discordUsername: string | null): Promise<ResolvedDiscordRecipient> {
     return this.discordRecipientResolver.resolve(
       {
         ...server,

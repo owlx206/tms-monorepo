@@ -1,7 +1,6 @@
-import { DiscordMessageType } from '../../../../entities/enums.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { ChannelPostInput } from '../dto/MessagingDto.js';
-import type { DiscordGatewayFactory } from '../ports/DiscordGateway.js';
+import type { StoredDiscordGatewayFactory } from '../../infrastructure/discord/StoredDiscordGatewayFactory.js';
 import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
 
 function normalizeIdArray(values: number[] | undefined): number[] {
@@ -27,7 +26,7 @@ function toFailureMessage(error: unknown, fallback: string): string {
 export class SendChannelPostUseCase {
   constructor(
     private readonly messagingWriteRepository: MessagingWriteRepository,
-    private readonly discordGatewayFactory: DiscordGatewayFactory,
+    private readonly discordGatewayFactory: StoredDiscordGatewayFactory,
   ) {}
 
   async execute(teacherId: number, input: ChannelPostInput) {
@@ -73,21 +72,9 @@ export class SendChannelPostUseCase {
       }
     }
 
-    const savedMessages = successfulServers.length === 0
-      ? []
-      : await this.messagingWriteRepository.createChannelPostMessages(
-        successfulServers.map((server) => ({
-          teacher_id: teacherId,
-          type: DiscordMessageType.ChannelPost,
-          content,
-          server_id: server.id,
-        })),
-      );
-
     return {
-      messages: savedMessages,
       targets_total: orderedServers.length,
-      sent: savedMessages.length,
+      sent: successfulServers.length,
       failed: failures.length,
       failures,
     };

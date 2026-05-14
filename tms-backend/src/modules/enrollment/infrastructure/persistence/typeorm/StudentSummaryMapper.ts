@@ -3,7 +3,7 @@ import type {
   EnrollmentStudentStatus,
 } from '../../../domain/models/Student.js';
 import type { StudentBalanceSnapshot, StudentSummary } from '../../../application/dto/StudentDto.js';
-import type { Student } from './StudentOrmEntity.js';
+import type { Student } from '../../../../../entities/student.entity.js';
 
 export function toStudentSummary(
   student: Student,

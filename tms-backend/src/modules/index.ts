@@ -8,11 +8,11 @@ import { topicModule } from './topic/topic.module.js';
 
 export const appModules: AppModule[] = [
   identityModule,
+  messagingModule,
   classroomModule,
   enrollmentModule,
   financeModule,
   topicModule,
-  messagingModule,
 ];
 
 export type { AppModule, ModuleRoute } from './module.types.js';

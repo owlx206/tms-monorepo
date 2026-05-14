@@ -1,5 +1,5 @@
 import config from './config.js';
-import { AppDataSource, initializeDatabase } from './data-source.js';
+import { AppDataSource, initializeDatabase } from './infrastructure/database/data-source.js';
 import { createApp } from './app.js';
 import { createJobRunner } from './jobs/index.js';
 import { ensureSystemAdminAccount } from './modules/identity/index.js';
@@ -69,4 +69,3 @@ main().catch((error: unknown) => {
   console.error(error);
   process.exit(1);
 });
-

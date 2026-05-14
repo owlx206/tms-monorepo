@@ -9,7 +9,7 @@ export type ClassScheduleInput = {
 export type CreateClassInput = {
   name: string;
   fee_per_session: string;
-  schedules?: ClassScheduleInput[];
+  schedules: ClassScheduleInput[];
 };
 
 export type UpdateClassInput = {
@@ -20,6 +20,7 @@ export type UpdateClassInput = {
 
 export type ClassListFilters = {
   status?: ClassStatus;
+  ready_only?: boolean;
 };
 
 export type SessionListFilters = {
@@ -51,6 +52,36 @@ export type ClassScheduleSummary = {
   day_of_week: number;
   start_time: string;
   end_time: string;
+};
+
+export type ClassDiscordServerSummary = {
+  id: number;
+  teacher_id: number;
+  class_id: number;
+  discord_server_id: string;
+  name: string | null;
+  attendance_voice_channel_id: string | null;
+  notification_channel_id: string | null;
+};
+
+export type ClassDetailStudentSummary = {
+  id: number;
+  teacher_id: number;
+  full_name: string;
+  codeforces_handle: string | null;
+  discord_username: string | null;
+  discord_user_id: string | null;
+  phone: string | null;
+  status: string;
+  enrolled_at: Date;
+};
+
+export type ClassDetails = {
+  class: ClassSummary;
+  schedules: ClassScheduleSummary[];
+  discord_server: ClassDiscordServerSummary | null;
+  active_students: ClassDetailStudentSummary[];
+  is_ready: boolean;
 };
 
 export type SessionSummary = {

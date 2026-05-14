@@ -1,6 +1,6 @@
 import { type EntityManager } from 'typeorm';
 
-import { AppDataSource } from '../../../../../data-source.js';
+import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import { Class } from '../../../../../entities/class.entity.js';
 import { Student } from '../../../../../entities/student.entity.js';
 import { Teacher } from '../../../../../entities/teacher.entity.js';
@@ -9,7 +9,7 @@ import { TopicProblem } from '../../../../../entities/topic-problem.entity.js';
 import { TopicStanding } from '../../../../../entities/topic-standing.entity.js';
 import {
   resolveCodeforcesCredentials,
-} from '../../../../../integrations/codeforces/codeforces-api.service.js';
+} from '../../../../../infrastructure/external/codeforces/codeforces-api.service.js';
 import type { TopicWriteRepository } from './TopicWriteRepository.js';
 
 export class TypeOrmTopicWriteRepository implements TopicWriteRepository {

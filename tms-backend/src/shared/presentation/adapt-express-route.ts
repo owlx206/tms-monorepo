@@ -27,8 +27,18 @@ export function adaptExpressRoute(
         });
       }
 
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers?.Location) {
+        res.redirect(response.statusCode, response.headers.Location);
+        return;
+      }
+
       if (response.body === undefined) {
         res.status(response.statusCode).end();
+        return;
+      }
+
+      if (typeof response.body === 'string') {
+        res.status(response.statusCode).send(response.body);
         return;
       }
 

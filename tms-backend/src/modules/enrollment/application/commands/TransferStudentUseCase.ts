@@ -6,16 +6,16 @@ import type { StudentRepository } from '../../domain/repositories/StudentReposit
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
-import type { BalanceSnapshotPort } from '../ports/BalanceSnapshotPort.js';
-import type { ClassroomPort } from '../ports/ClassroomPort.js';
+import type { TypeOrmBalanceSnapshotReader } from '../../infrastructure/persistence/typeorm/TypeOrmBalanceSnapshotReader.js';
+import type { TypeOrmClassroomAccess } from '../../infrastructure/persistence/typeorm/TypeOrmClassroomAccess.js';
 import type { TransferStudentCommand } from '../dto/TransferStudentCommand.js';
 
 export class TransferStudentUseCase implements UseCase<TransferStudentCommand, StudentSummary> {
   constructor(
     private readonly students: StudentRepository,
     private readonly enrollments: EnrollmentRepository,
-    private readonly classroom: ClassroomPort,
-    private readonly balanceSnapshots: BalanceSnapshotPort,
+    private readonly classroom: TypeOrmClassroomAccess,
+    private readonly balanceSnapshots: TypeOrmBalanceSnapshotReader,
   ) {}
 
   async execute(command: TransferStudentCommand): Promise<StudentSummary> {
@@ -23,7 +23,7 @@ export class TransferStudentUseCase implements UseCase<TransferStudentCommand, S
     const student = await this.students.requireById(studentId);
     student.assertActive();
 
-    await this.classroom.ensureActiveClass(command.toClassId);
+    await this.classroom.ensureActiveClass(command.teacherId, command.toClassId);
 
     const activeEnrollment = await this.enrollments.findActiveByStudent(command.teacherId, studentId);
     if (!activeEnrollment) {

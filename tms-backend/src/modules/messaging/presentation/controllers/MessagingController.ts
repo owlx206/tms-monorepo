@@ -5,7 +5,6 @@ import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.
 import type {
   BulkDmInput,
   ChannelPostInput,
-  MessageListFilters,
   SelectClassDiscordServerInput,
 } from '../../application/dto/MessagingDto.js';
 import { getClassId, getTeacherId } from './request-context.js';
@@ -22,7 +21,6 @@ type MessagingControllerAction =
   | 'getSetupStatus'
   | 'upsertDiscordServer'
   | 'deleteDiscordServer'
-  | 'listMessages'
   | 'sendBulkDm'
   | 'sendChannelPost';
 
@@ -51,7 +49,6 @@ type MessagingControllerDependencies = {
     input: SelectClassDiscordServerInput,
   ): Promise<unknown>;
   deleteDiscordServer(teacherId: number, classId: number): Promise<unknown>;
-  listMessages(teacherId: number, filters: MessageListFilters): Promise<unknown>;
   sendBulkDm(teacherId: number, input: BulkDmInput): Promise<unknown>;
   sendChannelPost(teacherId: number, input: ChannelPostInput): Promise<unknown>;
 };
@@ -59,8 +56,49 @@ type MessagingControllerDependencies = {
 type MessagingHttpRequest = HttpRequest<
   SelectClassDiscordServerInput | BulkDmInput | ChannelPostInput,
   { classId?: number; serverId?: number; studentId?: number },
-  MessageListFilters & { code?: string; state?: string; guild_id?: string; error?: string }
+  { code?: string; state?: string; guild_id?: string; error?: string }
 >;
+
+function renderStudentDiscordClosePage(status: string): string {
+  const safeStatus = status.replace(/[^a-z0-9_]/gi, '');
+  const isSuccess = safeStatus === 'success';
+  const title = isSuccess ? 'Discord authorization completed' : 'Discord authorization received';
+  const message = isSuccess
+    ? 'Your Discord account has been connected. This tab will close automatically.'
+    : 'Your Discord authorization was processed. This tab will close automatically.';
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #fafafa; color: #18181b; }
+    main { max-width: 420px; padding: 32px; text-align: center; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    p { margin: 0; color: #52525b; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>${title}</h1>
+    <p>${message}</p>
+    <p>If the tab does not close, you can close it now.</p>
+  </main>
+  <script>
+    try {
+      if (window.opener) {
+        window.opener.postMessage({ type: 'student-discord-authorization', status: '${safeStatus}' }, '*');
+      }
+    } catch (_) {}
+    setTimeout(function () {
+      window.close();
+    }, 300);
+  </script>
+</body>
+</html>`;
+}
 
 export class MessagingController implements Controller {
   constructor(
@@ -93,8 +131,6 @@ export class MessagingController implements Controller {
           return this.upsertDiscordServer(request);
         case 'deleteDiscordServer':
           return this.deleteDiscordServer(request);
-        case 'listMessages':
-          return this.listMessages(request);
         case 'sendBulkDm':
           return this.sendBulkDm(request);
         case 'sendChannelPost':
@@ -191,7 +227,7 @@ export class MessagingController implements Controller {
   }
 
   private async completeStudentDiscordAuthorization(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const redirectUrl = await this.dependencies.completeStudentDiscordAuthorization(
+    const status = await this.dependencies.completeStudentDiscordAuthorization(
       (request.query ?? {}) as {
         code?: string;
         state?: string;
@@ -200,12 +236,10 @@ export class MessagingController implements Controller {
     );
 
     return {
-      statusCode: 302,
-      body: {
-        redirect_to: redirectUrl,
-      },
+      statusCode: 200,
+      body: renderStudentDiscordClosePage(status),
       headers: {
-        Location: redirectUrl,
+        'Content-Type': 'text/html; charset=utf-8',
       },
     };
   }
@@ -250,18 +284,6 @@ export class MessagingController implements Controller {
     return {
       statusCode: 200,
       body: result,
-    };
-  }
-
-  private async listMessages(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const messages = await this.dependencies.listMessages(
-      getTeacherId(request),
-      (request.query ?? {}) as MessageListFilters,
-    );
-
-    return {
-      statusCode: 200,
-      body: { messages },
     };
   }
 

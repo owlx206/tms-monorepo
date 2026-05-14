@@ -1,5 +1,5 @@
 import config from '../../../../config.js';
-import { DiscordClient } from '../../../../integrations/discord/discord-api.service.js';
+import { DiscordClient } from '../../../../infrastructure/external/discord/discord-api.service.js';
 import { AuthError } from '../../../../shared/errors/auth.error.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
@@ -9,12 +9,6 @@ import {
 } from '../../infrastructure/discord/DiscordStudentOAuth.js';
 import { verifyStudentDiscordAuthorizationState } from '../../infrastructure/discord/StudentDiscordAuthorizationState.js';
 import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
-
-function studentRedirect(status: string): string {
-  const url = new URL('/students', config.frontendUrl);
-  url.searchParams.set('discord_student', status);
-  return url.toString();
-}
 
 export class CompleteStudentDiscordAuthorizationUseCase {
   constructor(
@@ -28,7 +22,7 @@ export class CompleteStudentDiscordAuthorizationUseCase {
     error?: string;
   }): Promise<string> {
     if (input.error) {
-      return studentRedirect('cancelled');
+      return 'cancelled';
     }
 
     if (!input.code || !input.state) {
@@ -64,11 +58,11 @@ export class CompleteStudentDiscordAuthorizationUseCase {
     const students = await this.repository.listDiscordMembershipSyncStudents(authState.teacher_id);
     const student = students.find((candidate) => candidate.student_id === authState.student_id);
     if (!student) {
-      return studentRedirect('student_not_found');
+      return 'student_not_found';
     }
 
     if (!student.active_class_id || !student.class_server) {
-      return studentRedirect('authorized_no_class_server');
+      return 'authorized_no_class_server';
     }
 
     try {
@@ -79,11 +73,11 @@ export class CompleteStudentDiscordAuthorizationUseCase {
       });
     } catch (error) {
       if (error instanceof ServiceError) {
-        return studentRedirect('authorized_join_failed');
+        return 'authorized_join_failed';
       }
       throw error;
     }
 
-    return studentRedirect('success');
+    return 'success';
   }
 }

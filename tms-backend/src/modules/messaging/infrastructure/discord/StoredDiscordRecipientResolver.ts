@@ -1,17 +1,14 @@
-import { DiscordRecipientResolver } from '../../../../integrations/discord/discord-recipient-resolver.js';
-import type {
-  DiscordRecipientResolverPort,
-  DiscordServerContext,
-} from '../../application/ports/DiscordRecipientResolverPort.js';
+import { DiscordRecipientResolver } from '../../../../infrastructure/external/discord/discord-recipient-resolver.js';
+import type { DiscordServerContext, ResolvedDiscordRecipient } from './discord.types.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
 
-export class StoredDiscordRecipientResolver implements DiscordRecipientResolverPort {
+export class StoredDiscordRecipientResolver {
   constructor(
     private readonly store: SysadminDiscordBotCredentialStore,
     private readonly resolver = new DiscordRecipientResolver(),
   ) {}
 
-  async resolve(server: DiscordServerContext, discordUsername: string | null) {
+  async resolve(server: DiscordServerContext, discordUsername: string | null): Promise<ResolvedDiscordRecipient> {
     const credential = await this.store.findDefault();
 
     return this.resolver.resolve(

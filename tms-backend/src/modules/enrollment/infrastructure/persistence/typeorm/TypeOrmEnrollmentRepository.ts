@@ -5,7 +5,7 @@ import type { Enrollment } from '../../../domain/models/Enrollment.js';
 import { StudentId } from '../../../domain/value-objects/StudentId.js';
 import type { EnrollmentRepository } from '../../../domain/repositories/EnrollmentRepository.js';
 import { EnrollmentMapper } from './EnrollmentMapper.js';
-import { Enrollment as EnrollmentOrmEntity } from './EnrollmentOrmEntity.js';
+import { Enrollment as EnrollmentOrmEntity } from '../../../../../entities/enrollment.entity.js';
 
 export class TypeOrmEnrollmentRepository implements EnrollmentRepository {
   constructor(

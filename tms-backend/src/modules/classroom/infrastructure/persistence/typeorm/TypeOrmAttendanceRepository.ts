@@ -3,22 +3,22 @@ import type { EntityManager } from 'typeorm';
 import { Enrollment } from '../../../../../entities/enrollment.entity.js';
 import { Student } from '../../../../../entities/student.entity.js';
 import type { AttendanceRepository } from './AttendanceRepository.js';
-import { AttendanceOrmEntity } from './AttendanceOrmEntity.js';
-import { ClassOrmEntity } from './ClassOrmEntity.js';
-import { SessionOrmEntity } from './SessionOrmEntity.js';
+import { Attendance } from '../../../../../entities/attendance.entity.js';
+import { Class } from '../../../../../entities/class.entity.js';
+import { Session } from '../../../../../entities/session.entity.js';
 
 export class TypeOrmAttendanceRepository implements AttendanceRepository {
   constructor(private readonly manager: EntityManager) {}
 
-  findSessionById(teacherId: number, sessionId: number): Promise<SessionOrmEntity | null> {
-    return this.manager.getRepository(SessionOrmEntity).findOneBy({
+  findSessionById(teacherId: number, sessionId: number): Promise<Session | null> {
+    return this.manager.getRepository(Session).findOneBy({
       id: sessionId,
       teacher_id: teacherId,
     });
   }
 
-  findClassById(teacherId: number, classId: number): Promise<ClassOrmEntity | null> {
-    return this.manager.getRepository(ClassOrmEntity).findOneBy({
+  findClassById(teacherId: number, classId: number): Promise<Class | null> {
+    return this.manager.getRepository(Class).findOneBy({
       id: classId,
       teacher_id: teacherId,
     });
@@ -69,16 +69,16 @@ export class TypeOrmAttendanceRepository implements AttendanceRepository {
     teacherId: number,
     sessionId: number,
     studentId: number,
-  ): Promise<AttendanceOrmEntity | null> {
-    return this.manager.getRepository(AttendanceOrmEntity).findOneBy({
+  ): Promise<Attendance | null> {
+    return this.manager.getRepository(Attendance).findOneBy({
       teacher_id: teacherId,
       session_id: sessionId,
       student_id: studentId,
     });
   }
 
-  findAttendanceBySession(teacherId: number, sessionId: number): Promise<AttendanceOrmEntity[]> {
-    return this.manager.getRepository(AttendanceOrmEntity).find({
+  findAttendanceBySession(teacherId: number, sessionId: number): Promise<Attendance[]> {
+    return this.manager.getRepository(Attendance).find({
       where: {
         teacher_id: teacherId,
         session_id: sessionId,
@@ -90,19 +90,19 @@ export class TypeOrmAttendanceRepository implements AttendanceRepository {
     teacher_id: number;
     session_id: number;
     student_id: number;
-    status: AttendanceOrmEntity['status'];
-    source: AttendanceOrmEntity['source'];
+    status: Attendance['status'];
+    source: Attendance['source'];
     overridden_at: Date | null;
     notes: string | null;
-  }): AttendanceOrmEntity {
-    return this.manager.getRepository(AttendanceOrmEntity).create(input);
+  }): Attendance {
+    return this.manager.getRepository(Attendance).create(input);
   }
 
-  save(attendance: AttendanceOrmEntity): Promise<AttendanceOrmEntity> {
-    return this.manager.getRepository(AttendanceOrmEntity).save(attendance);
+  save(attendance: Attendance): Promise<Attendance> {
+    return this.manager.getRepository(Attendance).save(attendance);
   }
 
-  remove(records: AttendanceOrmEntity[]): Promise<AttendanceOrmEntity[]> {
-    return this.manager.getRepository(AttendanceOrmEntity).remove(records);
+  remove(records: Attendance[]): Promise<Attendance[]> {
+    return this.manager.getRepository(Attendance).remove(records);
   }
 }

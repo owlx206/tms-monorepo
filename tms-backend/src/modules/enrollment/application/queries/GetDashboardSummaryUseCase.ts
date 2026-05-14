@@ -1,12 +1,16 @@
 import { parseAmountToBigInt } from '../../../../shared/helpers/money.js';
 import { EnrollmentStudentStatus } from '../../domain/models/Student.js';
-import type { FinanceReportingPort } from '../ports/FinanceReportingPort.js';
-import type { StudentReportReadRepository } from './StudentReportReadRepository.js';
+import type { TypeOrmFinanceReportReader } from '../../infrastructure/persistence/typeorm/TypeOrmFinanceReportReader.js';
+
+type DashboardReader = {
+  countActiveStudents(teacherId: number): Promise<number>;
+  countActiveClasses(teacherId: number): Promise<number>;
+};
 
 export class GetDashboardSummaryUseCase {
   constructor(
-    private readonly reports: StudentReportReadRepository,
-    private readonly finance: FinanceReportingPort,
+    private readonly reports: DashboardReader,
+    private readonly finance: TypeOrmFinanceReportReader,
   ) {}
 
   async execute(teacherId: number) {

@@ -1,8 +1,8 @@
 import { Between, type EntityManager } from 'typeorm';
 
-import { ClassOrmEntity } from './ClassOrmEntity.js';
+import { Class } from '../../../../../entities/class.entity.js';
 import type { SessionRepository } from './SessionRepository.js';
-import { SessionOrmEntity } from './SessionOrmEntity.js';
+import { Session } from '../../../../../entities/session.entity.js';
 
 function endOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
@@ -28,15 +28,15 @@ function sessionOverlaps(
 export class TypeOrmSessionRepository implements SessionRepository {
   constructor(private readonly manager: EntityManager) {}
 
-  findById(teacherId: number, sessionId: number): Promise<SessionOrmEntity | null> {
-    return this.manager.getRepository(SessionOrmEntity).findOneBy({
+  findById(teacherId: number, sessionId: number): Promise<Session | null> {
+    return this.manager.getRepository(Session).findOneBy({
       id: sessionId,
       teacher_id: teacherId,
     });
   }
 
-  findClassById(teacherId: number, classId: number): Promise<ClassOrmEntity | null> {
-    return this.manager.getRepository(ClassOrmEntity).findOneBy({
+  findClassById(teacherId: number, classId: number): Promise<Class | null> {
+    return this.manager.getRepository(Class).findOneBy({
       id: classId,
       teacher_id: teacherId,
     });
@@ -46,8 +46,8 @@ export class TypeOrmSessionRepository implements SessionRepository {
     teacherId: number,
     classId: number,
     scheduledAt: Date,
-  ): Promise<SessionOrmEntity | null> {
-    return this.manager.getRepository(SessionOrmEntity).findOneBy({
+  ): Promise<Session | null> {
+    return this.manager.getRepository(Session).findOneBy({
       teacher_id: teacherId,
       class_id: classId,
       scheduled_at: scheduledAt,
@@ -59,7 +59,7 @@ export class TypeOrmSessionRepository implements SessionRepository {
     scheduledAt: Date,
     endTime: string,
   ): Promise<boolean> {
-    const sessions = await this.manager.getRepository(SessionOrmEntity).find({
+    const sessions = await this.manager.getRepository(Session).find({
       where: {
         teacher_id: teacherId,
         scheduled_at: Between(
@@ -81,14 +81,14 @@ export class TypeOrmSessionRepository implements SessionRepository {
     class_id: number;
     scheduled_at: Date;
     end_time: string;
-    status: SessionOrmEntity['status'];
+    status: Session['status'];
     is_manual: boolean;
     cancelled_at: null;
-  }): SessionOrmEntity {
-    return this.manager.getRepository(SessionOrmEntity).create(input);
+  }): Session {
+    return this.manager.getRepository(Session).create(input);
   }
 
-  save(session: SessionOrmEntity): Promise<SessionOrmEntity> {
-    return this.manager.getRepository(SessionOrmEntity).save(session);
+  save(session: Session): Promise<Session> {
+    return this.manager.getRepository(Session).save(session);
   }
 }

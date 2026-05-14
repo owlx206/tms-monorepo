@@ -1,13 +1,14 @@
-import type { ClassScheduleOrmEntity } from './ClassScheduleOrmEntity.js';
-import type { ClassOrmEntity } from './ClassOrmEntity.js';
+import type { ClassSchedule } from '../../../../../entities/class-schedule.entity.js';
+import type { Class } from '../../../../../entities/class.entity.js';
 
 export interface ClassScheduleRepository {
-  findClassById(teacherId: number, classId: number): Promise<ClassOrmEntity | null>;
+  findClassById(teacherId: number, classId: number): Promise<Class | null>;
   findByIdForClass(
     teacherId: number,
     classId: number,
     scheduleId: number,
-  ): Promise<ClassScheduleOrmEntity | null>;
+  ): Promise<ClassSchedule | null>;
+  countByClass(teacherId: number, classId: number): Promise<number>;
   hasOverlappingPersistedSchedule(
     teacherId: number,
     schedule: {
@@ -35,7 +36,7 @@ export interface ClassScheduleRepository {
     day_of_week: number;
     start_time: string;
     end_time: string;
-  }): ClassScheduleOrmEntity;
-  save(schedule: ClassScheduleOrmEntity): Promise<ClassScheduleOrmEntity>;
-  remove(schedule: ClassScheduleOrmEntity): Promise<ClassScheduleOrmEntity>;
+  }): ClassSchedule;
+  save(schedule: ClassSchedule): Promise<ClassSchedule>;
+  remove(schedule: ClassSchedule): Promise<ClassSchedule>;
 }

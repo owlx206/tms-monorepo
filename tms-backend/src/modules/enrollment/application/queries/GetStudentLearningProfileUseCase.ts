@@ -1,10 +1,39 @@
-import type { FinanceReportingPort } from '../ports/FinanceReportingPort.js';
-import type { StudentReportReadRepository } from './StudentReportReadRepository.js';
+import type { TypeOrmFinanceReportReader } from '../../infrastructure/persistence/typeorm/TypeOrmFinanceReportReader.js';
+
+type StudentLearningProfileReader = {
+  getStudentLearningProfileSource(teacherId: number, studentId: number): Promise<{
+    student: unknown;
+    standings: Array<{
+      topic_id: number;
+      problem_id: number;
+      solved: boolean;
+      penalty_minutes: number | null;
+      pulled_at: Date;
+    }>;
+    topics: Array<{
+      id: number;
+      title: string;
+      class_id: number;
+      gym_link: string | null;
+      gym_id: string | null;
+      closed_at: Date | null;
+    }>;
+    problems: Array<{
+      id: number;
+      problem_index: string;
+      problem_name: string | null;
+    }>;
+    classes: Array<{
+      id: number;
+      name: string;
+    }>;
+  }>;
+};
 
 export class GetStudentLearningProfileUseCase {
   constructor(
-    private readonly reports: StudentReportReadRepository,
-    private readonly finance: FinanceReportingPort,
+    private readonly reports: StudentLearningProfileReader,
+    private readonly finance: TypeOrmFinanceReportReader,
   ) {}
 
   async execute(teacherId: number, studentId: number) {

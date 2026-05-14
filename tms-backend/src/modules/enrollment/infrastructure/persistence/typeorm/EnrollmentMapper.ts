@@ -1,6 +1,6 @@
 import { Enrollment } from '../../../domain/models/Enrollment.js';
 import { EnrollmentId } from '../../../domain/value-objects/EnrollmentId.js';
-import { Enrollment as EnrollmentOrmEntity } from './EnrollmentOrmEntity.js';
+import { Enrollment as EnrollmentOrmEntity } from '../../../../../entities/enrollment.entity.js';
 
 export class EnrollmentMapper {
   toPersistence(enrollment: Enrollment, entity = new EnrollmentOrmEntity()): EnrollmentOrmEntity {

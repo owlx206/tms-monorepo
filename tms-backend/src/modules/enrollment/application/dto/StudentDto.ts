@@ -13,9 +13,7 @@ export type StudentListFilters = {
 export type CreateStudentInput = {
   full_name: string;
   class_id: number;
-  codeforces_handle: string | null;
-  discord_username: string;
-  discord_user_id: string | null;
+  codeforces_handle: string;
   phone: string | null;
   note: string | null;
   enrolled_at: Date;
@@ -23,9 +21,7 @@ export type CreateStudentInput = {
 
 export type UpdateStudentInput = {
   full_name?: string;
-  codeforces_handle?: string | null;
-  discord_username?: string;
-  discord_user_id?: string | null;
+  codeforces_handle?: string;
   phone?: string | null;
   note?: string | null;
 };

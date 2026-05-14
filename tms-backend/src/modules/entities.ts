@@ -1,22 +1,20 @@
-import { AttendanceOrmEntity as Attendance } from './classroom/infrastructure/persistence/typeorm/AttendanceOrmEntity.js';
-import { ClassScheduleOrmEntity as ClassSchedule } from './classroom/infrastructure/persistence/typeorm/ClassScheduleOrmEntity.js';
-import { ClassOrmEntity as Class } from './classroom/infrastructure/persistence/typeorm/ClassOrmEntity.js';
-import { SessionOrmEntity as Session } from './classroom/infrastructure/persistence/typeorm/SessionOrmEntity.js';
-import { Enrollment } from './enrollment/infrastructure/persistence/typeorm/EnrollmentOrmEntity.js';
-import { Student } from './enrollment/infrastructure/persistence/typeorm/StudentOrmEntity.js';
-import { FeeRecordOrmEntity as FeeRecord } from './finance/infrastructure/persistence/typeorm/FeeRecordOrmEntity.js';
-import { TransactionAuditLogOrmEntity as TransactionAuditLog } from './finance/infrastructure/persistence/typeorm/TransactionAuditLogOrmEntity.js';
-import { TransactionOrmEntity as Transaction } from './finance/infrastructure/persistence/typeorm/TransactionOrmEntity.js';
-import { TeacherOrmEntity as Teacher } from './identity/infrastructure/persistence/typeorm/TeacherOrmEntity.js';
-import { SysadminDiscordBotCredentialOrmEntity as SysadminDiscordBotCredential } from './identity/infrastructure/persistence/typeorm/SysadminDiscordBotCredentialOrmEntity.js';
-import { DiscordMessageRecipientOrmEntity as DiscordMessageRecipient } from './messaging/infrastructure/persistence/typeorm/DiscordMessageRecipientOrmEntity.js';
-import { DiscordMessageOrmEntity as DiscordMessage } from './messaging/infrastructure/persistence/typeorm/DiscordMessageOrmEntity.js';
-import { DiscordServerOrmEntity as DiscordServer } from './messaging/infrastructure/persistence/typeorm/DiscordServerOrmEntity.js';
-import { TeacherDiscordChannelCacheOrmEntity as TeacherDiscordChannelCache } from './messaging/infrastructure/persistence/typeorm/TeacherDiscordChannelCacheOrmEntity.js';
-import { TeacherDiscordServerCacheOrmEntity as TeacherDiscordServerCache } from './messaging/infrastructure/persistence/typeorm/TeacherDiscordServerCacheOrmEntity.js';
-import { TopicProblemOrmEntity as TopicProblem } from './topic/infrastructure/persistence/typeorm/TopicProblemOrmEntity.js';
-import { TopicStandingOrmEntity as TopicStanding } from './topic/infrastructure/persistence/typeorm/TopicStandingOrmEntity.js';
-import { TopicOrmEntity as Topic } from './topic/infrastructure/persistence/typeorm/TopicOrmEntity.js';
+import { Attendance } from '../entities/attendance.entity.js';
+import { ClassSchedule } from '../entities/class-schedule.entity.js';
+import { Class } from '../entities/class.entity.js';
+import { Session } from '../entities/session.entity.js';
+import { Enrollment } from '../entities/enrollment.entity.js';
+import { Student } from '../entities/student.entity.js';
+import { FeeRecord } from '../entities/fee-record.entity.js';
+import { TransactionAuditLog } from '../entities/transaction-audit-log.entity.js';
+import { Transaction } from '../entities/transaction.entity.js';
+import { Teacher } from '../entities/teacher.entity.js';
+import { SysadminDiscordBotCredential } from '../entities/sysadmin-discord-bot-credential.entity.js';
+import { DiscordServer } from '../entities/discord-server.entity.js';
+import { TeacherDiscordChannelCache } from '../entities/teacher-discord-channel-cache.entity.js';
+import { TeacherDiscordServerCache } from '../entities/teacher-discord-server-cache.entity.js';
+import { TopicProblem } from '../entities/topic-problem.entity.js';
+import { TopicStanding } from '../entities/topic-standing.entity.js';
+import { Topic } from '../entities/topic.entity.js';
 
 export const appEntities = [
   Teacher,
@@ -32,8 +30,6 @@ export const appEntities = [
   DiscordServer,
   TeacherDiscordServerCache,
   TeacherDiscordChannelCache,
-  DiscordMessage,
-  DiscordMessageRecipient,
   Topic,
   TopicProblem,
   TopicStanding,

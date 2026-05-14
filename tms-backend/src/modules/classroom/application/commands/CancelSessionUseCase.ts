@@ -1,6 +1,6 @@
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { SessionSummary } from '../dto/ClassDto.js';
-import type { SessionFinancePort } from '../ports/SessionFinancePort.js';
+import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 import type { SessionRepository } from '../../infrastructure/persistence/typeorm/SessionRepository.js';
 import { SessionMapper } from '../../infrastructure/persistence/typeorm/SessionMapper.js';
 
@@ -13,7 +13,7 @@ type CancelSessionCommand = {
 export class CancelSessionUseCase {
   constructor(
     private readonly sessions: SessionRepository,
-    private readonly finance: SessionFinancePort,
+    private readonly finance: TypeOrmSessionFinanceService,
   ) {}
 
   async execute(command: CancelSessionCommand): Promise<SessionSummary> {

@@ -6,7 +6,7 @@ import type {
   CreateManualSessionInput,
   SessionListFilters,
 } from '../../application/dto/ClassDto.js';
-import { ClassSessionReadService } from '../../application/queries/ClassSessionReadService.js';
+import { SessionUseCase } from '../../application/queries/SessionUseCase.js';
 import {
   getClassId,
   getSessionId,
@@ -14,7 +14,7 @@ import {
 } from './request-context.js';
 
 type SessionDependencies = {
-  readService: ClassSessionReadService;
+  sessions: SessionUseCase;
   commandHandlers: {
     createManualSession(input: {
       teacherId: number;
@@ -71,7 +71,7 @@ export class SessionController implements Controller {
   private async listSessions(
     request: HttpRequest<unknown, SessionParams, SessionListFilters>,
   ): Promise<HttpResponse> {
-    const sessions = await this.dependencies.readService.listSessions(
+    const sessions = await this.dependencies.sessions.list(
       getTeacherId(request),
       request.query ?? {},
     );
@@ -86,7 +86,7 @@ export class SessionController implements Controller {
     request: HttpRequest<unknown, SessionParams, SessionListFilters>,
   ): Promise<HttpResponse> {
     const { status, from, to } = request.query ?? {};
-    const sessions = await this.dependencies.readService.listClassSessions(
+    const sessions = await this.dependencies.sessions.listForClass(
       getTeacherId(request),
       getClassId(request),
       { status, from, to },

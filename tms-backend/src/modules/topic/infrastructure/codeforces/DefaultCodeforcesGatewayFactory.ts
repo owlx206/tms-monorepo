@@ -1,14 +1,10 @@
 import {
   CodeforcesClient,
+  type CodeforcesCredentials,
   resolveCodeforcesCredentials,
-} from '../../../../integrations/codeforces/codeforces-api.service.js';
-import type {
-  CodeforcesCredentials,
-  CodeforcesGateway,
-  CodeforcesGatewayFactory,
-} from '../../application/ports/CodeforcesGateway.js';
+} from '../../../../infrastructure/external/codeforces/codeforces-api.service.js';
 
-class DefaultCodeforcesGateway implements CodeforcesGateway {
+class DefaultCodeforcesGateway {
   constructor(private readonly codeforcesClient: CodeforcesClient) {}
 
   fetchGymMetadata(gymId: string) {
@@ -16,8 +12,8 @@ class DefaultCodeforcesGateway implements CodeforcesGateway {
   }
 }
 
-export class DefaultCodeforcesGatewayFactory implements CodeforcesGatewayFactory {
-  create(credentials: CodeforcesCredentials): CodeforcesGateway {
+export class DefaultCodeforcesGatewayFactory {
+  create(credentials: CodeforcesCredentials | null): DefaultCodeforcesGateway {
     return new DefaultCodeforcesGateway(
       new CodeforcesClient(
         credentials

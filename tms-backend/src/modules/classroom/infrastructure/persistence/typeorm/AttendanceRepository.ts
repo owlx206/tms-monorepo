@@ -1,12 +1,12 @@
 import type { Enrollment } from '../../../../../entities/enrollment.entity.js';
 import type { Student } from '../../../../../entities/student.entity.js';
-import type { AttendanceOrmEntity } from './AttendanceOrmEntity.js';
-import type { ClassOrmEntity } from './ClassOrmEntity.js';
-import type { SessionOrmEntity } from './SessionOrmEntity.js';
+import type { Attendance } from '../../../../../entities/attendance.entity.js';
+import type { Class } from '../../../../../entities/class.entity.js';
+import type { Session } from '../../../../../entities/session.entity.js';
 
 export interface AttendanceRepository {
-  findSessionById(teacherId: number, sessionId: number): Promise<SessionOrmEntity | null>;
-  findClassById(teacherId: number, classId: number): Promise<ClassOrmEntity | null>;
+  findSessionById(teacherId: number, sessionId: number): Promise<Session | null>;
+  findClassById(teacherId: number, classId: number): Promise<Class | null>;
   findStudentById(teacherId: number, studentId: number): Promise<Student | null>;
   findEnrollmentAtSessionTime(
     teacherId: number,
@@ -23,17 +23,17 @@ export interface AttendanceRepository {
     teacherId: number,
     sessionId: number,
     studentId: number,
-  ): Promise<AttendanceOrmEntity | null>;
-  findAttendanceBySession(teacherId: number, sessionId: number): Promise<AttendanceOrmEntity[]>;
+  ): Promise<Attendance | null>;
+  findAttendanceBySession(teacherId: number, sessionId: number): Promise<Attendance[]>;
   create(input: {
     teacher_id: number;
     session_id: number;
     student_id: number;
-    status: AttendanceOrmEntity['status'];
-    source: AttendanceOrmEntity['source'];
+    status: Attendance['status'];
+    source: Attendance['source'];
     overridden_at: Date | null;
     notes: string | null;
-  }): AttendanceOrmEntity;
-  save(attendance: AttendanceOrmEntity): Promise<AttendanceOrmEntity>;
-  remove(records: AttendanceOrmEntity[]): Promise<AttendanceOrmEntity[]>;
+  }): Attendance;
+  save(attendance: Attendance): Promise<Attendance>;
+  remove(records: Attendance[]): Promise<Attendance[]>;
 }

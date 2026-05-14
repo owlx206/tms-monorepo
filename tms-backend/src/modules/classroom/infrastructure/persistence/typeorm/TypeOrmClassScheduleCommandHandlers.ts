@@ -1,12 +1,10 @@
-import { AppDataSource } from '../../../../../data-source.js';
-import { CreateClassScheduleUseCase } from '../../../application/commands/CreateClassScheduleUseCase.js';
-import { DeleteClassScheduleUseCase } from '../../../application/commands/DeleteClassScheduleUseCase.js';
-import { UpdateClassScheduleUseCase } from '../../../application/commands/UpdateClassScheduleUseCase.js';
+import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
+import { ClassScheduleUseCase } from '../../../application/commands/ClassScheduleUseCase.js';
 import type {
   ClassScheduleInput,
 } from '../../../application/dto/ClassDto.js';
 import { TypeOrmClassScheduleRepository } from './TypeOrmClassScheduleRepository.js';
-import { TypeOrmClassScheduleSessionGenerationPort } from './TypeOrmClassScheduleSessionGenerationPort.js';
+import { TypeOrmClassScheduleSessionGenerator } from './TypeOrmClassScheduleSessionGenerator.js';
 
 export class TypeOrmClassScheduleCommandHandlers {
   async createClassSchedule(input: {
@@ -16,9 +14,9 @@ export class TypeOrmClassScheduleCommandHandlers {
   }) {
     return AppDataSource.transaction(async (manager) => {
       const schedules = new TypeOrmClassScheduleRepository(manager);
-      const sessionGeneration = new TypeOrmClassScheduleSessionGenerationPort(manager);
-      const useCase = new CreateClassScheduleUseCase(schedules, sessionGeneration);
-      return useCase.execute(input);
+      const sessionGeneration = new TypeOrmClassScheduleSessionGenerator(manager);
+      const useCase = new ClassScheduleUseCase(schedules, sessionGeneration);
+      return useCase.create(input);
     });
   }
 
@@ -30,9 +28,9 @@ export class TypeOrmClassScheduleCommandHandlers {
   }) {
     return AppDataSource.transaction(async (manager) => {
       const schedules = new TypeOrmClassScheduleRepository(manager);
-      const sessionGeneration = new TypeOrmClassScheduleSessionGenerationPort(manager);
-      const useCase = new UpdateClassScheduleUseCase(schedules, sessionGeneration);
-      return useCase.execute(input);
+      const sessionGeneration = new TypeOrmClassScheduleSessionGenerator(manager);
+      const useCase = new ClassScheduleUseCase(schedules, sessionGeneration);
+      return useCase.update(input);
     });
   }
 
@@ -43,9 +41,9 @@ export class TypeOrmClassScheduleCommandHandlers {
   }) {
     return AppDataSource.transaction(async (manager) => {
       const schedules = new TypeOrmClassScheduleRepository(manager);
-      const sessionGeneration = new TypeOrmClassScheduleSessionGenerationPort(manager);
-      const useCase = new DeleteClassScheduleUseCase(schedules, sessionGeneration);
-      return useCase.execute(input);
+      const sessionGeneration = new TypeOrmClassScheduleSessionGenerator(manager);
+      const useCase = new ClassScheduleUseCase(schedules, sessionGeneration);
+      return useCase.delete(input);
     });
   }
 }

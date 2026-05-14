@@ -4,7 +4,7 @@ import type {
   AttendanceRecordSummary,
   UpsertSessionAttendanceInput,
 } from '../dto/AttendanceDto.js';
-import type { SessionFinancePort } from '../ports/SessionFinancePort.js';
+import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 import type { AttendanceRepository } from '../../infrastructure/persistence/typeorm/AttendanceRepository.js';
 import { AttendanceMapper } from '../../infrastructure/persistence/typeorm/AttendanceMapper.js';
 
@@ -18,7 +18,7 @@ type UpsertSessionAttendanceCommand = {
 export class UpsertSessionAttendanceUseCase {
   constructor(
     private readonly attendanceRepository: AttendanceRepository,
-    private readonly finance: SessionFinancePort,
+    private readonly finance: TypeOrmSessionFinanceService,
   ) {}
 
   async execute(command: UpsertSessionAttendanceCommand): Promise<AttendanceRecordSummary> {

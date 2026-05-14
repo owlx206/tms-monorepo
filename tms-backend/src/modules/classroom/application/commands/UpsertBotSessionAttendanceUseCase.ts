@@ -1,7 +1,7 @@
 import { AttendanceSource, AttendanceStatus } from '../../../../entities/enums.js';
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { AttendanceRecordSummary } from '../dto/AttendanceDto.js';
-import type { SessionFinancePort } from '../ports/SessionFinancePort.js';
+import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 import type { AttendanceRepository } from '../../infrastructure/persistence/typeorm/AttendanceRepository.js';
 import { AttendanceMapper } from '../../infrastructure/persistence/typeorm/AttendanceMapper.js';
 
@@ -14,7 +14,7 @@ type UpsertBotSessionAttendanceCommand = {
 export class UpsertBotSessionAttendanceUseCase {
   constructor(
     private readonly attendanceRepository: AttendanceRepository,
-    private readonly finance: SessionFinancePort,
+    private readonly finance: TypeOrmSessionFinanceService,
   ) {}
 
   async execute(command: UpsertBotSessionAttendanceCommand): Promise<AttendanceRecordSummary | null> {

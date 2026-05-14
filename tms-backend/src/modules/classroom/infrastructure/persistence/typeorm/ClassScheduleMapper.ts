@@ -1,8 +1,8 @@
 import type { ClassScheduleSummary } from '../../../application/dto/ClassDto.js';
-import type { ClassScheduleOrmEntity } from './ClassScheduleOrmEntity.js';
+import type { ClassSchedule } from '../../../../../entities/class-schedule.entity.js';
 
 export class ClassScheduleMapper {
-  static toSummary(schedule: ClassScheduleOrmEntity): ClassScheduleSummary {
+  static toSummary(schedule: ClassSchedule): ClassScheduleSummary {
     return {
       id: schedule.id,
       teacher_id: schedule.teacher_id,

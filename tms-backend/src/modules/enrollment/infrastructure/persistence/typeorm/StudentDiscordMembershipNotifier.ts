@@ -1,7 +1,7 @@
 import type {
-  StudentDiscordMembershipPort,
   StudentDiscordInviteResult,
-} from '../../../application/ports/StudentDiscordMembershipPort.js';
+  TypeOrmStudentDiscordMembershipService,
+} from './TypeOrmStudentDiscordMembershipService.js';
 
 const discordAutomationNotConfigured: StudentDiscordInviteResult = {
   sent: false,
@@ -9,27 +9,43 @@ const discordAutomationNotConfigured: StudentDiscordInviteResult = {
 };
 
 export class StudentDiscordMembershipNotifier {
-  constructor(private readonly studentDiscordMembershipPort?: StudentDiscordMembershipPort) {}
+  constructor(private readonly studentDiscordMembershipService?: TypeOrmStudentDiscordMembershipService) {}
 
   inviteStudentToCurrentClass(input: {
     teacherId: number;
     studentId: number;
   }): Promise<StudentDiscordInviteResult> {
-    return this.studentDiscordMembershipPort?.inviteStudentToCurrentClass(
+    return this.studentDiscordMembershipService?.inviteStudentToCurrentClass(
       input.teacherId,
       input.studentId,
     ) ?? Promise.resolve(discordAutomationNotConfigured);
   }
 
-  studentEnrolled(teacherId: number, studentId: number, classId: number): void {
-    void this.studentDiscordMembershipPort?.onStudentEnrolled(teacherId, studentId, classId).catch(() => {});
+  studentEnrolled(
+    teacherId: number,
+    studentId: number,
+    classId: number,
+  ): Promise<StudentDiscordInviteResult> {
+    return this.studentDiscordMembershipService?.onStudentEnrolled(
+      teacherId,
+      studentId,
+      classId,
+    ) ?? Promise.resolve(discordAutomationNotConfigured);
   }
 
-  studentTransferred(teacherId: number, studentId: number, toClassId: number): void {
-    void this.studentDiscordMembershipPort?.onStudentTransferred(teacherId, studentId, toClassId).catch(() => {});
+  studentTransferred(
+    teacherId: number,
+    studentId: number,
+    toClassId: number,
+  ): Promise<StudentDiscordInviteResult> {
+    return this.studentDiscordMembershipService?.onStudentTransferred(
+      teacherId,
+      studentId,
+      toClassId,
+    ) ?? Promise.resolve(discordAutomationNotConfigured);
   }
 
   studentWithdrawn(teacherId: number, studentId: number): void {
-    void this.studentDiscordMembershipPort?.onStudentWithdrawn(teacherId, studentId).catch(() => {});
+    void this.studentDiscordMembershipService?.onStudentWithdrawn(teacherId, studentId).catch(() => {});
   }
 }

@@ -113,7 +113,7 @@ export function Students() {
     setRequestNotice("");
     try {
       const [classList, studentList] = await Promise.all([
-        listClasses("active"),
+        listClasses("active", { readyOnly: true }),
         listStudents(),
       ]);
 
@@ -227,9 +227,7 @@ export function Students() {
   const handleCreateStudent = async (payload: {
     full_name: string;
     class_id: number;
-    codeforces_handle: string | null;
-    discord_username: string;
-    discord_user_id: string | null;
+    codeforces_handle: string;
     note: string | null;
   }) => {
     setSubmitting(true);
@@ -268,9 +266,7 @@ export function Students() {
   const handleUpdateStudent = async (payload: {
     student_id: number;
     full_name: string;
-    codeforces_handle: string | null;
-    discord_username: string;
-    discord_user_id: string | null;
+    codeforces_handle: string;
     phone: string | null;
     note: string | null;
   }) => {
@@ -1044,9 +1040,7 @@ function AddStudentModal({
   onSubmit: (payload: {
     full_name: string;
     class_id: number;
-    codeforces_handle: string | null;
-    discord_username: string;
-    discord_user_id: string | null;
+    codeforces_handle: string;
     note: string | null;
   }) => Promise<void>;
   submitting: boolean;
@@ -1055,8 +1049,6 @@ function AddStudentModal({
   const [name, setName] = useState("");
   const [classId, setClassId] = useState("");
   const [codeforcesHandle, setCodeforcesHandle] = useState("");
-  const [discordUsername, setDiscordUsername] = useState("");
-  const [discordUserId, setDiscordUserId] = useState("");
   const [localError, setLocalError] = useState("");
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -1075,17 +1067,15 @@ function AddStudentModal({
       return;
     }
 
-    if (!discordUsername.trim()) {
-      setLocalError("Discord username là bắt buộc");
+    if (!codeforcesHandle.trim()) {
+      setLocalError("Codeforces handle là bắt buộc");
       return;
     }
 
     await onSubmit({
       full_name: name.trim(),
       class_id: classIdValue,
-      codeforces_handle: codeforcesHandle.trim() || null,
-      discord_username: discordUsername.trim(),
-      discord_user_id: discordUserId.trim() || null,
+      codeforces_handle: codeforcesHandle.trim(),
       note: null,
     });
   };
@@ -1118,33 +1108,13 @@ function AddStudentModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm text-zinc-600 mb-2">Codeforces Handle (tùy chọn)</label>
+            <label className="block text-sm text-zinc-600 mb-2">Codeforces Handle</label>
             <input
               type="text"
               value={codeforcesHandle}
               onChange={(event) => setCodeforcesHandle(event.target.value)}
               className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               placeholder="username"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-600 mb-2">Discord Username</label>
-            <input
-              type="text"
-              value={discordUsername}
-              onChange={(event) => setDiscordUsername(event.target.value)}
-              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="username#0001 hoặc @username"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-600 mb-2">Discord User ID (tùy chọn)</label>
-            <input
-              type="text"
-              value={discordUserId}
-              onChange={(event) => setDiscordUserId(event.target.value)}
-              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="123456789012345678"
             />
           </div>
 
@@ -1185,9 +1155,7 @@ function EditStudentModal({
   onSubmit: (payload: {
     student_id: number;
     full_name: string;
-    codeforces_handle: string | null;
-    discord_username: string;
-    discord_user_id: string | null;
+    codeforces_handle: string;
     phone: string | null;
     note: string | null;
   }) => Promise<void>;
@@ -1196,8 +1164,6 @@ function EditStudentModal({
 }) {
   const [name, setName] = useState(student.name);
   const [codeforcesHandle, setCodeforcesHandle] = useState(student.codeforcesHandle);
-  const [discordUsername, setDiscordUsername] = useState(student.discordUsername);
-  const [discordUserId, setDiscordUserId] = useState(student.discordUserId);
   const [phone, setPhone] = useState(student.phone);
   const [localError, setLocalError] = useState("");
 
@@ -1210,17 +1176,15 @@ function EditStudentModal({
       return;
     }
 
-    if (!discordUsername.trim()) {
-      setLocalError("Discord username là bắt buộc");
+    if (!codeforcesHandle.trim()) {
+      setLocalError("Codeforces handle là bắt buộc");
       return;
     }
 
     await onSubmit({
       student_id: student.id,
       full_name: name.trim(),
-      codeforces_handle: codeforcesHandle.trim() || null,
-      discord_username: discordUsername.trim(),
-      discord_user_id: discordUserId.trim() || null,
+      codeforces_handle: codeforcesHandle.trim(),
       phone: phone.trim() || null,
       note: null,
     });
@@ -1251,26 +1215,6 @@ function EditStudentModal({
               onChange={(event) => setCodeforcesHandle(event.target.value)}
               className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               placeholder="username"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-600 mb-2">Discord Username</label>
-            <input
-              type="text"
-              value={discordUsername}
-              onChange={(event) => setDiscordUsername(event.target.value)}
-              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="username#0001 hoặc @username"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-600 mb-2">Discord User ID (tùy chọn)</label>
-            <input
-              type="text"
-              value={discordUserId}
-              onChange={(event) => setDiscordUserId(event.target.value)}
-              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="123456789012345678"
             />
           </div>
           <div>

@@ -1,9 +1,8 @@
 import bcrypt from 'bcrypt';
 
 import config from '../../../../config.js';
-import type { PasswordHasher } from '../../application/ports/PasswordHasher.js';
 
-export class BcryptPasswordHasher implements PasswordHasher {
+export class BcryptPasswordHasher {
   hash(value: string): Promise<string> {
     return bcrypt.hash(value, config.auth.bcryptSaltRounds);
   }

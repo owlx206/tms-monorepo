@@ -1,43 +1,45 @@
 import { ServiceError } from '../../../../shared/errors/service.error.js';
-import { DiscordClient } from '../../../../integrations/discord/discord-api.service.js';
-import type { DiscordGateway, DiscordGatewayFactory } from '../../application/ports/DiscordGateway.js';
+import { DiscordClient } from '../../../../infrastructure/external/discord/discord-api.service.js';
+import type {
+  ChannelMessagePayload,
+  DirectMessagePayload,
+  DiscordChannelOwnershipCheck,
+  DiscordGuildChannel,
+  DiscordGuildMetadata,
+} from './discord.types.js';
 
-class DiscordClientGateway implements DiscordGateway {
+class DiscordClientGateway {
   constructor(private readonly discordClient: DiscordClient) {}
 
-  listGuilds() {
+  listGuilds(): Promise<DiscordGuildMetadata[]> {
     return this.discordClient.listGuilds();
   }
 
-  fetchGuildMetadata(discordServerId: string) {
+  fetchGuildMetadata(discordServerId: string): Promise<DiscordGuildMetadata> {
     return this.discordClient.fetchGuildMetadata(discordServerId);
   }
 
-  listGuildChannels(guildId: string) {
+  listGuildChannels(guildId: string): Promise<DiscordGuildChannel[]> {
     return this.discordClient.listGuildChannels(guildId);
   }
 
-  ensureChannelBelongsToGuild(input: {
-    channelId: string;
-    guildId: string;
-    fieldName: string;
-  }) {
+  ensureChannelBelongsToGuild(input: DiscordChannelOwnershipCheck): Promise<void> {
     return this.discordClient.ensureChannelBelongsToGuild(input);
   }
 
-  sendDirectMessage(input: { recipientUserId: string; content: string }) {
+  sendDirectMessage(input: DirectMessagePayload): Promise<unknown> {
     return this.discordClient.sendDirectMessage(input);
   }
 
-  postChannelMessage(input: { channelId: string; content: string }) {
+  postChannelMessage(input: ChannelMessagePayload): Promise<unknown> {
     return this.discordClient.postChannelMessage(input);
   }
 }
 
-export class DefaultDiscordGatewayFactory implements DiscordGatewayFactory {
+export class DefaultDiscordGatewayFactory {
   constructor(private readonly defaultBotToken: string | null | undefined = null) {}
 
-  create(botToken?: string | null): DiscordGateway {
+  create(botToken?: string | null): DiscordClientGateway {
     const resolvedBotToken = botToken?.trim() || this.defaultBotToken?.trim() || null;
     if (!resolvedBotToken) {
       throw new ServiceError('discord bot is not configured by sysadmin', 503);

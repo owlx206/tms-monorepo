@@ -1,8 +1,7 @@
-import { DiscordMessageType, DiscordSendStatus } from '../../../../entities/enums.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { BulkDmInput } from '../dto/MessagingDto.js';
-import type { DiscordGatewayFactory } from '../ports/DiscordGateway.js';
-import type { DiscordRecipientResolverPort } from '../ports/DiscordRecipientResolverPort.js';
+import type { StoredDiscordGatewayFactory } from '../../infrastructure/discord/StoredDiscordGatewayFactory.js';
+import type { StoredDiscordRecipientResolver } from '../../infrastructure/discord/StoredDiscordRecipientResolver.js';
 import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
 
 function normalizeIdArray(values: number[] | undefined): number[] {
@@ -28,8 +27,8 @@ function toFailureMessage(error: unknown, fallback: string): string {
 export class SendBulkDmUseCase {
   constructor(
     private readonly messagingWriteRepository: MessagingWriteRepository,
-    private readonly discordGatewayFactory: DiscordGatewayFactory,
-    private readonly discordRecipientResolver: DiscordRecipientResolverPort,
+    private readonly discordGatewayFactory: StoredDiscordGatewayFactory,
+    private readonly discordRecipientResolver: StoredDiscordRecipientResolver,
   ) {}
 
   async execute(teacherId: number, input: BulkDmInput) {
@@ -61,14 +60,14 @@ export class SendBulkDmUseCase {
   }
 
   private async deliverBulkDm(
-    teacherId: number,
+    _teacherId: number,
     content: string,
     recipients: Awaited<ReturnType<MessagingWriteRepository['listBulkDmRecipientContextsByClass']>>,
   ) {
     const deliveryResults: Array<{
       student_id: number;
       student_name: string;
-      status: DiscordSendStatus;
+      status: DeliveryStatus;
       sent_at: Date | null;
       error_detail: string | null;
     }> = [];
@@ -78,7 +77,7 @@ export class SendBulkDmUseCase {
         deliveryResults.push({
           student_id: recipient.student_id,
           student_name: recipient.student_name,
-          status: DiscordSendStatus.Failed,
+          status: 'failed',
           sent_at: null,
           error_detail: 'student is not in an active class',
         });
@@ -90,7 +89,7 @@ export class SendBulkDmUseCase {
         deliveryResults.push({
           student_id: recipient.student_id,
           student_name: recipient.student_name,
-          status: DiscordSendStatus.Failed,
+          status: 'failed',
           sent_at: null,
           error_detail: 'discord server is not configured for this class',
         });
@@ -105,7 +104,7 @@ export class SendBulkDmUseCase {
         deliveryResults.push({
           student_id: recipient.student_id,
           student_name: recipient.student_name,
-          status: DiscordSendStatus.Failed,
+          status: 'failed',
           sent_at: null,
           error_detail: resolvedRecipient.error ?? 'failed to resolve discord_username',
         });
@@ -120,7 +119,7 @@ export class SendBulkDmUseCase {
         deliveryResults.push({
           student_id: recipient.student_id,
           student_name: recipient.student_name,
-          status: DiscordSendStatus.Sent,
+          status: 'sent',
           sent_at: new Date(),
           error_detail: null,
         });
@@ -128,39 +127,21 @@ export class SendBulkDmUseCase {
         deliveryResults.push({
           student_id: recipient.student_id,
           student_name: recipient.student_name,
-          status: DiscordSendStatus.Failed,
+          status: 'failed',
           sent_at: null,
           error_detail: toFailureMessage(error, 'failed to send DM'),
         });
       }
     }
 
-    const { message, recipients: savedRecipients } =
-      await this.messagingWriteRepository.createMessageWithRecipients({
-        messageValues: {
-          teacher_id: teacherId,
-          type: DiscordMessageType.BulkDm,
-          content,
-          server_id: null,
-        },
-        recipientValues: deliveryResults.map((result) => ({
-          teacher_id: teacherId,
-          student_id: result.student_id,
-          status: result.status,
-          sent_at: result.sent_at,
-          error_detail: result.error_detail,
-        })),
-      });
-
-    const sentCount = savedRecipients.filter((recipient) => recipient.status === DiscordSendStatus.Sent).length;
+    const sentCount = deliveryResults.filter((result) => result.status === 'sent').length;
 
     return {
-      message,
-      recipients_total: savedRecipients.length,
+      recipients_total: deliveryResults.length,
       sent: sentCount,
-      failed: savedRecipients.length - sentCount,
+      failed: deliveryResults.length - sentCount,
       failures: deliveryResults
-        .filter((result) => result.status === DiscordSendStatus.Failed)
+        .filter((result) => result.status === 'failed')
         .map((result) => ({
           student_id: result.student_id,
           student_name: result.student_name,
@@ -169,3 +150,4 @@ export class SendBulkDmUseCase {
     };
   }
 }
+type DeliveryStatus = 'sent' | 'failed';

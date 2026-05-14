@@ -1,6 +1,6 @@
-import { AppDataSource } from '../../../data-source.js';
+import { AppDataSource } from '../../../infrastructure/database/data-source.js';
 import { DiscordServer } from '../../../entities/index.js';
-import { DiscordClient } from '../../../integrations/discord/discord-api.service.js';
+import { DiscordClient } from '../../../infrastructure/external/discord/discord-api.service.js';
 import type { IntervalJob } from '../../../jobs/index.js';
 
 async function fetchDiscordServerName(discordServerId: string, botToken: string): Promise<string | null> {

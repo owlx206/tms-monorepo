@@ -15,19 +15,19 @@ import type {
   UpdateStudentInput,
   WithdrawStudentInput,
 } from '../../application/dto/StudentDto.js';
-import { StudentReadService } from '../../application/queries/StudentReadService.js';
+import { GetStudentByIdUseCase } from '../../application/queries/GetStudentByIdUseCase.js';
+import { ListStudentsUseCase } from '../../application/queries/ListStudentsUseCase.js';
 import { getStudentId, getTeacherId } from './request-context.js';
 
 type StudentControllerDependencies = {
-  readService: StudentReadService;
+  listStudents: ListStudentsUseCase;
+  getStudentById: GetStudentByIdUseCase;
   createStudent: {
     execute(input: {
       teacherId: number;
       fullName: string;
       classId: number;
-      codeforcesHandle: string | null;
-      discordUsername: string | null;
-      discordUserId: string | null;
+      codeforcesHandle: string;
       phone: string | null;
       note: string | null;
       enrolledAt: Date;
@@ -38,9 +38,7 @@ type StudentControllerDependencies = {
       teacherId: number;
       studentId: number;
       fullName?: string;
-      codeforcesHandle?: string | null;
-      discordUsername?: string;
-      discordUserId?: string | null;
+      codeforcesHandle?: string;
       phone?: string | null;
       note?: string | null;
     }): Promise<StudentSummary>;
@@ -161,7 +159,7 @@ export class StudentController implements Controller {
   }
 
   private async listStudents(request: StudentHttpRequest): Promise<HttpResponse> {
-    const students = await this.dependencies.readService.listStudents(
+    const students = await this.dependencies.listStudents.execute(
       getTeacherId(request),
       request.query ?? {},
     );
@@ -173,7 +171,7 @@ export class StudentController implements Controller {
   }
 
   private async getStudentById(request: StudentHttpRequest): Promise<HttpResponse> {
-    const student = await this.dependencies.readService.getStudentById(
+    const student = await this.dependencies.getStudentById.execute(
       getTeacherId(request),
       getStudentId(request),
     );
@@ -191,8 +189,6 @@ export class StudentController implements Controller {
       fullName: input.full_name,
       classId: input.class_id,
       codeforcesHandle: input.codeforces_handle,
-      discordUsername: input.discord_username,
-      discordUserId: input.discord_user_id,
       phone: input.phone,
       note: input.note,
       enrolledAt: input.enrolled_at,
@@ -211,8 +207,6 @@ export class StudentController implements Controller {
       studentId: getStudentId(request),
       fullName: input.full_name,
       codeforcesHandle: input.codeforces_handle,
-      discordUsername: input.discord_username,
-      discordUserId: input.discord_user_id,
       phone: input.phone,
       note: input.note,
     });
@@ -345,6 +339,7 @@ function mapDomainErrorStatus(code: string): number {
     case 'codeforces_handle_already_exists':
       return 409;
     case 'student_full_name_required':
+    case 'codeforces_handle_required':
     case 'codeforces_handle_too_long':
     case 'invalid_class_id':
     case 'transferred_at_must_be_later_than_current_enrollment_start_time':

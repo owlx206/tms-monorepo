@@ -7,4 +7,3 @@ export const attachDbContext: RequestHandler = (req, _res, next) => {
   req.dbContext = new DbContext(AppDataSource);
   next();
 };
-

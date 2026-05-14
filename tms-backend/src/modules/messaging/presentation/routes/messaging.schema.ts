@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { DiscordMessageType } from '../../../../entities/enums.js';
 import {
   nullableOptionalTrimmedStringSchema,
   optionalPositiveIntegerArraySchema,
@@ -28,10 +27,6 @@ export const upsertDiscordServerBodySchema = z.object({
   server_id: positiveIntegerSchema,
   attendance_voice_channel_id: nullableOptionalTrimmedStringSchema,
   notification_channel_id: nullableOptionalTrimmedStringSchema,
-});
-
-export const messageListQuerySchema = z.object({
-  type: z.nativeEnum(DiscordMessageType).optional(),
 });
 
 export const bulkDmBodySchema = z.object({

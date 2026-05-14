@@ -1,11 +1,11 @@
-import type { DiscordGatewayFactory } from '../ports/DiscordGateway.js';
+import type { StoredDiscordGatewayFactory } from '../../infrastructure/discord/StoredDiscordGatewayFactory.js';
 import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
 
 export class SyncTeacherDiscordServersUseCase {
   constructor(
     private readonly messagingWriteRepository: MessagingWriteRepository,
-    private readonly discordGatewayFactory: DiscordGatewayFactory,
+    private readonly discordGatewayFactory: StoredDiscordGatewayFactory,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
 

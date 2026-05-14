@@ -1,6 +1,6 @@
-import type { FeeRecordOrmEntity } from './FeeRecordOrmEntity.js';
+import type { FeeRecord } from '../../../../../entities/fee-record.entity.js';
 
 export interface FeeRecordRepository {
-  findOwnedFeeRecord(teacherId: number, feeRecordId: number): Promise<FeeRecordOrmEntity | null>;
-  save(feeRecord: FeeRecordOrmEntity): Promise<FeeRecordOrmEntity>;
+  findOwnedFeeRecord(teacherId: number, feeRecordId: number): Promise<FeeRecord | null>;
+  save(feeRecord: FeeRecord): Promise<FeeRecord>;
 }

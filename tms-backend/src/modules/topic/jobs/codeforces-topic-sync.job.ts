@@ -1,13 +1,13 @@
 import { In, IsNull } from 'typeorm';
 
-import { AppDataSource } from '../../../data-source.js';
+import { AppDataSource } from '../../../infrastructure/database/data-source.js';
 import { Enrollment, Student, Teacher, Topic, TopicProblem, TopicStanding } from '../../../entities/index.js';
 import {
   CodeforcesClient,
   extractGymIdFromLink,
   resolveCodeforcesCredentials,
   type CodeforcesCredentials,
-} from '../../../integrations/codeforces/codeforces-api.service.js';
+} from '../../../infrastructure/external/codeforces/codeforces-api.service.js';
 import type { IntervalJob } from '../../../jobs/index.js';
 
 const CODEFORCES_STANDING_SYNC_INTERVAL_MS = 15 * 1000;

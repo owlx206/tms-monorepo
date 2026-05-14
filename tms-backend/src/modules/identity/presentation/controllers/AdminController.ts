@@ -7,8 +7,8 @@ import type {
   SysadminDiscordBotCredentialInput,
   UpdateTeacherByAdminInput,
 } from '../../application/dto/AdminDto.js';
-import { AdminTeacherReadService } from '../../application/queries/AdminTeacherReadService.js';
-import { SysadminDiscordBotCredentialReadService } from '../../application/queries/SysadminDiscordBotCredentialReadService.js';
+import { GetSysadminDiscordBotCredentialUseCase } from '../../application/queries/GetSysadminDiscordBotCredentialUseCase.js';
+import { ListTeachersUseCase } from '../../application/queries/ListTeachersUseCase.js';
 import { getTeacher } from './request-context.js';
 
 type AdminControllerAction =
@@ -19,8 +19,8 @@ type AdminControllerAction =
   | 'upsertDiscordBotCredential';
 
 type AdminControllerDependencies = {
-  readService: AdminTeacherReadService;
-  discordBotReadService: SysadminDiscordBotCredentialReadService;
+  listTeachers: ListTeachersUseCase;
+  getDiscordBotCredential: GetSysadminDiscordBotCredentialUseCase;
   createTeacher: { execute(input: CreateTeacherByAdminInput): Promise<unknown> };
   updateTeacher: {
     execute(actorTeacherId: number, teacherId: number, input: UpdateTeacherByAdminInput): Promise<unknown>;
@@ -60,7 +60,7 @@ export class AdminController implements Controller {
   }
 
   private async listTeachers(): Promise<HttpResponse> {
-    const teachers = await this.dependencies.readService.listTeachers();
+    const teachers = await this.dependencies.listTeachers.execute();
 
     return {
       statusCode: 200,
@@ -98,7 +98,7 @@ export class AdminController implements Controller {
   }
 
   private async getDiscordBotCredential(): Promise<HttpResponse> {
-    const credential = await this.dependencies.discordBotReadService.get();
+    const credential = await this.dependencies.getDiscordBotCredential.execute();
 
     return {
       statusCode: 200,

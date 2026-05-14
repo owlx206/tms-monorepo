@@ -5,7 +5,7 @@ import type { Student } from '../../../domain/models/Student.js';
 import { StudentId } from '../../../domain/value-objects/StudentId.js';
 import type { StudentRepository } from '../../../domain/repositories/StudentRepository.js';
 import { StudentMapper } from './StudentMapper.js';
-import { Student as StudentOrmEntity } from './StudentOrmEntity.js';
+import { Student as StudentOrmEntity } from '../../../../../entities/student.entity.js';
 
 export class TypeOrmStudentRepository implements StudentRepository {
   constructor(

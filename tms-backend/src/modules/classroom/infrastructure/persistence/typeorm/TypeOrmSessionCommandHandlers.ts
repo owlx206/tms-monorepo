@@ -1,8 +1,8 @@
-import { AppDataSource } from '../../../../../data-source.js';
+import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import { CancelSessionUseCase } from '../../../application/commands/CancelSessionUseCase.js';
 import { CreateManualSessionUseCase } from '../../../application/commands/CreateManualSessionUseCase.js';
 import type { CreateManualSessionInput, SessionSummary } from '../../../application/dto/ClassDto.js';
-import { TypeOrmSessionFinancePort } from './TypeOrmSessionFinancePort.js';
+import { TypeOrmSessionFinanceService } from './TypeOrmSessionFinanceService.js';
 import { TypeOrmSessionRepository } from './TypeOrmSessionRepository.js';
 
 export class TypeOrmSessionCommandHandlers {
@@ -24,7 +24,7 @@ export class TypeOrmSessionCommandHandlers {
   }): Promise<SessionSummary> {
     return AppDataSource.transaction(async (manager) => {
       const sessions = new TypeOrmSessionRepository(manager);
-      const finance = new TypeOrmSessionFinancePort(manager);
+      const finance = new TypeOrmSessionFinanceService(manager);
       const useCase = new CancelSessionUseCase(sessions, finance);
       return useCase.execute({
         ...input,

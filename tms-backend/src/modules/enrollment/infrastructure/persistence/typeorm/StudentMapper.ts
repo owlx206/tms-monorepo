@@ -5,7 +5,7 @@ import {
   Student,
 } from '../../../domain/models/Student.js';
 import { StudentId } from '../../../domain/value-objects/StudentId.js';
-import { Student as StudentOrmEntity } from './StudentOrmEntity.js';
+import { Student as StudentOrmEntity } from '../../../../../entities/student.entity.js';
 
 export class StudentMapper {
   toDomain(entity: StudentOrmEntity): Student {

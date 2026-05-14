@@ -4,21 +4,22 @@ import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
 import type {
   ClassListFilters,
+  ClassDetails,
   ClassSummary,
   CreateClassInput,
   UpdateClassInput,
 } from '../../application/dto/ClassDto.js';
-import { ClassroomReadService } from '../../application/queries/ClassroomReadService.js';
+import { ClassroomUseCase } from '../../application/queries/ClassroomUseCase.js';
 import { getClassId, getTeacherId } from './request-context.js';
 
 type ClassroomControllerDependencies = {
-  readService: ClassroomReadService;
+  classroom: ClassroomUseCase;
   createClass: {
     createClass(input: {
       teacherId: number;
       name: string;
       feePerSession: string;
-      schedules?: CreateClassInput['schedules'];
+      schedules: CreateClassInput['schedules'];
     }): Promise<ClassSummary>;
   };
   updateClass: {
@@ -42,6 +43,7 @@ type ClassroomControllerDependencies = {
 type ClassroomControllerAction =
   | 'listClasses'
   | 'getClassById'
+  | 'getClassDetails'
   | 'createClass'
   | 'updateClass'
   | 'archiveClass';
@@ -61,6 +63,8 @@ export class ClassController implements Controller {
           return this.listClasses(request);
         case 'getClassById':
           return this.getClassById(request);
+        case 'getClassDetails':
+          return this.getClassDetails(request);
         case 'createClass':
           return this.createClass(request);
         case 'updateClass':
@@ -78,7 +82,7 @@ export class ClassController implements Controller {
   }
 
   private async listClasses(request: ClassroomHttpRequest): Promise<HttpResponse> {
-    const classes = await this.dependencies.readService.listClasses(
+    const classes = await this.dependencies.classroom.list(
       getTeacherId(request),
       request.query ?? {},
     );
@@ -90,7 +94,7 @@ export class ClassController implements Controller {
   }
 
   private async getClassById(request: ClassroomHttpRequest): Promise<HttpResponse> {
-    const classEntity = await this.dependencies.readService.getClassById(
+    const classEntity = await this.dependencies.classroom.getById(
       getTeacherId(request),
       getClassId(request),
     );
@@ -98,6 +102,18 @@ export class ClassController implements Controller {
     return {
       statusCode: 200,
       body: { class: classEntity },
+    };
+  }
+
+  private async getClassDetails(request: ClassroomHttpRequest): Promise<HttpResponse> {
+    const details: ClassDetails = await this.dependencies.classroom.getDetails(
+      getTeacherId(request),
+      getClassId(request),
+    );
+
+    return {
+      statusCode: 200,
+      body: { details },
     };
   }
 

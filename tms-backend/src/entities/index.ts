@@ -1,8 +1,6 @@
 export { Attendance } from './attendance.entity.js';
 export { Class } from './class.entity.js';
 export { ClassSchedule } from './class-schedule.entity.js';
-export { DiscordMessageRecipient } from './discord-message-recipient.entity.js';
-export { DiscordMessage } from './discord-message.entity.js';
 export { DiscordServer } from './discord-server.entity.js';
 export { Enrollment } from './enrollment.entity.js';
 export { FeeRecord } from './fee-record.entity.js';

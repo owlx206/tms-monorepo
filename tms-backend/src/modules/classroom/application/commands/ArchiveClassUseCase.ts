@@ -1,8 +1,8 @@
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { ClassroomClass } from '../../domain/models/Class.js';
 import type { ClassRepository } from '../../infrastructure/persistence/typeorm/ClassRepository.js';
-import type { ClassArchiveGuardPort } from '../ports/ClassArchiveGuardPort.js';
-import type { ClassSessionLifecyclePort } from '../ports/ClassSessionLifecyclePort.js';
+import type { TypeOrmClassArchiveGuard } from '../../infrastructure/persistence/typeorm/TypeOrmClassArchiveGuard.js';
+import type { TypeOrmClassSessionLifecycle } from '../../infrastructure/persistence/typeorm/TypeOrmClassSessionLifecycle.js';
 import type { ClassSummary } from '../dto/ClassDto.js';
 
 type ArchiveClassCommand = {
@@ -14,8 +14,8 @@ type ArchiveClassCommand = {
 export class ArchiveClassUseCase {
   constructor(
     private readonly classes: ClassRepository,
-    private readonly archiveGuard: ClassArchiveGuardPort,
-    private readonly sessionLifecycle: ClassSessionLifecyclePort,
+    private readonly archiveGuard: TypeOrmClassArchiveGuard,
+    private readonly sessionLifecycle: TypeOrmClassSessionLifecycle,
   ) {}
 
   async execute(command: ArchiveClassCommand): Promise<ClassSummary> {

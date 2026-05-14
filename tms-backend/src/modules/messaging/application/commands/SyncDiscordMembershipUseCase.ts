@@ -1,9 +1,9 @@
 import { StudentStatus } from '../../../../entities/enums.js';
-import { DiscordClient } from '../../../../integrations/discord/discord-api.service.js';
+import { DiscordClient } from '../../../../infrastructure/external/discord/discord-api.service.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { DiscordServer } from '../../../../entities/discord-server.entity.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
-import type { DiscordServerContext } from '../ports/DiscordRecipientResolverPort.js';
+import type { DiscordServerContext } from '../../infrastructure/discord/discord.types.js';
 import type {
   DiscordMembershipSyncFailure,
   DiscordMembershipSyncResult,

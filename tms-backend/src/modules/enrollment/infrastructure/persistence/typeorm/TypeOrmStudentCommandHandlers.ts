@@ -1,5 +1,6 @@
 import type { DataSource, EntityManager } from 'typeorm';
 
+import { ServiceError } from '../../../../../shared/errors/service.error.js';
 import { ArchivePendingStudentUseCase } from '../../../application/commands/ArchivePendingStudentUseCase.js';
 import { BulkTransferStudentsUseCase } from '../../../application/commands/BulkTransferStudentsUseCase.js';
 import { BulkWithdrawStudentsUseCase } from '../../../application/commands/BulkWithdrawStudentsUseCase.js';
@@ -16,20 +17,23 @@ import type { ReinstateStudentCommand } from '../../../application/dto/Reinstate
 import type { TransferStudentCommand } from '../../../application/dto/TransferStudentCommand.js';
 import type { UpdateStudentCommand } from '../../../application/dto/UpdateStudentCommand.js';
 import type { WithdrawStudentCommand } from '../../../application/dto/WithdrawStudentCommand.js';
-import { TypeOrmArchiveFinancePort } from './TypeOrmArchiveFinancePort.js';
-import { TypeOrmBalanceSnapshotPort } from './TypeOrmBalanceSnapshotPort.js';
-import { TypeOrmClassroomPort } from './TypeOrmClassroomPort.js';
+import { TypeOrmArchiveFinanceService } from './TypeOrmArchiveFinanceService.js';
+import { TypeOrmBalanceSnapshotReader } from './TypeOrmBalanceSnapshotReader.js';
+import { TypeOrmClassroomAccess } from './TypeOrmClassroomAccess.js';
 import { TypeOrmEnrollmentRepository } from './TypeOrmEnrollmentRepository.js';
 import { TypeOrmStudentRepository } from './TypeOrmStudentRepository.js';
-import type { StudentDiscordMembershipPort } from '../../../application/ports/StudentDiscordMembershipPort.js';
+import type {
+  StudentDiscordInviteResult,
+  TypeOrmStudentDiscordMembershipService,
+} from './TypeOrmStudentDiscordMembershipService.js';
 import { StudentDiscordMembershipNotifier } from './StudentDiscordMembershipNotifier.js';
 
 type StudentPersistenceContext = {
   students: TypeOrmStudentRepository;
   enrollments: TypeOrmEnrollmentRepository;
-  classroom: TypeOrmClassroomPort;
-  balanceSnapshots: TypeOrmBalanceSnapshotPort;
-  archiveFinance: TypeOrmArchiveFinancePort;
+  classroom: TypeOrmClassroomAccess;
+  balanceSnapshots: TypeOrmBalanceSnapshotReader;
+  archiveFinance: TypeOrmArchiveFinanceService;
 };
 
 export class TypeOrmStudentCommandHandlers {
@@ -37,9 +41,9 @@ export class TypeOrmStudentCommandHandlers {
 
   constructor(
     private readonly dataSource: DataSource,
-    studentDiscordMembershipPort?: StudentDiscordMembershipPort,
+    studentDiscordMembershipService?: TypeOrmStudentDiscordMembershipService,
   ) {
-    this.studentDiscordMembershipNotifier = new StudentDiscordMembershipNotifier(studentDiscordMembershipPort);
+    this.studentDiscordMembershipNotifier = new StudentDiscordMembershipNotifier(studentDiscordMembershipService);
   }
 
   readonly createStudent = {
@@ -50,7 +54,7 @@ export class TypeOrmStudentCommandHandlers {
         context.classroom,
       ).execute(input));
 
-      this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, result.id, input.classId);
+      void this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, result.id, input.classId).catch(() => {});
       return result;
     },
   };
@@ -75,7 +79,9 @@ export class TypeOrmStudentCommandHandlers {
     execute: async (input: TransferStudentCommand) => {
       const result = await this.withTransaction((context) => this.createTransferStudentUseCase(context).execute(input));
 
-      this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, input.studentId, input.toClassId);
+      this.assertDiscordMembershipAdded(
+        await this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, input.studentId, input.toClassId),
+      );
       return result;
     },
   };
@@ -87,9 +93,11 @@ export class TypeOrmStudentCommandHandlers {
         return new BulkTransferStudentsUseCase(transferStudent).execute(input);
       });
 
-      result.forEach((student) => {
-        this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, student.id, input.toClassId);
-      });
+      for (const student of result) {
+        this.assertDiscordMembershipAdded(
+          await this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, student.id, input.toClassId),
+        );
+      }
 
       return result;
     },
@@ -128,7 +136,9 @@ export class TypeOrmStudentCommandHandlers {
         context.balanceSnapshots,
       ).execute(input));
 
-      this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, input.studentId, input.classId);
+      this.assertDiscordMembershipAdded(
+        await this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, input.studentId, input.classId),
+      );
       return result;
     },
   };
@@ -152,9 +162,9 @@ export class TypeOrmStudentCommandHandlers {
     return {
       students: new TypeOrmStudentRepository(manager),
       enrollments: new TypeOrmEnrollmentRepository(manager),
-      classroom: new TypeOrmClassroomPort(manager),
-      balanceSnapshots: new TypeOrmBalanceSnapshotPort(manager),
-      archiveFinance: new TypeOrmArchiveFinancePort(manager),
+      classroom: new TypeOrmClassroomAccess(manager),
+      balanceSnapshots: new TypeOrmBalanceSnapshotReader(manager),
+      archiveFinance: new TypeOrmArchiveFinanceService(manager),
     };
   }
 
@@ -172,6 +182,17 @@ export class TypeOrmStudentCommandHandlers {
       context.students,
       context.enrollments,
       context.balanceSnapshots,
+    );
+  }
+
+  private assertDiscordMembershipAdded(result: StudentDiscordInviteResult): void {
+    if (result.sent) {
+      return;
+    }
+
+    throw new ServiceError(
+      result.reason ? `discord_membership_add_failed: ${result.reason}` : 'discord_membership_add_failed',
+      502,
     );
   }
 }

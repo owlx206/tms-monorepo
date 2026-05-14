@@ -9,23 +9,29 @@ import { SendChannelPostUseCase } from './application/commands/SendChannelPostUs
 import { StartStudentDiscordAuthorizationUseCase } from './application/commands/StartStudentDiscordAuthorizationUseCase.js';
 import { SyncDiscordMembershipUseCase } from './application/commands/SyncDiscordMembershipUseCase.js';
 import { SyncTeacherDiscordServersUseCase } from './application/commands/SyncTeacherDiscordServersUseCase.js';
-import { MessagingReadService } from './application/queries/MessagingReadService.js';
+import { GetBotInviteLinkUseCase } from './application/queries/GetBotInviteLinkUseCase.js';
+import { GetDiscordSetupStatusUseCase } from './application/queries/GetDiscordSetupStatusUseCase.js';
+import { ListTeacherDiscordChannelsUseCase } from './application/queries/ListTeacherDiscordChannelsUseCase.js';
+import { ListTeacherDiscordServersUseCase } from './application/queries/ListTeacherDiscordServersUseCase.js';
 import { StoredDiscordGatewayFactory } from './infrastructure/discord/StoredDiscordGatewayFactory.js';
 import { StoredDiscordRecipientResolver } from './infrastructure/discord/StoredDiscordRecipientResolver.js';
-import { DiscordMessageRecipientOrmEntity } from './infrastructure/persistence/typeorm/DiscordMessageRecipientOrmEntity.js';
-import { DiscordMessageOrmEntity } from './infrastructure/persistence/typeorm/DiscordMessageOrmEntity.js';
-import { DiscordServerOrmEntity } from './infrastructure/persistence/typeorm/DiscordServerOrmEntity.js';
-import { TeacherDiscordChannelCacheOrmEntity } from './infrastructure/persistence/typeorm/TeacherDiscordChannelCacheOrmEntity.js';
-import { TeacherDiscordServerCacheOrmEntity } from './infrastructure/persistence/typeorm/TeacherDiscordServerCacheOrmEntity.js';
-import { TypeOrmMessagingReadRepository } from './infrastructure/persistence/typeorm/TypeOrmMessagingReadRepository.js';
+import { DiscordServer } from '../../entities/discord-server.entity.js';
+import { TeacherDiscordChannelCache } from '../../entities/teacher-discord-channel-cache.entity.js';
+import { TeacherDiscordServerCache } from '../../entities/teacher-discord-server-cache.entity.js';
+import { TypeOrmMessagingReader } from './infrastructure/persistence/typeorm/TypeOrmMessagingReader.js';
 import { TypeOrmMessagingWriteRepository } from './infrastructure/persistence/typeorm/TypeOrmMessagingWriteRepository.js';
 import { MessagingController } from './presentation/controllers/MessagingController.js';
 import { createMessagingRouter } from './presentation/routes/messaging.routes.js';
 
 const discordBotCredentialStore = createSysadminDiscordBotCredentialStore();
-const messagingReadService = new MessagingReadService(
-  new TypeOrmMessagingReadRepository(),
+const messagingReader = new TypeOrmMessagingReader();
+const listTeacherDiscordServersUseCase = new ListTeacherDiscordServersUseCase(messagingReader);
+const listTeacherDiscordChannelsUseCase = new ListTeacherDiscordChannelsUseCase(messagingReader);
+const getBotInviteLinkUseCase = new GetBotInviteLinkUseCase(discordBotCredentialStore);
+const getDiscordSetupStatusUseCase = new GetDiscordSetupStatusUseCase(
+  messagingReader,
   discordBotCredentialStore,
+  getBotInviteLinkUseCase,
 );
 const messagingWriteRepository = new TypeOrmMessagingWriteRepository();
 const discordGatewayFactory = new StoredDiscordGatewayFactory(discordBotCredentialStore);
@@ -65,7 +71,7 @@ const sendChannelPostUseCase = new SendChannelPostUseCase(
   discordGatewayFactory,
 );
 const messagingControllerDependencies = {
-  listDiscordServers: (teacherId: number) => messagingReadService.listTeacherDiscordServers(teacherId),
+  listDiscordServers: (teacherId: number) => listTeacherDiscordServersUseCase.execute(teacherId),
   syncDiscordServers: (teacherId: number) => syncTeacherDiscordServersUseCase.execute(teacherId),
   syncDiscordMembership: (teacherId: number) => syncDiscordMembershipUseCase.execute(teacherId),
   completeDiscordInstall: (input: { code?: string; state?: string; guild_id?: string; error?: string }) =>
@@ -80,10 +86,10 @@ const messagingControllerDependencies = {
       return [];
     }
 
-    return messagingReadService.listTeacherDiscordChannelsForServer(teacherId, server.discord_server_id);
+    return listTeacherDiscordChannelsUseCase.execute(teacherId, server.discord_server_id);
   },
-  getBotInviteLink: (teacherId: number) => messagingReadService.getBotInviteLink(teacherId),
-  getSetupStatus: (teacherId: number) => messagingReadService.getSetupStatus(teacherId),
+  getBotInviteLink: (teacherId: number) => getBotInviteLinkUseCase.execute(teacherId),
+  getSetupStatus: (teacherId: number) => getDiscordSetupStatusUseCase.execute(teacherId),
   upsertDiscordServerByClass: (
     teacherId: number,
     classId: number,
@@ -91,10 +97,6 @@ const messagingControllerDependencies = {
   ) => bindClassDiscordServerUseCase.execute(teacherId, classId, input),
   deleteDiscordServer: (teacherId: number, classId: number) =>
     deleteDiscordServerUseCase.execute(teacherId, classId),
-  listMessages: (
-    teacherId: number,
-    filters: Parameters<MessagingReadService['listMessages']>[1],
-  ) => messagingReadService.listMessages(teacherId, filters),
   sendBulkDm: (teacherId: number, input: Parameters<SendBulkDmUseCase['execute']>[1]) =>
     sendBulkDmUseCase.execute(teacherId, input),
   sendChannelPost: (teacherId: number, input: Parameters<SendChannelPostUseCase['execute']>[1]) =>
@@ -119,7 +121,6 @@ const messagingRouter = createMessagingRouter({
   getSetupStatus: new MessagingController('getSetupStatus', messagingControllerDependencies),
   upsertDiscordServer: new MessagingController('upsertDiscordServer', messagingControllerDependencies),
   deleteDiscordServer: new MessagingController('deleteDiscordServer', messagingControllerDependencies),
-  listMessages: new MessagingController('listMessages', messagingControllerDependencies),
   sendBulkDm: new MessagingController('sendBulkDm', messagingControllerDependencies),
   sendChannelPost: new MessagingController('sendChannelPost', messagingControllerDependencies),
 });
@@ -127,11 +128,9 @@ const messagingRouter = createMessagingRouter({
 export const messagingModule: AppModule = {
   name: 'messaging',
   entities: [
-    DiscordServerOrmEntity,
-    TeacherDiscordServerCacheOrmEntity,
-    TeacherDiscordChannelCacheOrmEntity,
-    DiscordMessageOrmEntity,
-    DiscordMessageRecipientOrmEntity,
+    DiscordServer,
+    TeacherDiscordServerCache,
+    TeacherDiscordChannelCache,
   ],
   routes: [{ path: '/', router: messagingRouter }],
 };

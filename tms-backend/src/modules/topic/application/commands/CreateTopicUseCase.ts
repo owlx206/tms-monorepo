@@ -1,14 +1,14 @@
 import { ClassStatus } from '../../../../entities/enums.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
-import { extractGymIdFromLink } from '../../../../integrations/codeforces/codeforces-api.service.js';
+import { extractGymIdFromLink } from '../../../../infrastructure/external/codeforces/codeforces-api.service.js';
 import type { CreateTopicInput } from '../dto/TopicDto.js';
-import type { CodeforcesGatewayFactory } from '../ports/CodeforcesGateway.js';
+import type { DefaultCodeforcesGatewayFactory } from '../../infrastructure/codeforces/DefaultCodeforcesGatewayFactory.js';
 import type { TopicWriteRepository } from '../../infrastructure/persistence/typeorm/TopicWriteRepository.js';
 
 export class CreateTopicUseCase {
   constructor(
     private readonly topicWriteRepository: TopicWriteRepository,
-    private readonly codeforcesGatewayFactory: CodeforcesGatewayFactory,
+    private readonly codeforcesGatewayFactory: DefaultCodeforcesGatewayFactory,
   ) {}
 
   async execute(teacherId: number, input: CreateTopicInput) {

@@ -8,12 +8,12 @@ import { StartTeacherDiscordVerificationUseCase } from './application/commands/S
 import { UpsertSysadminDiscordBotCredentialUseCase } from './application/commands/UpsertSysadminDiscordBotCredentialUseCase.js';
 import { UpdateTeacherByAdminUseCase } from './application/commands/UpdateTeacherByAdminUseCase.js';
 import { UpdateMyProfileUseCase } from './application/commands/UpdateMyProfileUseCase.js';
-import { AdminTeacherReadService } from './application/queries/AdminTeacherReadService.js';
-import { AuthReadService } from './application/queries/AuthReadService.js';
-import { SysadminDiscordBotCredentialReadService } from './application/queries/SysadminDiscordBotCredentialReadService.js';
-import { SysadminDiscordBotCredentialOrmEntity } from './infrastructure/persistence/typeorm/SysadminDiscordBotCredentialOrmEntity.js';
+import { ListTeachersUseCase } from './application/queries/ListTeachersUseCase.js';
+import { GetCurrentTeacherUseCase } from './application/queries/GetCurrentTeacherUseCase.js';
+import { GetSysadminDiscordBotCredentialUseCase } from './application/queries/GetSysadminDiscordBotCredentialUseCase.js';
+import { SysadminDiscordBotCredential } from '../../entities/sysadmin-discord-bot-credential.entity.js';
 import { TypeOrmSysadminDiscordBotCredentialStore } from './infrastructure/persistence/typeorm/TypeOrmSysadminDiscordBotCredentialStore.js';
-import { TeacherOrmEntity } from './infrastructure/persistence/typeorm/TeacherOrmEntity.js';
+import { Teacher } from '../../entities/teacher.entity.js';
 import { TypeOrmTeacherRepository } from './infrastructure/persistence/typeorm/TypeOrmTeacherRepository.js';
 import { BcryptPasswordHasher } from './infrastructure/security/BcryptPasswordHasher.js';
 import { JwtAccessTokenSigner } from './infrastructure/security/JwtAccessTokenSigner.js';
@@ -26,9 +26,9 @@ const teacherRepository = new TypeOrmTeacherRepository();
 const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore();
 const passwordHasher = new BcryptPasswordHasher();
 const accessTokenSigner = new JwtAccessTokenSigner();
-const authReadService = new AuthReadService();
-const adminTeacherReadService = new AdminTeacherReadService(teacherRepository);
-const discordBotCredentialReadService = new SysadminDiscordBotCredentialReadService(discordBotCredentialStore);
+const getCurrentTeacher = new GetCurrentTeacherUseCase();
+const listTeachers = new ListTeachersUseCase(teacherRepository);
+const getDiscordBotCredential = new GetSysadminDiscordBotCredentialUseCase(discordBotCredentialStore);
 const registerUseCase = new RegisterUseCase(
   teacherRepository,
   passwordHasher,
@@ -57,7 +57,7 @@ const upsertSysadminDiscordBotCredentialUseCase = new UpsertSysadminDiscordBotCr
 
 const authRouter = createAuthRouter({
   register: new AuthController('register', {
-    readService: authReadService,
+    getCurrentTeacher,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
@@ -65,7 +65,7 @@ const authRouter = createAuthRouter({
     completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
   login: new AuthController('login', {
-    readService: authReadService,
+    getCurrentTeacher,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
@@ -73,7 +73,7 @@ const authRouter = createAuthRouter({
     completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
   me: new AuthController('me', {
-    readService: authReadService,
+    getCurrentTeacher,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
@@ -81,7 +81,7 @@ const authRouter = createAuthRouter({
     completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
   updateMe: new AuthController('updateMe', {
-    readService: authReadService,
+    getCurrentTeacher,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
@@ -89,7 +89,7 @@ const authRouter = createAuthRouter({
     completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
   startDiscordVerification: new AuthController('startDiscordVerification', {
-    readService: authReadService,
+    getCurrentTeacher,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
@@ -97,7 +97,7 @@ const authRouter = createAuthRouter({
     completeDiscordVerification: completeTeacherDiscordVerificationUseCase,
   }),
   completeDiscordVerification: new AuthController('completeDiscordVerification', {
-    readService: authReadService,
+    getCurrentTeacher,
     register: registerUseCase,
     login: loginUseCase,
     updateMe: updateMyProfileUseCase,
@@ -108,36 +108,36 @@ const authRouter = createAuthRouter({
 
 const adminRouter = createAdminRouter({
   listTeachers: new AdminController('listTeachers', {
-    readService: adminTeacherReadService,
-    discordBotReadService: discordBotCredentialReadService,
+    listTeachers,
+    getDiscordBotCredential,
     createTeacher: createTeacherByAdminUseCase,
     updateTeacher: updateTeacherByAdminUseCase,
     upsertDiscordBotCredential: upsertSysadminDiscordBotCredentialUseCase,
   }),
   createTeacher: new AdminController('createTeacher', {
-    readService: adminTeacherReadService,
-    discordBotReadService: discordBotCredentialReadService,
+    listTeachers,
+    getDiscordBotCredential,
     createTeacher: createTeacherByAdminUseCase,
     updateTeacher: updateTeacherByAdminUseCase,
     upsertDiscordBotCredential: upsertSysadminDiscordBotCredentialUseCase,
   }),
   updateTeacher: new AdminController('updateTeacher', {
-    readService: adminTeacherReadService,
-    discordBotReadService: discordBotCredentialReadService,
+    listTeachers,
+    getDiscordBotCredential,
     createTeacher: createTeacherByAdminUseCase,
     updateTeacher: updateTeacherByAdminUseCase,
     upsertDiscordBotCredential: upsertSysadminDiscordBotCredentialUseCase,
   }),
   getDiscordBotCredential: new AdminController('getDiscordBotCredential', {
-    readService: adminTeacherReadService,
-    discordBotReadService: discordBotCredentialReadService,
+    listTeachers,
+    getDiscordBotCredential,
     createTeacher: createTeacherByAdminUseCase,
     updateTeacher: updateTeacherByAdminUseCase,
     upsertDiscordBotCredential: upsertSysadminDiscordBotCredentialUseCase,
   }),
   upsertDiscordBotCredential: new AdminController('upsertDiscordBotCredential', {
-    readService: adminTeacherReadService,
-    discordBotReadService: discordBotCredentialReadService,
+    listTeachers,
+    getDiscordBotCredential,
     createTeacher: createTeacherByAdminUseCase,
     updateTeacher: updateTeacherByAdminUseCase,
     upsertDiscordBotCredential: upsertSysadminDiscordBotCredentialUseCase,
@@ -146,7 +146,7 @@ const adminRouter = createAdminRouter({
 
 export const identityModule: AppModule = {
   name: 'identity',
-  entities: [TeacherOrmEntity, SysadminDiscordBotCredentialOrmEntity],
+  entities: [Teacher, SysadminDiscordBotCredential],
   routes: [
     { path: '/', router: authRouter },
     { path: '/admin', router: adminRouter },

@@ -11,7 +11,11 @@ import type {
   UpdateTransactionInput,
   IncomeReportFilters,
 } from '../../application/dto/FinanceDto.js';
-import { FinanceReadService } from '../../application/queries/FinanceReadService.js';
+import { GetFinanceSummaryUseCase } from '../../application/queries/GetFinanceSummaryUseCase.js';
+import { ListFeeRecordsUseCase } from '../../application/queries/ListFeeRecordsUseCase.js';
+import { ListStudentBalancesUseCase } from '../../application/queries/ListStudentBalancesUseCase.js';
+import { ListTransactionAuditLogsUseCase } from '../../application/queries/ListTransactionAuditLogsUseCase.js';
+import { ListTransactionsUseCase } from '../../application/queries/ListTransactionsUseCase.js';
 import { getIdParam, getTeacherId } from './request-context.js';
 
 type FinanceControllerAction =
@@ -25,7 +29,11 @@ type FinanceControllerAction =
   | 'getFinanceSummary';
 
 type FinanceControllerDependencies = {
-  readService: FinanceReadService;
+  listTransactions: ListTransactionsUseCase;
+  listTransactionAuditLogs: ListTransactionAuditLogsUseCase;
+  listFeeRecords: ListFeeRecordsUseCase;
+  listStudentBalances: ListStudentBalancesUseCase;
+  getFinanceSummary: GetFinanceSummaryUseCase;
   createTransaction: {
     execute(input: {
       teacherId: number;
@@ -99,7 +107,7 @@ export class FinanceController implements Controller {
   }
 
   private async listTransactions(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const result = await this.dependencies.readService.listTransactions(
+    const result = await this.dependencies.listTransactions.execute(
       getTeacherId(request),
       (request.query ?? {}) as TransactionListFilters,
     );
@@ -154,7 +162,7 @@ export class FinanceController implements Controller {
   }
 
   private async listTransactionAuditLogs(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const auditLogs = await this.dependencies.readService.listTransactionAuditLogs(
+    const auditLogs = await this.dependencies.listTransactionAuditLogs.execute(
       getTeacherId(request),
       getIdParam(request),
     );
@@ -166,7 +174,7 @@ export class FinanceController implements Controller {
   }
 
   private async listFeeRecords(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const result = await this.dependencies.readService.listFeeRecords(
+    const result = await this.dependencies.listFeeRecords.execute(
       getTeacherId(request),
       (request.query ?? {}) as FeeRecordListFilters,
     );
@@ -199,7 +207,7 @@ export class FinanceController implements Controller {
   }
 
   private async listStudentBalances(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const balances = await this.dependencies.readService.listStudentBalances(
+    const balances = await this.dependencies.listStudentBalances.execute(
       getTeacherId(request),
       (request.query ?? {}) as StudentBalancesFilters,
     );
@@ -211,7 +219,7 @@ export class FinanceController implements Controller {
   }
 
   private async getFinanceSummary(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const summary = await this.dependencies.readService.getFinanceSummary(
+    const summary = await this.dependencies.getFinanceSummary.execute(
       getTeacherId(request),
       (request.query ?? {}) as IncomeReportFilters,
     );

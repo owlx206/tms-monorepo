@@ -2,12 +2,12 @@ import { AuthError } from '../../../../shared/errors/auth.error.js';
 import { toAuthTeacher, isUniqueViolation } from '../mappers/AuthMapper.js';
 import type { UpdateTeacherInput } from '../dto/AuthDto.js';
 import type { TeacherRepository } from '../../infrastructure/persistence/typeorm/TeacherRepository.js';
-import type { PasswordHasher } from '../ports/PasswordHasher.js';
+import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
 
 export class UpdateMyProfileUseCase {
   constructor(
     private readonly teacherRepository: TeacherRepository,
-    private readonly passwordHasher: PasswordHasher,
+    private readonly passwordHasher: BcryptPasswordHasher,
   ) {}
 
   async execute(teacherId: number, input: UpdateTeacherInput) {

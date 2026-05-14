@@ -1,6 +1,5 @@
 import type { EntityManager } from 'typeorm';
 
-import type { FinanceFeeSync } from '../../../application/ports/FinanceFeeSync.js';
 import {
   createFeeRecord,
   findActiveFeeRecordsBySessionIds,
@@ -9,7 +8,7 @@ import {
   saveFeeRecords,
 } from './FeeRecordSyncDataAccess.js';
 
-export class TypeOrmFinanceFeeSync implements FinanceFeeSync {
+export class TypeOrmFinanceFeeSync {
   async syncAttendanceFeeRecord(
     manager: EntityManager,
     input: {

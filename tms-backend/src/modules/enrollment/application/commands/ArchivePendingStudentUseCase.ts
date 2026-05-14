@@ -6,16 +6,16 @@ import type { StudentRepository } from '../../domain/repositories/StudentReposit
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
-import type { ArchiveFinancePort } from '../ports/ArchiveFinancePort.js';
-import type { BalanceSnapshotPort } from '../ports/BalanceSnapshotPort.js';
+import type { TypeOrmArchiveFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmArchiveFinanceService.js';
+import type { TypeOrmBalanceSnapshotReader } from '../../infrastructure/persistence/typeorm/TypeOrmBalanceSnapshotReader.js';
 import type { ArchivePendingStudentCommand } from '../dto/ArchivePendingStudentCommand.js';
 
 export class ArchivePendingStudentUseCase implements UseCase<ArchivePendingStudentCommand, StudentSummary> {
   constructor(
     private readonly students: StudentRepository,
     private readonly enrollments: EnrollmentRepository,
-    private readonly balanceSnapshots: BalanceSnapshotPort,
-    private readonly archiveFinance: ArchiveFinancePort,
+    private readonly balanceSnapshots: TypeOrmBalanceSnapshotReader,
+    private readonly archiveFinance: TypeOrmArchiveFinanceService,
   ) {}
 
   async execute(command: ArchivePendingStudentCommand): Promise<StudentSummary> {

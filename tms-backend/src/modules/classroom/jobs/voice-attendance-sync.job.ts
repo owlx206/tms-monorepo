@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, type VoiceState } from 'discord.js';
 
-import { AppDataSource } from '../../../data-source.js';
+import { AppDataSource } from '../../../infrastructure/database/data-source.js';
 import {
   Class,
   ClassSchedule,
@@ -15,7 +15,7 @@ import type { IntervalJob } from '../../../jobs/index.js';
 import { ServiceError } from '../../../shared/errors/service.error.js';
 import { UpsertBotSessionAttendanceUseCase } from '../application/commands/UpsertBotSessionAttendanceUseCase.js';
 import { TypeOrmAttendanceRepository } from '../infrastructure/persistence/typeorm/TypeOrmAttendanceRepository.js';
-import { TypeOrmSessionFinancePort } from '../infrastructure/persistence/typeorm/TypeOrmSessionFinancePort.js';
+import { TypeOrmSessionFinanceService } from '../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 
 type OpenVoiceAttendanceSession = {
   teacher_id: number;
@@ -300,7 +300,7 @@ async function markPresentStudentsForSession(
 
     const attendance = await AppDataSource.transaction(async (manager) => {
       const attendanceRepository = new TypeOrmAttendanceRepository(manager);
-      const finance = new TypeOrmSessionFinancePort(manager);
+      const finance = new TypeOrmSessionFinanceService(manager);
       const useCase = new UpsertBotSessionAttendanceUseCase(attendanceRepository, finance);
 
       return useCase.execute({

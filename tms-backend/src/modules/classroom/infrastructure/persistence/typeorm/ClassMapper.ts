@@ -1,9 +1,9 @@
 import { ClassStatus } from '../../../../../entities/enums.js';
 import { ClassroomClass } from '../../../domain/models/Class.js';
-import { ClassOrmEntity } from './ClassOrmEntity.js';
+import { Class } from '../../../../../entities/class.entity.js';
 
 export class ClassMapper {
-  static toDomain(entity: ClassOrmEntity): ClassroomClass {
+  static toDomain(entity: Class): ClassroomClass {
     return ClassroomClass.restore({
       id: entity.id,
       teacherId: entity.teacher_id,
@@ -15,7 +15,7 @@ export class ClassMapper {
     });
   }
 
-  static toOrmEntity(entity: ClassOrmEntity, classroomClass: ClassroomClass): ClassOrmEntity {
+  static toOrmEntity(entity: Class, classroomClass: ClassroomClass): Class {
     const snapshot = classroomClass.toSnapshot();
 
     entity.teacher_id = snapshot.teacherId;

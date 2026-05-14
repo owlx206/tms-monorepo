@@ -37,7 +37,7 @@ export function Topics() {
 
     try {
       const [classList, topicList] = await Promise.all([
-        listClasses("active"),
+        listClasses("active", { readyOnly: true }),
         listTopics(),
       ]);
 

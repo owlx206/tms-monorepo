@@ -1,17 +1,15 @@
 import { ServiceError } from '../../../../shared/errors/service.error.js';
-import { DiscordClient } from '../../../../integrations/discord/discord-api.service.js';
+import { DiscordClient } from '../../../../infrastructure/external/discord/discord-api.service.js';
 import type {
   ChannelMessagePayload,
   DirectMessagePayload,
   DiscordChannelOwnershipCheck,
-  DiscordGateway,
-  DiscordGatewayFactory,
   DiscordGuildChannel,
   DiscordGuildMetadata,
-} from '../../application/ports/DiscordGateway.js';
+} from './discord.types.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
 
-class StoredDiscordGateway implements DiscordGateway {
+class StoredDiscordGateway {
   constructor(
     private readonly store: SysadminDiscordBotCredentialStore,
     private readonly explicitBotToken?: string | null,
@@ -57,10 +55,10 @@ class StoredDiscordGateway implements DiscordGateway {
   }
 }
 
-export class StoredDiscordGatewayFactory implements DiscordGatewayFactory {
+export class StoredDiscordGatewayFactory {
   constructor(private readonly store: SysadminDiscordBotCredentialStore) {}
 
-  create(botToken?: string | null): DiscordGateway {
+  create(botToken?: string | null): StoredDiscordGateway {
     return new StoredDiscordGateway(this.store, botToken);
   }
 }

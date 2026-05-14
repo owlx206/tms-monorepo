@@ -32,7 +32,6 @@ import {
   getDiscordSetupStatus,
   listDiscordChannels,
   listDiscordServers,
-  listMessages,
   sendBulkDm,
   sendChannelPost,
   syncDiscordMembership,
@@ -40,15 +39,12 @@ import {
   upsertDiscordServerByClass,
   type BackendDiscordChannel,
   type BackendDiscordServer,
-  type BackendMessageListRow,
   type DiscordMembershipSyncResult,
   type DiscordSetupStatus,
 } from "../services/messagingService";
 import { getStudentLearningProfile } from "../services/reportingService";
 import { listStudents } from "../services/studentService";
 
-type PageTab = "setup" | "history";
-type MessageFilter = "all" | "auto_notification" | "channel_post" | "bulk_dm";
 type BulkRecipientFilter = "debt" | "incomplete_topic" | "recent_absence";
 
 type ClassOption = {
@@ -117,33 +113,17 @@ function parseAmount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function messageTypeLabel(type: BackendMessageListRow["type"] | MessageFilter) {
-  switch (type) {
-    case "auto_notification":
-      return "Tự động";
-    case "channel_post":
-      return "Channel";
-    case "bulk_dm":
-      return "Bulk DM";
-    default:
-      return "Tất cả";
-  }
-}
-
 export function Messaging() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [selectedTab, setSelectedTab] = useState<PageTab>("setup");
   const [showSyncServersModal, setShowSyncServersModal] = useState(false);
   const [showBindServerModal, setShowBindServerModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedServer, setSelectedServer] = useState<BackendDiscordServer | null>(null);
   const [selectedClass, setSelectedClass] = useState<ClassOption | null>(null);
-  const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
   const [requestError, setRequestError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [servers, setServers] = useState<BackendDiscordServer[]>([]);
-  const [messages, setMessages] = useState<BackendMessageListRow[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [discordStatus, setDiscordStatus] = useState<DiscordSetupStatus | null>(null);
@@ -157,7 +137,6 @@ export function Messaging() {
     try {
       const [
         serverList,
-        messageList,
         setupStatus,
         inviteLink,
         me,
@@ -167,7 +146,6 @@ export function Messaging() {
         sessions,
       ] = await Promise.all([
         listDiscordServers(),
-        listMessages(),
         getDiscordSetupStatus(),
         getDiscordBotInviteLink(),
         getMe(),
@@ -218,7 +196,6 @@ export function Messaging() {
       }
 
       setServers(serverList);
-      setMessages(messageList);
       setDiscordStatus(setupStatus);
       setBotInviteLink(inviteLink);
       setTeacherDiscordUsername(me.discord_username);
@@ -291,11 +268,6 @@ export function Messaging() {
     [servers],
   );
 
-  const filteredMessages = useMemo(
-    () => messageFilter === "all" ? messages : messages.filter((item) => item.type === messageFilter),
-    [messages, messageFilter],
-  );
-
   const setupStatus = {
     discordAuth: Boolean(teacherDiscordVerifiedAt),
     botConfigured: Boolean(botInviteLink),
@@ -355,7 +327,6 @@ export function Messaging() {
     } else if (action === "sync_membership") {
       void handleSyncDiscordMembership();
     } else if (action === "open_class_server") {
-      setSelectedTab("setup");
       setShowBindServerModal(true);
     } else if (action === "review_students") {
       navigate("/students");
@@ -457,27 +428,7 @@ export function Messaging() {
         <DiscordMembershipSyncPanel result={membershipSyncResult} />
       )}
 
-      <div className="mb-6 rounded-xl border border-zinc-200 bg-white">
-        <div className="flex border-b border-zinc-200">
-          {(["setup", "history"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setSelectedTab(tab)}
-              className={`flex-1 px-6 py-4 font-medium transition-colors ${
-                selectedTab === tab
-                  ? "border-b-2 border-zinc-900 text-zinc-900"
-                  : "text-zinc-600 hover:text-zinc-900"
-              }`}
-            >
-              {tab === "setup" ? "Cấu hình" : "Lịch sử"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {selectedTab === "setup" && (
-        <div className="space-y-6">
+      <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-zinc-900">Quản lý server Discord</h2>
             <button
@@ -577,16 +528,7 @@ export function Messaging() {
               </div>
             </section>
           )}
-        </div>
-      )}
-
-      {selectedTab === "history" && (
-        <HistoryPanel
-          messages={filteredMessages}
-          messageFilter={messageFilter}
-          onFilterChange={setMessageFilter}
-        />
-      )}
+      </div>
 
       {showSyncServersModal && (
         <SyncServersModal
@@ -1161,103 +1103,6 @@ function SendMessageTab({
         {submitting ? "Đang gửi..." : "Gửi tin nhắn"}
       </button>
     </form>
-  );
-}
-
-function HistoryPanel({
-  messages,
-  messageFilter,
-  onFilterChange,
-}: {
-  messages: BackendMessageListRow[];
-  messageFilter: MessageFilter;
-  onFilterChange: (filter: MessageFilter) => void;
-}) {
-  return (
-    <div>
-      <div className="mb-6 rounded-xl border border-zinc-200 bg-white p-4">
-        <div className="flex flex-wrap gap-2">
-          {(["all", "auto_notification", "channel_post", "bulk_dm"] as const).map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => onFilterChange(type)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                messageFilter === type ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-              }`}
-            >
-              {messageTypeLabel(type)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {messages.map((msg) => {
-          const failed = msg.recipients.failed > 0;
-          const sent = msg.type === "bulk_dm" ? msg.recipients.sent : 1;
-          const total = msg.type === "bulk_dm" ? msg.recipients.total : 1;
-
-          return (
-            <div key={msg.id} className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    msg.type === "auto_notification"
-                      ? "bg-zinc-100 text-zinc-700"
-                      : msg.type === "channel_post"
-                      ? "bg-zinc-200 text-zinc-900"
-                      : "bg-zinc-900 text-white"
-                  }`}>
-                    {messageTypeLabel(msg.type)}
-                  </span>
-                  <span className="text-sm text-zinc-600">{new Date(msg.created_at).toLocaleString("vi-VN")}</span>
-                </div>
-                <span className="whitespace-nowrap rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">
-                  {failed ? `${sent}/${total} thành công` : "Đã gửi"}
-                </span>
-              </div>
-
-              <p className="mb-2 whitespace-pre-wrap text-zinc-900">{msg.content}</p>
-              {msg.type === "bulk_dm" ? (
-                <p className="mb-3 text-sm text-zinc-600">Người nhận: {msg.recipients.total} học sinh</p>
-              ) : (
-                <p className="mb-3 text-sm text-zinc-600">Loại tin nhắn: {messageTypeLabel(msg.type)}</p>
-              )}
-
-              {msg.type === "bulk_dm" && (
-                <div className="mb-3 flex gap-4 text-sm">
-                  <span className="text-zinc-700">{msg.recipients.sent} thành công</span>
-                  {msg.recipients.failed > 0 && (
-                    <span className="text-zinc-600">{msg.recipients.failed} thất bại</span>
-                  )}
-                </div>
-              )}
-
-              {msg.failures.length > 0 && (
-                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="mb-2 text-xs font-semibold text-zinc-700">Lỗi gửi tin:</p>
-                  <ul className="space-y-1">
-                    {msg.failures.map((failure) => (
-                      <li key={`${msg.id}-${failure.student_id}`} className="flex items-start gap-2 text-xs text-zinc-600">
-                        <span className="text-zinc-400">•</span>
-                        <span><span className="font-medium">{failure.student_name}:</span> {failure.error}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {messages.length === 0 && (
-          <div className="rounded-xl border border-zinc-200 bg-white p-12 text-center">
-            <p className="text-zinc-600">Chưa có tin nhắn nào.</p>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 

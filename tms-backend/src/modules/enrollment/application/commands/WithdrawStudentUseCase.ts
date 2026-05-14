@@ -7,14 +7,14 @@ import type { StudentRepository } from '../../domain/repositories/StudentReposit
 import { StudentId } from '../../domain/value-objects/StudentId.js';
 import type { StudentSummary } from '../dto/StudentDto.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
-import type { BalanceSnapshotPort } from '../ports/BalanceSnapshotPort.js';
+import type { TypeOrmBalanceSnapshotReader } from '../../infrastructure/persistence/typeorm/TypeOrmBalanceSnapshotReader.js';
 import type { WithdrawStudentCommand } from '../dto/WithdrawStudentCommand.js';
 
 export class WithdrawStudentUseCase implements UseCase<WithdrawStudentCommand, StudentSummary> {
   constructor(
     private readonly students: StudentRepository,
     private readonly enrollments: EnrollmentRepository,
-    private readonly balanceSnapshots: BalanceSnapshotPort,
+    private readonly balanceSnapshots: TypeOrmBalanceSnapshotReader,
   ) {}
 
   async execute(command: WithdrawStudentCommand): Promise<StudentSummary> {

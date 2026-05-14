@@ -1,7 +1,7 @@
 import express from 'express';
 
 import config from './config.js';
-import { AppDataSource } from './data-source.js';
+import { AppDataSource } from './infrastructure/database/data-source.js';
 import { attachDbContext } from './infrastructure/database/db-context.middleware.js';
 import { errorHandler, notFoundHandler } from './infrastructure/http/error-handler.middleware.js';
 import { appModules } from './modules/index.js';

@@ -1,10 +1,10 @@
 import jwt, { type Secret, type SignOptions } from 'jsonwebtoken';
 
 import config from '../../../../config.js';
-import type { AccessTokenSigner } from '../../application/ports/AccessTokenSigner.js';
+import type { TeacherRole } from '../../../../entities/enums.js';
 
-export class JwtAccessTokenSigner implements AccessTokenSigner {
-  sign(input: { sub: number; username: string; role: import('../../../../entities/enums.js').TeacherRole }): string {
+export class JwtAccessTokenSigner {
+  sign(input: { sub: number; username: string; role: TeacherRole }): string {
     const signOptions: SignOptions = {
       expiresIn: config.auth.jwtExpiresIn as SignOptions['expiresIn'],
       issuer: config.auth.jwtIssuer,

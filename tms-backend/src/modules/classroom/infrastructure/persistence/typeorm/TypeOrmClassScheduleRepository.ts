@@ -2,10 +2,10 @@ import { Between, type EntityManager } from 'typeorm';
 
 import { ClassStatus, SessionStatus } from '../../../../../entities/enums.js';
 import type { ClassScheduleRepository } from './ClassScheduleRepository.js';
-import { ClassScheduleOrmEntity } from './ClassScheduleOrmEntity.js';
-import { ClassOrmEntity } from './ClassOrmEntity.js';
+import { ClassSchedule } from '../../../../../entities/class-schedule.entity.js';
+import { Class } from '../../../../../entities/class.entity.js';
 import { combineDateAndTime } from './ClassroomDateTime.js';
-import { SessionOrmEntity } from './SessionOrmEntity.js';
+import { Session } from '../../../../../entities/session.entity.js';
 
 const SESSION_GENERATION_HORIZON_DAYS = 180;
 
@@ -50,8 +50,8 @@ function sessionOverlaps(
 export class TypeOrmClassScheduleRepository implements ClassScheduleRepository {
   constructor(private readonly manager: EntityManager) {}
 
-  findClassById(teacherId: number, classId: number): Promise<ClassOrmEntity | null> {
-    return this.manager.getRepository(ClassOrmEntity).findOneBy({
+  findClassById(teacherId: number, classId: number): Promise<Class | null> {
+    return this.manager.getRepository(Class).findOneBy({
       id: classId,
       teacher_id: teacherId,
     });
@@ -61,9 +61,16 @@ export class TypeOrmClassScheduleRepository implements ClassScheduleRepository {
     teacherId: number,
     classId: number,
     scheduleId: number,
-  ): Promise<ClassScheduleOrmEntity | null> {
-    return this.manager.getRepository(ClassScheduleOrmEntity).findOneBy({
+  ): Promise<ClassSchedule | null> {
+    return this.manager.getRepository(ClassSchedule).findOneBy({
       id: scheduleId,
+      teacher_id: teacherId,
+      class_id: classId,
+    });
+  }
+
+  countByClass(teacherId: number, classId: number): Promise<number> {
+    return this.manager.getRepository(ClassSchedule).countBy({
       teacher_id: teacherId,
       class_id: classId,
     });
@@ -81,9 +88,9 @@ export class TypeOrmClassScheduleRepository implements ClassScheduleRepository {
       excludeScheduleId?: number;
     },
   ): Promise<boolean> {
-    const query = this.manager.getRepository(ClassScheduleOrmEntity)
+    const query = this.manager.getRepository(ClassSchedule)
       .createQueryBuilder('schedule')
-      .innerJoin(ClassOrmEntity, 'class', 'class.id = schedule.class_id')
+      .innerJoin(Class, 'class', 'class.id = schedule.class_id')
       .where('schedule.teacher_id = :teacherId', { teacherId })
       .andWhere('schedule.day_of_week = :dayOfWeek', { dayOfWeek: schedule.day_of_week })
       .andWhere('class.status = :activeStatus', { activeStatus: ClassStatus.Active })
@@ -117,7 +124,7 @@ export class TypeOrmClassScheduleRepository implements ClassScheduleRepository {
     const now = new Date();
     const startDate = nowStartOfDay();
     const endDate = addDays(startDate, SESSION_GENERATION_HORIZON_DAYS);
-    const sessions = await this.manager.getRepository(SessionOrmEntity).find({
+    const sessions = await this.manager.getRepository(Session).find({
       where: {
         teacher_id: teacherId,
         scheduled_at: Between(now, endOfDay(endDate)),
@@ -162,15 +169,15 @@ export class TypeOrmClassScheduleRepository implements ClassScheduleRepository {
     day_of_week: number;
     start_time: string;
     end_time: string;
-  }): ClassScheduleOrmEntity {
-    return this.manager.getRepository(ClassScheduleOrmEntity).create(input);
+  }): ClassSchedule {
+    return this.manager.getRepository(ClassSchedule).create(input);
   }
 
-  save(schedule: ClassScheduleOrmEntity): Promise<ClassScheduleOrmEntity> {
-    return this.manager.getRepository(ClassScheduleOrmEntity).save(schedule);
+  save(schedule: ClassSchedule): Promise<ClassSchedule> {
+    return this.manager.getRepository(ClassSchedule).save(schedule);
   }
 
-  remove(schedule: ClassScheduleOrmEntity): Promise<ClassScheduleOrmEntity> {
-    return this.manager.getRepository(ClassScheduleOrmEntity).remove(schedule);
+  remove(schedule: ClassSchedule): Promise<ClassSchedule> {
+    return this.manager.getRepository(ClassSchedule).remove(schedule);
   }
 }

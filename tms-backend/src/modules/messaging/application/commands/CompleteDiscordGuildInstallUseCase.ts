@@ -1,7 +1,7 @@
 import config from '../../../../config.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
-import type { DiscordGatewayFactory } from '../ports/DiscordGateway.js';
+import type { StoredDiscordGatewayFactory } from '../../infrastructure/discord/StoredDiscordGatewayFactory.js';
 import type { MessagingWriteRepository } from '../../infrastructure/persistence/typeorm/MessagingWriteRepository.js';
 import { verifyDiscordInstallState } from '../../infrastructure/discord/DiscordInstallState.js';
 
@@ -40,7 +40,7 @@ async function exchangeDiscordOAuthCode(input: {
 export class CompleteDiscordGuildInstallUseCase {
   constructor(
     private readonly messagingWriteRepository: MessagingWriteRepository,
-    private readonly discordGatewayFactory: DiscordGatewayFactory,
+    private readonly discordGatewayFactory: StoredDiscordGatewayFactory,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
 

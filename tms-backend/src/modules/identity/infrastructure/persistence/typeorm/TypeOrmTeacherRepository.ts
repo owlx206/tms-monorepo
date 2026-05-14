@@ -1,26 +1,26 @@
-import { AppDataSource } from '../../../../../data-source.js';
+import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import type { TeacherRepository } from './TeacherRepository.js';
-import { TeacherOrmEntity } from './TeacherOrmEntity.js';
+import { Teacher } from '../../../../../entities/teacher.entity.js';
 
 export class TypeOrmTeacherRepository implements TeacherRepository {
-  create(input: Partial<TeacherOrmEntity>): TeacherOrmEntity {
-    return AppDataSource.getRepository(TeacherOrmEntity).create(input);
+  create(input: Partial<Teacher>): Teacher {
+    return AppDataSource.getRepository(Teacher).create(input);
   }
 
-  save(teacher: TeacherOrmEntity): Promise<TeacherOrmEntity> {
-    return AppDataSource.getRepository(TeacherOrmEntity).save(teacher);
+  save(teacher: Teacher): Promise<Teacher> {
+    return AppDataSource.getRepository(Teacher).save(teacher);
   }
 
-  findById(teacherId: number): Promise<TeacherOrmEntity | null> {
-    return AppDataSource.getRepository(TeacherOrmEntity).findOneBy({ id: teacherId });
+  findById(teacherId: number): Promise<Teacher | null> {
+    return AppDataSource.getRepository(Teacher).findOneBy({ id: teacherId });
   }
 
-  findByUsername(username: string): Promise<TeacherOrmEntity | null> {
-    return AppDataSource.getRepository(TeacherOrmEntity).findOneBy({ username });
+  findByUsername(username: string): Promise<Teacher | null> {
+    return AppDataSource.getRepository(Teacher).findOneBy({ username });
   }
 
-  listNewestFirst(): Promise<TeacherOrmEntity[]> {
-    return AppDataSource.getRepository(TeacherOrmEntity).find({
+  listNewestFirst(): Promise<Teacher[]> {
+    return AppDataSource.getRepository(Teacher).find({
       order: {
         created_at: 'DESC',
       },

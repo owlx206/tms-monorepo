@@ -118,7 +118,7 @@ export function Dashboard() {
           status: "active",
           include_pending_archive: false,
         }),
-        listClasses("active"),
+        listClasses("active", { readyOnly: true }),
         listStudents({ status: "active" }),
         getMe(),
       ]);

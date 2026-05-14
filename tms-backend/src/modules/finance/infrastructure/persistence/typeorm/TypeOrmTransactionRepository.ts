@@ -1,11 +1,11 @@
 import { type EntityManager } from 'typeorm';
 
-import { AppDataSource } from '../../../../../data-source.js';
+import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import { Student } from '../../../../../entities/student.entity.js';
 import { parseAmountToBigInt } from '../../../../../shared/helpers/money.js';
 import type { TransactionRepository } from './TransactionRepository.js';
-import { TransactionAuditLogOrmEntity } from './TransactionAuditLogOrmEntity.js';
-import { TransactionOrmEntity } from './TransactionOrmEntity.js';
+import { TransactionAuditLog } from '../../../../../entities/transaction-audit-log.entity.js';
+import { Transaction } from '../../../../../entities/transaction.entity.js';
 
 export class TypeOrmTransactionRepository implements TransactionRepository {
   constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
@@ -18,7 +18,7 @@ export class TypeOrmTransactionRepository implements TransactionRepository {
   }
 
   findOwnedTransaction(teacherId: number, transactionId: number) {
-    return this.manager.getRepository(TransactionOrmEntity).findOneBy({
+    return this.manager.getRepository(Transaction).findOneBy({
       id: transactionId,
       teacher_id: teacherId,
     });
@@ -29,7 +29,7 @@ export class TypeOrmTransactionRepository implements TransactionRepository {
     studentId: number,
     options?: { excludeTransactionId?: number },
   ): Promise<{ payments: bigint; refunds: bigint }> {
-    const queryBuilder = this.manager.getRepository(TransactionOrmEntity)
+    const queryBuilder = this.manager.getRepository(Transaction)
       .createQueryBuilder('transaction')
       .select("COALESCE(SUM(CASE WHEN transaction.type = 'payment' THEN transaction.amount ELSE 0 END), 0)", 'payments')
       .addSelect("COALESCE(SUM(CASE WHEN transaction.type = 'refund' THEN ABS(transaction.amount) ELSE 0 END), 0)", 'refunds')
@@ -58,28 +58,28 @@ export class TypeOrmTransactionRepository implements TransactionRepository {
     notes: string | null;
     recorded_at: Date;
   }) {
-    return this.manager.getRepository(TransactionOrmEntity).create(input);
+    return this.manager.getRepository(Transaction).create(input);
   }
 
-  save(transaction: TransactionOrmEntity) {
-    return this.manager.getRepository(TransactionOrmEntity).save(transaction);
+  save(transaction: Transaction) {
+    return this.manager.getRepository(Transaction).save(transaction);
   }
 
   async saveWithAuditLog(
     teacherId: number,
     transactionId: number,
-    transaction: TransactionOrmEntity,
-    audit: Omit<TransactionAuditLogOrmEntity, 'id' | 'teacher_id' | 'transaction_id' | 'created_at'>,
+    transaction: Transaction,
+    audit: Omit<TransactionAuditLog, 'id' | 'teacher_id' | 'transaction_id' | 'created_at'>,
   ) {
     return this.manager.transaction(async (manager) => {
-      const saved = await manager.getRepository(TransactionOrmEntity).save(transaction);
-      const auditLog = manager.getRepository(TransactionAuditLogOrmEntity).create({
+      const saved = await manager.getRepository(Transaction).save(transaction);
+      const auditLog = manager.getRepository(TransactionAuditLog).create({
         teacher_id: teacherId,
         transaction_id: transactionId,
         ...audit,
       });
 
-      await manager.getRepository(TransactionAuditLogOrmEntity).save(auditLog);
+      await manager.getRepository(TransactionAuditLog).save(auditLog);
       return saved;
     });
   }

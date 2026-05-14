@@ -1,11 +1,11 @@
 import type { TransactionType } from '../../../../../entities/enums.js';
 import type { Student } from '../../../../../entities/student.entity.js';
-import type { TransactionAuditLogOrmEntity } from './TransactionAuditLogOrmEntity.js';
-import type { TransactionOrmEntity } from './TransactionOrmEntity.js';
+import type { TransactionAuditLog } from '../../../../../entities/transaction-audit-log.entity.js';
+import type { Transaction } from '../../../../../entities/transaction.entity.js';
 
 export interface TransactionRepository {
   findOwnedStudent(teacherId: number, studentId: number): Promise<Student | null>;
-  findOwnedTransaction(teacherId: number, transactionId: number): Promise<TransactionOrmEntity | null>;
+  findOwnedTransaction(teacherId: number, transactionId: number): Promise<Transaction | null>;
   getStudentTransactionTotals(
     teacherId: number,
     studentId: number,
@@ -18,12 +18,12 @@ export interface TransactionRepository {
     type: TransactionType;
     notes: string | null;
     recorded_at: Date;
-  }): TransactionOrmEntity;
-  save(transaction: TransactionOrmEntity): Promise<TransactionOrmEntity>;
+  }): Transaction;
+  save(transaction: Transaction): Promise<Transaction>;
   saveWithAuditLog(
     teacherId: number,
     transactionId: number,
-    transaction: TransactionOrmEntity,
-    audit: Omit<TransactionAuditLogOrmEntity, 'id' | 'teacher_id' | 'transaction_id' | 'created_at'>,
-  ): Promise<TransactionOrmEntity>;
+    transaction: Transaction,
+    audit: Omit<TransactionAuditLog, 'id' | 'teacher_id' | 'transaction_id' | 'created_at'>,
+  ): Promise<Transaction>;
 }

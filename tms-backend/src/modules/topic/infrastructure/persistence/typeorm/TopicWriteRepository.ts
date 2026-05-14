@@ -4,12 +4,12 @@ import type { Teacher } from '../../../../../entities/teacher.entity.js';
 import type { Topic } from '../../../../../entities/topic.entity.js';
 import type { TopicProblem } from '../../../../../entities/topic-problem.entity.js';
 import type { TopicStanding } from '../../../../../entities/topic-standing.entity.js';
-import type { CodeforcesCredentials } from '../../../application/ports/CodeforcesGateway.js';
+import type { CodeforcesCredentials } from '../../../../../infrastructure/external/codeforces/codeforces-api.service.js';
 
 export interface TopicWriteRepository {
   findClassById(classId: number): Promise<Class | null>;
   findTeacherById(teacherId: number): Promise<Teacher | null>;
-  resolveTeacherCodeforcesCredentials(teacher: Teacher): CodeforcesCredentials;
+  resolveTeacherCodeforcesCredentials(teacher: Teacher): CodeforcesCredentials | null;
   findOwnedTopic(teacherId: number, topicId: number): Promise<Topic | null>;
   findTopicByGym(teacherId: number, classId: number, gymId: string): Promise<Topic | null>;
   createTopic(values: Partial<Topic>): Topic;

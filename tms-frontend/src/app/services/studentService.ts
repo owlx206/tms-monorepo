@@ -78,9 +78,7 @@ export async function getStudent(studentId: number): Promise<BackendStudentSumma
 export async function createStudent(payload: {
   full_name: string;
   class_id: number;
-  codeforces_handle: string | null;
-  discord_username: string;
-  discord_user_id?: string | null;
+  codeforces_handle: string;
   phone?: string | null;
   note: string | null;
 }): Promise<BackendStudentSummary> {
@@ -95,9 +93,7 @@ export async function createStudent(payload: {
 export async function updateStudent(payload: {
   student_id: number;
   full_name?: string;
-  codeforces_handle?: string | null;
-  discord_username?: string;
-  discord_user_id?: string | null;
+  codeforces_handle?: string;
   phone?: string | null;
   note?: string | null;
 }): Promise<BackendStudentSummary> {

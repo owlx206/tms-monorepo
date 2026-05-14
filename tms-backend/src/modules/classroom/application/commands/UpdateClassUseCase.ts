@@ -1,6 +1,6 @@
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { ClassRepository } from '../../infrastructure/persistence/typeorm/ClassRepository.js';
-import type { ClassSchedulePort } from '../ports/ClassSchedulePort.js';
+import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/TypeOrmClassScheduleService.js';
 import type { ClassSummary, UpdateClassInput } from '../dto/ClassDto.js';
 
 type UpdateClassCommand = {
@@ -14,7 +14,7 @@ type UpdateClassCommand = {
 export class UpdateClassUseCase {
   constructor(
     private readonly classes: ClassRepository,
-    private readonly classSchedules: ClassSchedulePort,
+    private readonly classSchedules: TypeOrmClassScheduleService,
   ) {}
 
   async execute(command: UpdateClassCommand): Promise<ClassSummary> {

@@ -15,18 +15,6 @@ export enum ClassStatus {
   Archived = 'archived',
 }
 
-export enum DiscordMessageType {
-  AutoNotification = 'auto_notification',
-  ChannelPost = 'channel_post',
-  BulkDm = 'bulk_dm',
-}
-
-export enum DiscordSendStatus {
-  Pending = 'pending',
-  Sent = 'sent',
-  Failed = 'failed',
-}
-
 export enum FeeRecordStatus {
   Active = 'active',
   Cancelled = 'cancelled',

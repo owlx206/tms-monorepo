@@ -4,9 +4,11 @@ import { Plus, Edit2, Archive, Users, Trash2, MessageSquare } from "lucide-react
 import { ApiError } from "../services/apiClient";
 import {
   type BackendClass,
+  type BackendClassDetails,
   type BackendClassSchedule,
   archiveClass,
   createClass,
+  getClassDetails,
   listClassSchedules,
   listClasses,
   updateClass,
@@ -15,6 +17,7 @@ import { listStudents } from "../services/studentService";
 import {
   listDiscordServers,
   sendChannelPost,
+  upsertDiscordServerByClass,
   type BackendDiscordServer,
 } from "../services/messagingService";
 
@@ -26,6 +29,8 @@ type ClassCard = {
   status: "active" | "archived";
   studentCount: number;
   schedules: BackendClassSchedule[];
+  discordServerId: number | null;
+  discordServerName: string | null;
 };
 
 type ClassSchedulePayload = {
@@ -68,6 +73,15 @@ function parseAmount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("vi-VN");
+}
+
 function formatScheduleSummary(schedules: BackendClassSchedule[]): string {
   if (schedules.length === 0) {
     return "Chưa thiết lập";
@@ -81,7 +95,7 @@ function formatScheduleSummary(schedules: BackendClassSchedule[]): string {
   return Array.from(new Set(rows)).join(", ");
 }
 
-async function buildClassCards(rawClasses: BackendClass[]): Promise<ClassCard[]> {
+async function buildClassCards(rawClasses: BackendClass[], servers: BackendDiscordServer[]): Promise<ClassCard[]> {
   const [students, scheduleRows] = await Promise.all([
     listStudents({ status: "active" }),
     Promise.all(
@@ -110,8 +124,21 @@ async function buildClassCards(rawClasses: BackendClass[]): Promise<ClassCard[]>
   const schedulesByClassId = new Map<number, BackendClassSchedule[]>(
     scheduleRows.map((row) => [row.class_id, row.schedules]),
   );
+  const serverByClassId = new Map<number, BackendDiscordServer>();
+  servers.forEach((server) => {
+    if (server.binding.role === "class" && server.binding.class_id !== null) {
+      serverByClassId.set(server.binding.class_id, server);
+    }
+  });
 
   return rawClasses.map((classItem) => ({
+    ...(() => {
+      const server = serverByClassId.get(classItem.id);
+      return {
+        discordServerId: server?.id ?? null,
+        discordServerName: server?.name ?? null,
+      };
+    })(),
     id: classItem.id,
     name: classItem.name,
     schedule: scheduleByClassId.get(classItem.id) ?? "Chưa thiết lập",
@@ -127,17 +154,20 @@ export function Classes() {
   const [selectedClass, setSelectedClass] = useState<ClassCard | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showClassMessageModal, setShowClassMessageModal] = useState(false);
+  const [showClassDetailsModal, setShowClassDetailsModal] = useState(false);
+  const [classDetails, setClassDetails] = useState<BackendClassDetails | null>(null);
   const [classes, setClasses] = useState<ClassCard[]>([]);
   const [discordServers, setDiscordServers] = useState<BackendDiscordServer[]>([]);
   const [requestError, setRequestError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loadingClassDetails, setLoadingClassDetails] = useState(false);
 
   const refreshClasses = async (): Promise<void> => {
     const [rawClasses, servers] = await Promise.all([
       listClasses(),
       listDiscordServers(),
     ]);
-    const classCards = await buildClassCards(rawClasses);
+    const classCards = await buildClassCards(rawClasses, servers);
     setClasses(classCards);
     setDiscordServers(servers);
   };
@@ -168,15 +198,19 @@ export function Classes() {
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
+    serverId: number;
   }) => {
     setSubmitting(true);
     setRequestError("");
 
     try {
-      await createClass({
+      const createdClass = await createClass({
         name: payload.name,
         fee_per_session: payload.feePerSession,
         schedules: payload.schedules,
+      });
+      await upsertDiscordServerByClass(createdClass.id, {
+        server_id: payload.serverId,
       });
 
       await refreshClasses();
@@ -193,6 +227,7 @@ export function Classes() {
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
+    serverId: number;
   }) => {
     setSubmitting(true);
     setRequestError("");
@@ -202,6 +237,9 @@ export function Classes() {
         name: payload.name,
         fee_per_session: payload.feePerSession,
         schedules: payload.schedules,
+      });
+      await upsertDiscordServerByClass(payload.classId, {
+        server_id: payload.serverId,
       });
       await refreshClasses();
       setShowEditModal(false);
@@ -224,6 +262,21 @@ export function Classes() {
       setRequestError(toErrorMessage(error));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleOpenClassDetails = async (classId: number) => {
+    setLoadingClassDetails(true);
+    setRequestError("");
+
+    try {
+      const details = await getClassDetails(classId);
+      setClassDetails(details);
+      setShowClassDetailsModal(true);
+    } catch (error) {
+      setRequestError(toErrorMessage(error));
+    } finally {
+      setLoadingClassDetails(false);
     }
   };
 
@@ -287,7 +340,19 @@ export function Classes() {
         <h2 className="text-lg font-semibold text-zinc-900 mb-4">Lớp đang mở</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {activeClasses.map((cls) => (
-            <div key={cls.id} className="bg-white border border-zinc-200 rounded-xl p-6 hover:border-zinc-700 transition-colors">
+            <div
+              key={cls.id}
+              onClick={() => void handleOpenClassDetails(cls.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  void handleOpenClassDetails(cls.id);
+                }
+              }}
+              className="bg-white border border-zinc-200 rounded-xl p-6 hover:border-zinc-700 transition-colors cursor-pointer"
+            >
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-semibold text-zinc-900 mb-1">{cls.name}</h3>
@@ -297,7 +362,8 @@ export function Classes() {
                   </div>
                 </div>
                 <button
-                  onClick={() => {
+                  onClick={(event) => {
+                    event.stopPropagation();
                     setSelectedClass(cls);
                     setShowEditModal(true);
                   }}
@@ -320,11 +386,17 @@ export function Classes() {
                     {(cls.feePerSession / 1000).toFixed(0)}K
                   </span>
                 </div>
+
+                <div className="flex items-center justify-between gap-3 p-3 bg-zinc-100 rounded-lg">
+                  <span className="text-zinc-600 text-sm shrink-0">Discord server</span>
+                  <span className="text-zinc-900 text-sm text-right">{cls.discordServerName ?? "Chưa gắn"}</span>
+                </div>
               </div>
 
               <button
                 className="w-full mt-4 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   setSelectedClass(cls);
                   setShowClassMessageModal(true);
                 }}
@@ -336,7 +408,10 @@ export function Classes() {
 
               <button
                 className="w-full mt-4 px-4 py-2 bg-zinc-100 text-zinc-700 rounded-lg hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                onClick={() => void handleArchiveClass(cls.id)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleArchiveClass(cls.id);
+                }}
                 disabled={submitting}
               >
                 <Archive className="w-4 h-4" />
@@ -352,7 +427,19 @@ export function Classes() {
           <h2 className="text-lg font-semibold text-zinc-900 mb-4">Lớp đã đóng</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {archivedClasses.map((cls) => (
-              <div key={cls.id} className="bg-white border border-zinc-200 rounded-xl p-6 opacity-60">
+              <div
+                key={cls.id}
+                onClick={() => void handleOpenClassDetails(cls.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    void handleOpenClassDetails(cls.id);
+                  }
+                }}
+                className="bg-white border border-zinc-200 rounded-xl p-6 opacity-60 cursor-pointer hover:border-zinc-700 transition-colors"
+              >
                 <h3 className="text-xl font-semibold text-zinc-900 mb-1">{cls.name}</h3>
                 <p className="text-zinc-600 text-sm mb-4">{cls.schedule}</p>
                 <div className="flex items-center gap-2">
@@ -368,6 +455,7 @@ export function Classes() {
 
       {showAddModal && (
         <AddClassModal
+          servers={discordServers}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleCreateClass}
           submitting={submitting}
@@ -378,6 +466,7 @@ export function Classes() {
       {showEditModal && selectedClass && (
         <EditClassModal
           classData={selectedClass}
+          servers={discordServers}
           onClose={() => {
             setShowEditModal(false);
             setSelectedClass(null);
@@ -401,6 +490,109 @@ export function Classes() {
         />
       )}
 
+      {showClassDetailsModal && classDetails && (
+        <ClassDetailsModal
+          details={classDetails}
+          loading={loadingClassDetails}
+          onClose={() => {
+            setShowClassDetailsModal(false);
+            setClassDetails(null);
+          }}
+        />
+      )}
+
+    </div>
+  );
+}
+
+function ClassDetailsModal({
+  details,
+  loading,
+  onClose,
+}: {
+  details: BackendClassDetails;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-white/80 flex items-center justify-center p-4 z-50">
+      <div className="bg-zinc-100 border border-zinc-200 rounded-xl p-6 w-full max-w-3xl max-h-[85vh] overflow-y-auto">
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-zinc-900">{details.class.name}</h2>
+            <p className="text-sm text-zinc-600">
+              {details.is_ready ? "Đủ điều kiện hoạt động" : "Chưa đủ điều kiện hoạt động"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm text-zinc-700 hover:bg-zinc-50"
+          >
+            Đóng
+          </button>
+        </div>
+
+        {loading && <p className="text-sm text-zinc-600 mb-4">Đang tải...</p>}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+          <div className="bg-white border border-zinc-200 rounded-lg p-4">
+            <p className="text-xs text-zinc-500 mb-1">Học phí/buổi</p>
+            <p className="font-semibold text-zinc-900">{Number(details.class.fee_per_session).toLocaleString("vi-VN")} VNĐ</p>
+          </div>
+          <div className="bg-white border border-zinc-200 rounded-lg p-4">
+            <p className="text-xs text-zinc-500 mb-1">Học sinh active</p>
+            <p className="font-semibold text-zinc-900">{details.active_students.length}</p>
+          </div>
+          <div className="bg-white border border-zinc-200 rounded-lg p-4">
+            <p className="text-xs text-zinc-500 mb-1">Discord server</p>
+            <p className="font-semibold text-zinc-900">{details.discord_server?.name ?? "Chưa gắn"}</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <section>
+            <h3 className="text-sm font-semibold text-zinc-900 mb-3">Lịch học</h3>
+            <div className="space-y-2">
+              {details.schedules.length === 0 ? (
+                <p className="text-sm text-zinc-600">Chưa có lịch học.</p>
+              ) : details.schedules.map((schedule) => {
+                const dayLabel = DAY_OPTIONS.find((item) => item.value === schedule.day_of_week)?.label ?? `Thứ ${schedule.day_of_week}`;
+                return (
+                  <div key={schedule.id} className="flex items-center justify-between bg-white border border-zinc-200 rounded-lg px-4 py-3">
+                    <span className="text-sm text-zinc-700">{dayLabel}</span>
+                    <span className="text-sm font-medium text-zinc-900">
+                      {schedule.start_time.slice(0, 5)}-{schedule.end_time.slice(0, 5)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-semibold text-zinc-900 mb-3">Học sinh</h3>
+            <div className="overflow-hidden bg-white border border-zinc-200 rounded-lg">
+              {details.active_students.length === 0 ? (
+                <p className="p-4 text-sm text-zinc-600">Chưa có học sinh active.</p>
+              ) : (
+                <div className="divide-y divide-zinc-100">
+                  {details.active_students.map((student) => (
+                    <div key={student.id} className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1fr] gap-2 p-4">
+                      <div>
+                        <p className="font-medium text-zinc-900">{student.full_name}</p>
+                        <p className="text-xs text-zinc-500">Vào lớp: {formatDate(student.enrolled_at)}</p>
+                      </div>
+                      <p className="text-sm text-zinc-700">{student.codeforces_handle ?? "N/A"}</p>
+                      <p className="text-sm text-zinc-700">{student.discord_username ?? "Chưa authorize Discord"}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
@@ -531,7 +723,7 @@ function ScheduleEditor({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-zinc-800">Lịch học</p>
-          <p className="text-xs text-zinc-500">Không bắt buộc. Lịch đã lưu sẽ tự tạo buổi học tương lai.</p>
+          <p className="text-xs text-zinc-500">Bắt buộc. Lịch đã lưu sẽ tự tạo buổi học tương lai.</p>
         </div>
         <button
           type="button"
@@ -595,16 +787,19 @@ function ScheduleEditor({
 }
 
 function AddClassModal({
+  servers,
   onClose,
   onSubmit,
   submitting,
   error,
 }: {
+  servers: BackendDiscordServer[];
   onClose: () => void;
   onSubmit: (payload: {
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
+    serverId: number;
   }) => Promise<void>;
   submitting: boolean;
   error: string;
@@ -612,7 +807,9 @@ function AddClassModal({
   const [name, setName] = useState("");
   const [feePerSession, setFeePerSession] = useState("");
   const [schedules, setSchedules] = useState<ScheduleDraft[]>([]);
+  const [serverId, setServerId] = useState("");
   const [localError, setLocalError] = useState("");
+  const availableServers = servers.filter((server) => server.binding.role === "unbound");
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -631,6 +828,12 @@ function AddClassModal({
       return;
     }
 
+    const parsedServerId = Number(serverId);
+    if (!Number.isInteger(parsedServerId) || parsedServerId <= 0) {
+      setLocalError("Discord server là bắt buộc");
+      return;
+    }
+
     let schedulePayloads: ClassSchedulePayload[];
     try {
       schedulePayloads = validateScheduleDrafts(schedules);
@@ -638,11 +841,16 @@ function AddClassModal({
       setLocalError(toErrorMessage(validationError));
       return;
     }
+    if (schedulePayloads.length === 0) {
+      setLocalError("Lớp phải có ít nhất một lịch học");
+      return;
+    }
 
     await onSubmit({
       name: normalizedName,
       feePerSession: parsedFee,
       schedules: schedulePayloads,
+      serverId: parsedServerId,
     });
   };
 
@@ -675,6 +883,20 @@ function AddClassModal({
 
           <ScheduleEditor schedules={schedules} onChange={setSchedules} />
 
+          <div>
+            <label className="block text-sm text-zinc-600 mb-2">Discord server</label>
+            <select
+              value={serverId}
+              onChange={(event) => setServerId(event.target.value)}
+              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            >
+              <option value="">Chọn server</option>
+              {availableServers.map((server) => (
+                <option key={server.id} value={server.id}>{server.name}</option>
+              ))}
+            </select>
+          </div>
+
           {(localError || error) && <p className="text-sm text-red-600">{localError || error}</p>}
 
           <div className="flex gap-3 pt-4">
@@ -702,18 +924,21 @@ function AddClassModal({
 
 function EditClassModal({
   classData,
+  servers,
   onClose,
   onSubmit,
   submitting,
   error,
 }: {
   classData: ClassCard;
+  servers: BackendDiscordServer[];
   onClose: () => void;
   onSubmit: (payload: {
     classId: number;
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
+    serverId: number;
   }) => Promise<void>;
   submitting: boolean;
   error: string;
@@ -723,7 +948,11 @@ function EditClassModal({
   const [schedules, setSchedules] = useState<ScheduleDraft[]>(
     classData.schedules.map((schedule) => createScheduleDraft(schedule)),
   );
+  const [serverId, setServerId] = useState(classData.discordServerId ? String(classData.discordServerId) : "");
   const [localError, setLocalError] = useState("");
+  const availableServers = classData.discordServerId
+    ? servers.filter((server) => server.id === classData.discordServerId)
+    : servers.filter((server) => server.binding.role === "unbound");
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -742,11 +971,21 @@ function EditClassModal({
       return;
     }
 
+    const parsedServerId = Number(serverId);
+    if (!Number.isInteger(parsedServerId) || parsedServerId <= 0) {
+      setLocalError("Discord server là bắt buộc");
+      return;
+    }
+
     let schedulePayloads: ClassSchedulePayload[];
     try {
       schedulePayloads = validateScheduleDrafts(schedules);
     } catch (validationError) {
       setLocalError(toErrorMessage(validationError));
+      return;
+    }
+    if (schedulePayloads.length === 0) {
+      setLocalError("Lớp phải có ít nhất một lịch học");
       return;
     }
 
@@ -755,6 +994,7 @@ function EditClassModal({
       name: normalizedName,
       feePerSession: parsedFee,
       schedules: schedulePayloads,
+      serverId: parsedServerId,
     });
   };
 
@@ -787,6 +1027,20 @@ function EditClassModal({
           </div>
 
           <ScheduleEditor schedules={schedules} onChange={setSchedules} />
+
+          <div>
+            <label className="block text-sm text-zinc-600 mb-2">Discord server</label>
+            <select
+              value={serverId}
+              onChange={(event) => setServerId(event.target.value)}
+              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            >
+              <option value="">Chọn server</option>
+              {availableServers.map((server) => (
+                <option key={server.id} value={server.id}>{server.name}</option>
+              ))}
+            </select>
+          </div>
 
           {(localError || error) && <p className="text-sm text-red-600">{localError || error}</p>}
 

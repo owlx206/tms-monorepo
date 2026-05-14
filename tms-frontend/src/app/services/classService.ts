@@ -22,6 +22,36 @@ export interface BackendClassSchedule {
   end_time: string;
 }
 
+export interface BackendClassDiscordServer {
+  id: number;
+  teacher_id: number;
+  class_id: number;
+  discord_server_id: string;
+  name: string | null;
+  attendance_voice_channel_id: string | null;
+  notification_channel_id: string | null;
+}
+
+export interface BackendClassDetailStudent {
+  id: number;
+  teacher_id: number;
+  full_name: string;
+  codeforces_handle: string | null;
+  discord_username: string | null;
+  discord_user_id: string | null;
+  phone: string | null;
+  status: string;
+  enrolled_at: string;
+}
+
+export interface BackendClassDetails {
+  class: BackendClass;
+  schedules: BackendClassSchedule[];
+  discord_server: BackendClassDiscordServer | null;
+  active_students: BackendClassDetailStudent[];
+  is_ready: boolean;
+}
+
 export interface BackendSession {
   id: number;
   teacher_id: number;
@@ -94,9 +124,12 @@ function normalizeBackendSession(session: RawBackendSession): BackendSession {
   };
 }
 
-export async function listClasses(status?: BackendClassStatus): Promise<BackendClass[]> {
+export async function listClasses(
+  status?: BackendClassStatus,
+  options?: { readyOnly?: boolean },
+): Promise<BackendClass[]> {
   const data = await apiRequest<{ classes: RawBackendClass[] }>(
-    `/classes${buildQuery({ status })}`,
+    `/classes${buildQuery({ status, ready_only: options?.readyOnly ? "true" : undefined })}`,
   );
   return data.classes.map(normalizeBackendClass);
 }
@@ -104,7 +137,7 @@ export async function listClasses(status?: BackendClassStatus): Promise<BackendC
 export async function createClass(payload: {
   name: string;
   fee_per_session: number;
-  schedules?: {
+  schedules: {
     day_of_week: number;
     start_time: string;
     end_time: string;
@@ -149,6 +182,17 @@ export async function archiveClass(classId: number): Promise<BackendClass> {
 export async function listClassSchedules(classId: number): Promise<BackendClassSchedule[]> {
   const data = await apiRequest<{ schedules: BackendClassSchedule[] }>(`/classes/${classId}/schedules`);
   return data.schedules;
+}
+
+export async function getClassDetails(classId: number): Promise<BackendClassDetails> {
+  const data = await apiRequest<{
+    details: Omit<BackendClassDetails, "class"> & { class: RawBackendClass };
+  }>(`/classes/${classId}/details`);
+
+  return {
+    ...data.details,
+    class: normalizeBackendClass(data.details.class),
+  };
 }
 
 export async function listSessions(filters?: {

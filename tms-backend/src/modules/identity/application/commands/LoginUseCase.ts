@@ -2,14 +2,14 @@ import { AuthError } from '../../../../shared/errors/auth.error.js';
 import { toAuthTeacher } from '../mappers/AuthMapper.js';
 import type { LoginInput } from '../dto/AuthDto.js';
 import type { TeacherRepository } from '../../infrastructure/persistence/typeorm/TeacherRepository.js';
-import type { AccessTokenSigner } from '../ports/AccessTokenSigner.js';
-import type { PasswordHasher } from '../ports/PasswordHasher.js';
+import type { JwtAccessTokenSigner } from '../../infrastructure/security/JwtAccessTokenSigner.js';
+import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
 
 export class LoginUseCase {
   constructor(
     private readonly teacherRepository: TeacherRepository,
-    private readonly passwordHasher: PasswordHasher,
-    private readonly accessTokenSigner: AccessTokenSigner,
+    private readonly passwordHasher: BcryptPasswordHasher,
+    private readonly accessTokenSigner: JwtAccessTokenSigner,
     private readonly tokenExpiresIn: string | undefined,
   ) {}
 

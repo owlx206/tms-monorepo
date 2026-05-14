@@ -1,7 +1,5 @@
 import { apiRequest } from "./apiClient";
 
-export type BackendDiscordMessageType = "auto_notification" | "channel_post" | "bulk_dm";
-
 export interface BackendDiscordServer {
   id: number;
   teacher_id: number;
@@ -65,25 +63,6 @@ export interface DiscordSetupStatus {
   };
   missing_class_server_names: string[];
   issues: DiscordSetupIssue[];
-}
-
-export interface BackendMessageListRow {
-  id: number;
-  teacher_id: number;
-  type: BackendDiscordMessageType;
-  content: string;
-  server_id: number | null;
-  created_at: string;
-  recipients: {
-    total: number;
-    sent: number;
-    failed: number;
-  };
-  failures: Array<{
-    student_id: number;
-    student_name: string;
-    error: string;
-  }>;
 }
 
 export interface DiscordMembershipSyncResult {
@@ -165,26 +144,12 @@ export async function deleteDiscordServer(classId: number): Promise<void> {
   });
 }
 
-export async function listMessages(type?: BackendDiscordMessageType): Promise<BackendMessageListRow[]> {
-  const query = type ? `?type=${encodeURIComponent(type)}` : "";
-  const data = await apiRequest<{ messages: BackendMessageListRow[] }>(`/discord/messages${query}`);
-  return data.messages;
-}
-
 export async function sendBulkDm(payload: {
   content: string;
   student_ids?: number[];
   class_id?: number;
 }) {
   return apiRequest<{
-    message: {
-      id: number;
-      teacher_id: number;
-      type: BackendDiscordMessageType;
-      content: string;
-      server_id: number | null;
-      created_at: string;
-    };
     recipients_total: number;
     sent: number;
     failed: number;
@@ -204,14 +169,6 @@ export async function sendChannelPost(payload: {
   server_ids: number[];
 }) {
   return apiRequest<{
-    messages: Array<{
-      id: number;
-      teacher_id: number;
-      type: BackendDiscordMessageType;
-      content: string;
-      server_id: number | null;
-      created_at: string;
-    }>;
     targets_total: number;
     sent: number;
     failed: number;

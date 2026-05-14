@@ -1,8 +1,8 @@
 import type { SessionSummary } from '../../../application/dto/ClassDto.js';
-import type { SessionOrmEntity } from './SessionOrmEntity.js';
+import type { Session } from '../../../../../entities/session.entity.js';
 
 export class SessionMapper {
-  static toSummary(session: SessionOrmEntity): SessionSummary {
+  static toSummary(session: Session): SessionSummary {
     return {
       id: session.id,
       teacher_id: session.teacher_id,

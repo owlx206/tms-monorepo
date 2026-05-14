@@ -1,5 +1,3 @@
-import type { DiscordMessageType } from '../../../../entities/enums.js';
-
 export type UpsertDiscordServerInput = {
   discord_server_id: string;
   bot_token?: string | null;
@@ -74,10 +72,6 @@ export type TeacherDiscordChannelOption = {
   name: string;
   type: 'text' | 'voice';
   synced_at: Date;
-};
-
-export type MessageListFilters = {
-  type?: DiscordMessageType;
 };
 
 export type BulkDmInput = {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Send, Server, MessageSquare, Users, Hash } from "lucide-react";
+import { Plus, Send, Server, Users, Hash } from "lucide-react";
 
 interface DiscordServer {
   id: string;
@@ -7,15 +7,6 @@ interface DiscordServer {
   serverId: string;
   channelCount: number;
   memberCount: number;
-}
-
-interface Message {
-  id: string;
-  content: string;
-  recipient: string;
-  type: 'personal' | 'group';
-  timestamp: string;
-  status: 'sent' | 'pending' | 'failed';
 }
 
 const mockServers: DiscordServer[] = [
@@ -35,29 +26,9 @@ const mockServers: DiscordServer[] = [
   },
 ];
 
-const mockMessages: Message[] = [
-  {
-    id: '1',
-    content: 'Nhắc nhở: Nộp học phí tháng 4',
-    recipient: 'Nguyễn Văn A',
-    type: 'personal',
-    timestamp: '2026-04-22T10:30:00',
-    status: 'sent',
-  },
-  {
-    id: '2',
-    content: 'Thông báo: Buổi học ngày mai chuyển sang 20:00',
-    recipient: 'Lớp Cơ Bản',
-    type: 'group',
-    timestamp: '2026-04-21T15:00:00',
-    status: 'sent',
-  },
-];
-
 export function Discord() {
   const [showAddServerModal, setShowAddServerModal] = useState(false);
   const [showSendMessageModal, setShowSendMessageModal] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<'servers' | 'messages'>('servers');
 
   return (
     <div className="p-8">
@@ -84,33 +55,7 @@ export function Discord() {
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl mb-6">
-        <div className="flex border-b border-zinc-200">
-          <button
-            onClick={() => setSelectedTab('servers')}
-            className={`flex-1 px-6 py-4 font-medium transition-colors ${
-              selectedTab === 'servers'
-                ? 'text-zinc-900 border-b-2 border-white'
-                : 'text-zinc-600 hover:text-zinc-700'
-            }`}
-          >
-            Discord Servers
-          </button>
-          <button
-            onClick={() => setSelectedTab('messages')}
-            className={`flex-1 px-6 py-4 font-medium transition-colors ${
-              selectedTab === 'messages'
-                ? 'text-zinc-900 border-b-2 border-white'
-                : 'text-zinc-600 hover:text-zinc-700'
-            }`}
-          >
-            Lịch sử tin nhắn
-          </button>
-        </div>
-      </div>
-
-      {selectedTab === 'servers' && (
-        <div>
+      <div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {mockServers.map((server) => (
               <div key={server.id} className="bg-white border border-zinc-200 rounded-xl p-6 hover:border-zinc-700 transition-colors">
@@ -157,75 +102,7 @@ export function Discord() {
               <p>5. Điểm danh tự động được đẩy từ bot vào hệ thống</p>
             </div>
           </div>
-        </div>
-      )}
-
-      {selectedTab === 'messages' && (
-        <div>
-          <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-zinc-100 border-b border-zinc-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-zinc-600">Thời gian</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-zinc-600">Người nhận</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-zinc-600">Loại</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-zinc-600">Nội dung</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-zinc-600">Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {mockMessages.map((msg) => (
-                  <tr key={msg.id} className="hover:bg-zinc-100/50 transition-colors">
-                    <td className="px-6 py-4 text-zinc-600 text-sm">
-                      {new Date(msg.timestamp).toLocaleString('vi-VN')}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-900 font-medium">{msg.recipient}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-zinc-100 text-zinc-700 rounded-full text-sm">
-                        {msg.type === 'personal' ? 'Cá nhân' : 'Nhóm'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-zinc-700">{msg.content}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-sm ${
-                        msg.status === 'sent'
-                          ? 'bg-zinc-700 text-zinc-700'
-                          : msg.status === 'pending'
-                          ? 'bg-zinc-100 text-zinc-600'
-                          : 'bg-zinc-100 text-zinc-600'
-                      }`}>
-                        {msg.status === 'sent' ? 'Đã gửi' : msg.status === 'pending' ? 'Đang gửi' : 'Thất bại'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-6 bg-zinc-100 border border-zinc-200 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-zinc-900 mb-3">Các loại thông báo tự động</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-white rounded-lg border border-zinc-200">
-                <h4 className="text-zinc-900 font-medium mb-2">Nhắc học phí</h4>
-                <p className="text-sm text-zinc-600">Gửi tự động khi học sinh có nợ quá hạn</p>
-              </div>
-              <div className="p-4 bg-white rounded-lg border border-zinc-200">
-                <h4 className="text-zinc-900 font-medium mb-2">Nhắc làm bài</h4>
-                <p className="text-sm text-zinc-600">Thông báo khi học sinh còn bài chưa hoàn thành</p>
-              </div>
-              <div className="p-4 bg-white rounded-lg border border-zinc-200">
-                <h4 className="text-zinc-900 font-medium mb-2">Thông báo nghỉ học</h4>
-                <p className="text-sm text-zinc-600">Thông báo khi giáo viên hủy buổi học</p>
-              </div>
-              <div className="p-4 bg-white rounded-lg border border-zinc-808">
-                <h4 className="text-zinc-900 font-medium mb-2">Điểm danh</h4>
-                <p className="text-sm text-zinc-600">Bot gửi tin nhắn điểm danh tự động</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
 
       {showAddServerModal && (
         <AddServerModal onClose={() => setShowAddServerModal(false)} />

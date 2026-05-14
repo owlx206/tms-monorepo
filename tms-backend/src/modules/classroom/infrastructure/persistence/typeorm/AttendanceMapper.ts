@@ -1,8 +1,8 @@
 import type { AttendanceRecordSummary } from '../../../application/dto/AttendanceDto.js';
-import type { AttendanceOrmEntity } from './AttendanceOrmEntity.js';
+import type { Attendance } from '../../../../../entities/attendance.entity.js';
 
 export class AttendanceMapper {
-  static toSummary(attendance: AttendanceOrmEntity): AttendanceRecordSummary {
+  static toSummary(attendance: Attendance): AttendanceRecordSummary {
     return {
       id: attendance.id,
       teacher_id: attendance.teacher_id,

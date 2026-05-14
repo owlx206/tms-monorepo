@@ -1,10 +1,10 @@
-import { AppDataSource } from '../../../../../data-source.js';
+import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import type { SysadminDiscordBotCredentialStore } from './SysadminDiscordBotCredentialStore.js';
-import { SysadminDiscordBotCredentialOrmEntity } from './SysadminDiscordBotCredentialOrmEntity.js';
+import { SysadminDiscordBotCredential } from '../../../../../entities/sysadmin-discord-bot-credential.entity.js';
 
 export class TypeOrmSysadminDiscordBotCredentialStore implements SysadminDiscordBotCredentialStore {
-  findDefault(): Promise<SysadminDiscordBotCredentialOrmEntity | null> {
-    return AppDataSource.getRepository(SysadminDiscordBotCredentialOrmEntity).findOneBy({
+  findDefault(): Promise<SysadminDiscordBotCredential | null> {
+    return AppDataSource.getRepository(SysadminDiscordBotCredential).findOneBy({
       singleton_key: 'default',
     });
   }
@@ -15,8 +15,8 @@ export class TypeOrmSysadminDiscordBotCredentialStore implements SysadminDiscord
     client_secret: string;
     permissions?: string | null;
     scopes?: string | null;
-  }): Promise<SysadminDiscordBotCredentialOrmEntity> {
-    const repo = AppDataSource.getRepository(SysadminDiscordBotCredentialOrmEntity);
+  }): Promise<SysadminDiscordBotCredential> {
+    const repo = AppDataSource.getRepository(SysadminDiscordBotCredential);
     const existing = await this.findDefault();
 
     if (existing) {

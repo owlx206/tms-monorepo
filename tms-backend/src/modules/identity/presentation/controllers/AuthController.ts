@@ -3,7 +3,7 @@ import { ServiceError } from '../../../../shared/errors/service.error.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
-import { AuthReadService } from '../../application/queries/AuthReadService.js';
+import { GetCurrentTeacherUseCase } from '../../application/queries/GetCurrentTeacherUseCase.js';
 import type { LoginInput, RegisterInput, UpdateTeacherInput } from '../../application/dto/AuthDto.js';
 import { getTeacher } from './request-context.js';
 
@@ -16,7 +16,7 @@ type AuthControllerAction =
   | 'completeDiscordVerification';
 
 type AuthControllerDependencies = {
-  readService: AuthReadService;
+  getCurrentTeacher: GetCurrentTeacherUseCase;
   register: { execute(input: RegisterInput): Promise<unknown> };
   login: { execute(input: LoginInput): Promise<unknown> };
   updateMe: { execute(teacherId: number, input: UpdateTeacherInput): Promise<unknown> };
@@ -77,7 +77,7 @@ export class AuthController implements Controller {
     return {
       statusCode: 200,
       body: {
-        teacher: this.dependencies.readService.me(getTeacher(request)),
+        teacher: this.dependencies.getCurrentTeacher.execute(getTeacher(request)),
       },
     };
   }

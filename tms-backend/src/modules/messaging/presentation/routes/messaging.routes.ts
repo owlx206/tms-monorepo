@@ -15,7 +15,6 @@ import {
   bulkDmBodySchema,
   channelPostBodySchema,
   classIdParamSchema,
-  messageListQuerySchema,
   serverIdParamSchema,
   studentIdParamSchema,
   upsertDiscordServerBodySchema,
@@ -33,61 +32,62 @@ type MessagingRouteControllers = {
   getSetupStatus: MessagingController;
   upsertDiscordServer: MessagingController;
   deleteDiscordServer: MessagingController;
-  listMessages: MessagingController;
   sendBulkDm: MessagingController;
   sendChannelPost: MessagingController;
 };
 
 export function createMessagingRouter(controllers: MessagingRouteControllers): Router {
   const router = Router();
+  const teacherAuth = [
+    passport.authenticate('jwt', { session: false }),
+    requireRoles([TeacherRole.Teacher]),
+  ];
 
   router.get('/discord/oauth/callback', adaptExpressRoute(controllers.completeDiscordInstall));
   router.get('/discord/student/callback', adaptExpressRoute(controllers.completeStudentDiscordAuthorization));
 
-  router.use(passport.authenticate('jwt', { session: false }));
-  router.use(requireRoles([TeacherRole.Teacher]));
-
-  router.get('/discord/bot-invite-link', adaptExpressRoute(controllers.getBotInviteLink));
-  router.get('/discord/setup-status', adaptExpressRoute(controllers.getSetupStatus));
-  router.get('/discord/servers', adaptExpressRoute(controllers.listDiscordServers));
-  router.post('/discord/servers/sync', adaptExpressRoute(controllers.syncDiscordServers));
-  router.post('/discord/membership/sync', adaptExpressRoute(controllers.syncDiscordMembership));
+  router.get('/discord/bot-invite-link', ...teacherAuth, adaptExpressRoute(controllers.getBotInviteLink));
+  router.get('/discord/setup-status', ...teacherAuth, adaptExpressRoute(controllers.getSetupStatus));
+  router.get('/discord/servers', ...teacherAuth, adaptExpressRoute(controllers.listDiscordServers));
+  router.post('/discord/servers/sync', ...teacherAuth, adaptExpressRoute(controllers.syncDiscordServers));
+  router.post('/discord/membership/sync', ...teacherAuth, adaptExpressRoute(controllers.syncDiscordMembership));
   router.get(
     '/students/:studentId/discord/authorization-url',
+    ...teacherAuth,
     validate({ params: studentIdParamSchema }),
     authorizeOwnedStudentParam(),
     adaptExpressRoute(controllers.startStudentDiscordAuthorization),
   );
   router.get(
     '/discord/servers/:serverId/channels',
+    ...teacherAuth,
     validate({ params: serverIdParamSchema }),
     adaptExpressRoute(controllers.listDiscordChannels),
   );
   router.put(
     '/classes/:classId/discord-server/select',
+    ...teacherAuth,
     validate({ params: classIdParamSchema, body: upsertDiscordServerBodySchema }),
     authorizeOwnedClassParam(),
     adaptExpressRoute(controllers.upsertDiscordServer),
   );
   router.delete(
     '/classes/:classId/discord-server',
+    ...teacherAuth,
     validate({ params: classIdParamSchema }),
     authorizeOwnedClassParam(),
     adaptExpressRoute(controllers.deleteDiscordServer),
   );
-  router.get(
-    '/discord/messages',
-    validate({ query: messageListQuerySchema }),
-    adaptExpressRoute(controllers.listMessages),
-  );
   router.post(
     '/discord/messages/bulk-dm',
+    ...teacherAuth,
     validate({ body: bulkDmBodySchema }),
     authorizeOwnedClassBody('class_id'),
     adaptExpressRoute(controllers.sendBulkDm),
   );
   router.post(
     '/discord/messages/channel-post',
+    ...teacherAuth,
     validate({ body: channelPostBodySchema }),
     adaptExpressRoute(controllers.sendChannelPost),
   );

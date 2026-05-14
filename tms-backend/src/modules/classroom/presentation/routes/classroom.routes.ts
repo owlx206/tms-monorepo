@@ -16,6 +16,7 @@ import { ClassController } from '../controllers/ClassController.js';
 type ClassroomRouteControllers = {
   listClasses: ClassController;
   getClassById: ClassController;
+  getClassDetails: ClassController;
   createClass: ClassController;
   updateClass: ClassController;
   archiveClass: ClassController;
@@ -29,6 +30,7 @@ export function createClassroomRouter(controllers: ClassroomRouteControllers): R
 
   router.get('/classes', validate({ query: classListQuerySchema }), adaptExpressRoute(controllers.listClasses));
   router.post('/classes', validate({ body: createClassBodySchema }), adaptExpressRoute(controllers.createClass));
+  router.get('/classes/:classId/details', validate({ params: classIdParamSchema }), authorizeOwnedClassParam(), adaptExpressRoute(controllers.getClassDetails));
   router.get('/classes/:classId', validate({ params: classIdParamSchema }), authorizeOwnedClassParam(), adaptExpressRoute(controllers.getClassById));
   router.patch('/classes/:classId', validate({
     body: updateClassBodySchema,

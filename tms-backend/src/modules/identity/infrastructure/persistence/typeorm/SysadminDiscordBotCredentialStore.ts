@@ -1,4 +1,4 @@
-import type { SysadminDiscordBotCredentialOrmEntity } from './SysadminDiscordBotCredentialOrmEntity.js';
+import type { SysadminDiscordBotCredential } from '../../../../../entities/sysadmin-discord-bot-credential.entity.js';
 
 export type SysadminDiscordBotCredentialRecord = {
   id: number;
@@ -12,12 +12,12 @@ export type SysadminDiscordBotCredentialRecord = {
 };
 
 export interface SysadminDiscordBotCredentialStore {
-  findDefault(): Promise<SysadminDiscordBotCredentialOrmEntity | null>;
+  findDefault(): Promise<SysadminDiscordBotCredential | null>;
   saveDefault(input: {
     bot_token: string;
     client_id: string;
     client_secret: string;
     permissions?: string | null;
     scopes?: string | null;
-  }): Promise<SysadminDiscordBotCredentialOrmEntity>;
+  }): Promise<SysadminDiscordBotCredential>;
 }

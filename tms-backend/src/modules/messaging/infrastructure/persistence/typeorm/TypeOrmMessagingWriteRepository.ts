@@ -1,25 +1,18 @@
 import { EntityManager, In } from 'typeorm';
 
-import { AppDataSource } from '../../../../../data-source.js';
-import { DiscordMessageOrmEntity } from './DiscordMessageOrmEntity.js';
-import { DiscordMessageRecipientOrmEntity } from './DiscordMessageRecipientOrmEntity.js';
-import { DiscordServerOrmEntity } from './DiscordServerOrmEntity.js';
-import { TeacherDiscordChannelCacheOrmEntity } from './TeacherDiscordChannelCacheOrmEntity.js';
-import { TeacherDiscordServerCacheOrmEntity } from './TeacherDiscordServerCacheOrmEntity.js';
+import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
+import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
+import { TeacherDiscordChannelCache } from '../../../../../entities/teacher-discord-channel-cache.entity.js';
+import { TeacherDiscordServerCache } from '../../../../../entities/teacher-discord-server-cache.entity.js';
 import { Class } from '../../../../../entities/class.entity.js';
 import { Enrollment } from '../../../../../entities/enrollment.entity.js';
 import { Student } from '../../../../../entities/student.entity.js';
-import type { DiscordMessage } from '../../../../../entities/discord-message.entity.js';
-import type { DiscordMessageRecipient } from '../../../../../entities/discord-message-recipient.entity.js';
-import type { DiscordServer } from '../../../../../entities/discord-server.entity.js';
-import type { TeacherDiscordChannelCache } from '../../../../../entities/teacher-discord-channel-cache.entity.js';
-import type { TeacherDiscordServerCache } from '../../../../../entities/teacher-discord-server-cache.entity.js';
 import type {
   BulkDmRecipientContext,
   DiscordMembershipSyncStudent,
   MessagingWriteRepository,
 } from './MessagingWriteRepository.js';
-import type { DiscordServerContext } from '../../../application/ports/DiscordRecipientResolverPort.js';
+import type { DiscordServerContext } from '../../discord/discord.types.js';
 
 type BulkDmRecipientRow = {
   student_id: number | string;
@@ -179,7 +172,7 @@ function bulkDmRecipientQuery(manager: EntityManager, teacherId: number) {
       'active_enrollment.student_id = student.id AND active_enrollment.teacher_id = student.teacher_id AND active_enrollment.unenrolled_at IS NULL',
     )
     .leftJoin(
-      DiscordServerOrmEntity,
+      DiscordServer,
       'discord_server',
       'discord_server.teacher_id = student.teacher_id AND discord_server.class_id = active_enrollment.class_id',
     )
@@ -201,29 +194,29 @@ export class TypeOrmMessagingWriteRepository implements MessagingWriteRepository
   constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
 
   findDiscordServerByClass(teacherId: number, classId: number) {
-    return this.manager.getRepository(DiscordServerOrmEntity).findOneBy({
+    return this.manager.getRepository(DiscordServer).findOneBy({
       teacher_id: teacherId,
       class_id: classId,
     });
   }
 
   removeDiscordServer(server: DiscordServer) {
-    return this.manager.getRepository(DiscordServerOrmEntity).remove(server);
+    return this.manager.getRepository(DiscordServer).remove(server);
   }
 
   createDiscordServer(values: Partial<DiscordServer>) {
-    return this.manager.getRepository(DiscordServerOrmEntity).create(values);
+    return this.manager.getRepository(DiscordServer).create(values);
   }
 
   saveDiscordServer(server: DiscordServer) {
-    return this.manager.getRepository(DiscordServerOrmEntity).save(server);
+    return this.manager.getRepository(DiscordServer).save(server);
   }
 
   async replaceTeacherDiscordServerCaches(
     teacherId: number,
     servers: Array<{ discord_server_id: string; name: string }>,
   ): Promise<TeacherDiscordServerCache[]> {
-    const repo = this.manager.getRepository(TeacherDiscordServerCacheOrmEntity);
+    const repo = this.manager.getRepository(TeacherDiscordServerCache);
     await repo.delete({ teacher_id: teacherId });
     if (servers.length === 0) {
       return [];
@@ -238,31 +231,31 @@ export class TypeOrmMessagingWriteRepository implements MessagingWriteRepository
   }
 
   listTeacherDiscordServerCaches(teacherId: number) {
-    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).find({
+    return this.manager.getRepository(TeacherDiscordServerCache).find({
       where: { teacher_id: teacherId },
       order: { name: 'ASC' },
     });
   }
 
   findTeacherDiscordServerCacheByDiscordServerId(teacherId: number, discordServerId: string) {
-    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).findOneBy({
+    return this.manager.getRepository(TeacherDiscordServerCache).findOneBy({
       teacher_id: teacherId,
       discord_server_id: discordServerId,
     });
   }
 
   findAnyTeacherDiscordServerCacheByDiscordServerId(discordServerId: string) {
-    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).findOneBy({
+    return this.manager.getRepository(TeacherDiscordServerCache).findOneBy({
       discord_server_id: discordServerId,
     });
   }
 
   createTeacherDiscordServerCache(values: Partial<TeacherDiscordServerCache>) {
-    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).create(values);
+    return this.manager.getRepository(TeacherDiscordServerCache).create(values);
   }
 
   saveTeacherDiscordServerCache(server: TeacherDiscordServerCache) {
-    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).save(server);
+    return this.manager.getRepository(TeacherDiscordServerCache).save(server);
   }
 
   async replaceTeacherDiscordChannelCaches(
@@ -270,7 +263,7 @@ export class TypeOrmMessagingWriteRepository implements MessagingWriteRepository
     discordServerId: string,
     channels: Array<{ discord_channel_id: string; name: string; type: 'text' | 'voice' }>,
   ): Promise<TeacherDiscordChannelCache[]> {
-    const repo = this.manager.getRepository(TeacherDiscordChannelCacheOrmEntity);
+    const repo = this.manager.getRepository(TeacherDiscordChannelCache);
     await repo.delete({
       teacher_id: teacherId,
       discord_server_id: discordServerId,
@@ -291,21 +284,21 @@ export class TypeOrmMessagingWriteRepository implements MessagingWriteRepository
   }
 
   findTeacherDiscordServerCacheById(teacherId: number, serverCacheId: number) {
-    return this.manager.getRepository(TeacherDiscordServerCacheOrmEntity).findOneBy({
+    return this.manager.getRepository(TeacherDiscordServerCache).findOneBy({
       teacher_id: teacherId,
       id: serverCacheId,
     });
   }
 
   findTeacherDiscordChannelCacheById(teacherId: number, channelCacheId: number) {
-    return this.manager.getRepository(TeacherDiscordChannelCacheOrmEntity).findOneBy({
+    return this.manager.getRepository(TeacherDiscordChannelCache).findOneBy({
       teacher_id: teacherId,
       id: channelCacheId,
     });
   }
 
   findDiscordServerByDiscordServerId(teacherId: number, discordServerId: string) {
-    return this.manager.getRepository(DiscordServerOrmEntity).findOneBy({
+    return this.manager.getRepository(DiscordServer).findOneBy({
       teacher_id: teacherId,
       discord_server_id: discordServerId,
     });
@@ -351,7 +344,7 @@ export class TypeOrmMessagingWriteRepository implements MessagingWriteRepository
       return Promise.resolve([]);
     }
 
-    return this.manager.getRepository(DiscordServerOrmEntity).findBy({
+    return this.manager.getRepository(DiscordServer).findBy({
       teacher_id: teacherId,
       id: In(serverIds),
     });
@@ -391,12 +384,12 @@ export class TypeOrmMessagingWriteRepository implements MessagingWriteRepository
         'last_class.id = last_enrollment.class_id AND last_class.teacher_id = student.teacher_id',
       )
       .leftJoin(
-        DiscordServerOrmEntity,
+        DiscordServer,
         'class_server',
         'class_server.teacher_id = student.teacher_id AND class_server.class_id = active_enrollment.class_id',
       )
       .leftJoin(
-        DiscordServerOrmEntity,
+        DiscordServer,
         'last_class_server',
         'last_class_server.teacher_id = student.teacher_id AND last_class_server.class_id = last_enrollment.class_id',
       )
@@ -479,27 +472,4 @@ export class TypeOrmMessagingWriteRepository implements MessagingWriteRepository
     );
   }
 
-  createMessageWithRecipients(input: {
-    messageValues: Partial<DiscordMessage>;
-    recipientValues: Array<Partial<DiscordMessageRecipient>>;
-  }) {
-    return AppDataSource.transaction(async (transactionManager) => {
-      const messageRepo = transactionManager.getRepository(DiscordMessageOrmEntity);
-      const recipientRepo = transactionManager.getRepository(DiscordMessageRecipientOrmEntity);
-      const message = await messageRepo.save(messageRepo.create(input.messageValues));
-      const recipients = input.recipientValues.map((recipient) => recipientRepo.create({
-        ...recipient,
-        discord_message_id: message.id,
-      }));
-      await recipientRepo.save(recipients);
-      return { message, recipients };
-    });
-  }
-
-  createChannelPostMessages(values: Array<Partial<DiscordMessage>>) {
-    return AppDataSource.transaction(async (transactionManager) => {
-      const messageRepo = transactionManager.getRepository(DiscordMessageOrmEntity);
-      return messageRepo.save(values.map((value) => messageRepo.create(value)));
-    });
-  }
 }

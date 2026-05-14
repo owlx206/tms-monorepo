@@ -1,9 +1,7 @@
-import type { DiscordMessage } from '../../../../../entities/discord-message.entity.js';
-import type { DiscordMessageRecipient } from '../../../../../entities/discord-message-recipient.entity.js';
 import type { DiscordServer } from '../../../../../entities/discord-server.entity.js';
 import type { TeacherDiscordChannelCache } from '../../../../../entities/teacher-discord-channel-cache.entity.js';
 import type { TeacherDiscordServerCache } from '../../../../../entities/teacher-discord-server-cache.entity.js';
-import type { DiscordServerContext } from '../../../application/ports/DiscordRecipientResolverPort.js';
+import type { DiscordServerContext } from '../../discord/discord.types.js';
 
 export type BulkDmRecipientContext = {
   student_id: number;
@@ -77,9 +75,4 @@ export interface MessagingWriteRepository {
     refreshToken: string;
     tokenExpiresAt: Date;
   }): Promise<void>;
-  createMessageWithRecipients(input: {
-    messageValues: Partial<DiscordMessage>;
-    recipientValues: Array<Partial<DiscordMessageRecipient>>;
-  }): Promise<{ message: DiscordMessage; recipients: DiscordMessageRecipient[] }>;
-  createChannelPostMessages(values: Array<Partial<DiscordMessage>>): Promise<DiscordMessage[]>;
 }

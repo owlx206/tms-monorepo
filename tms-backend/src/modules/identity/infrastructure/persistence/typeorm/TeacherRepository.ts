@@ -1,9 +1,9 @@
-import type { TeacherOrmEntity } from './TeacherOrmEntity.js';
+import type { Teacher } from '../../../../../entities/teacher.entity.js';
 
 export interface TeacherRepository {
-  create(input: Partial<TeacherOrmEntity>): TeacherOrmEntity;
-  save(teacher: TeacherOrmEntity): Promise<TeacherOrmEntity>;
-  findById(teacherId: number): Promise<TeacherOrmEntity | null>;
-  findByUsername(username: string): Promise<TeacherOrmEntity | null>;
-  listNewestFirst(): Promise<TeacherOrmEntity[]>;
+  create(input: Partial<Teacher>): Teacher;
+  save(teacher: Teacher): Promise<Teacher>;
+  findById(teacherId: number): Promise<Teacher | null>;
+  findByUsername(username: string): Promise<Teacher | null>;
+  listNewestFirst(): Promise<Teacher[]>;
 }
