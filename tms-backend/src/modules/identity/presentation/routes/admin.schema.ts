@@ -12,16 +12,6 @@ export const teacherIdParamSchema = z.object({
   teacherId: positiveIntegerSchema,
 });
 
-export const createTeacherByAdminBodySchema = z.object({
-  username: requiredTrimmedStringSchema,
-  password: requiredTrimmedStringSchema,
-  role: z.nativeEnum(TeacherRole).optional().default(TeacherRole.Teacher),
-  is_active: booleanSchema.optional().default(true),
-  codeforces_handle: nullableOptionalTrimmedStringSchema,
-  codeforces_api_key: nullableOptionalTrimmedStringSchema,
-  codeforces_api_secret: nullableOptionalTrimmedStringSchema,
-});
-
 export const updateTeacherByAdminBodySchema = z.object({
   username: requiredTrimmedStringSchema.optional(),
   password: requiredTrimmedStringSchema.optional(),

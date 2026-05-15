@@ -722,7 +722,7 @@ export function Students() {
                               </button>
                             </>
                           )}
-                          {student.status === "archived" && (
+                          {(student.status === "archived" || student.status === "pending_archive") && (
                             <button
                               onClick={() => {
                                 setSelectedStudent(student);

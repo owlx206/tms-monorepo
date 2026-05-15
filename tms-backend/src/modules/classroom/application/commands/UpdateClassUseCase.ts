@@ -4,7 +4,7 @@ import { Class } from '../../../../entities/class.entity.js';
 import { ClassStatus } from '../../../../entities/enums.js';
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/TypeOrmClassScheduleService.js';
-import type { ClassSummary, UpdateClassInput } from '../dto/ClassDto.js';
+import type { ClassSummary, ClassSummaryWithSchedules, UpdateClassInput } from '../dto/ClassDto.js';
 
 type UpdateClassCommand = {
   teacherId: number;
@@ -40,7 +40,7 @@ export class UpdateClassUseCase {
     private readonly classSchedules: TypeOrmClassScheduleService,
   ) {}
 
-  async execute(command: UpdateClassCommand): Promise<ClassSummary> {
+  async execute(command: UpdateClassCommand): Promise<ClassSummaryWithSchedules> {
     const classRepository = this.manager.getRepository(Class);
     const classEntity = await classRepository.findOneBy({
       id: command.classId,
@@ -68,8 +68,12 @@ export class UpdateClassUseCase {
     if (command.schedules !== undefined) {
       await this.classSchedules.replaceSchedules(command.teacherId, command.classId, command.schedules);
     }
+    const schedules = await this.classSchedules.listSchedules(command.teacherId, command.classId);
 
-    return this.toSummary(savedClass);
+    return {
+      ...this.toSummary(savedClass),
+      schedules,
+    };
   }
 
   private toSummary(classEntity: Class): ClassSummary {

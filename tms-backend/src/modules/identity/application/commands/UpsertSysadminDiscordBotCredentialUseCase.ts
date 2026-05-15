@@ -56,6 +56,9 @@ export class UpsertSysadminDiscordBotCredentialUseCase {
       }),
       verification_redirect_uri: `${config.backendPublicUrl}${config.apiPrefix}/discord/verification/callback`,
       has_bot_token: true,
+      bot_health_status: saved.bot_health_status,
+      bot_health_message: saved.bot_health_message,
+      bot_health_checked_at: saved.bot_health_checked_at,
       has_client_secret: Boolean(saved.client_secret),
       updated_at: saved.updated_at,
     };

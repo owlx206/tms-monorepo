@@ -73,9 +73,3 @@ export async function listAttendance(filters?: {
   const data = await apiRequest<{ attendance: unknown[] }>(path);
   return data.attendance;
 }
-
-export async function resetSessionAttendance(sessionId: number): Promise<void> {
-  await apiRequest(`/sessions/${sessionId}/attendance`, {
-    method: "DELETE",
-  });
-}

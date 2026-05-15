@@ -22,7 +22,6 @@ type AttendanceRouteControllers = {
   syncSessionAttendance: AttendanceController;
   upsertSessionAttendance: AttendanceController;
   listAttendanceRecords: AttendanceController;
-  resetSessionAttendance: AttendanceController;
 };
 
 export function createAttendanceRouter(controllers: AttendanceRouteControllers): Router {
@@ -38,7 +37,6 @@ export function createAttendanceRouter(controllers: AttendanceRouteControllers):
     params: sessionStudentIdParamSchema,
   }), authorizeOwnedSessionParam(), authorizeOwnedStudentParam(), adaptExpressRoute(controllers.upsertSessionAttendance));
   router.get('/attendance', validate({ query: attendanceListQuerySchema }), adaptExpressRoute(controllers.listAttendanceRecords));
-  router.delete('/sessions/:sessionId/attendance', validate({ params: sessionIdParamSchema }), authorizeOwnedSessionParam(), adaptExpressRoute(controllers.resetSessionAttendance));
 
   return router;
 }

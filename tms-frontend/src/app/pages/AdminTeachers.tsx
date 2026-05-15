@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { KeyRound, Plus, Settings, Shield, UserCheck, UserX } from "lucide-react";
+import { CheckCircle2, Clock3, KeyRound, Settings, Shield, TriangleAlert, UserCheck, UserX } from "lucide-react";
 
 import { ApiError } from "../services/apiClient";
 import {
-  createTeacherByAdmin,
   getSysadminDiscordBotCredential,
   listTeachersForAdmin,
   upsertSysadminDiscordBotCredential,
@@ -35,10 +34,60 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString("vi-VN");
 }
 
+function formatDateTime(dateString: string): string {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return dateString;
+  }
+
+  return date.toLocaleString("vi-VN");
+}
+
+function DiscordBotHealthBadge({ credential }: { credential: BackendSysadminDiscordBotCredential | null }) {
+  if (!credential?.has_bot_token) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
+        <Clock3 className="h-4 w-4" />
+        Chưa có bot token
+      </span>
+    );
+  }
+
+  if (credential.bot_health_status === "healthy") {
+    return (
+      <span
+        title={credential.bot_health_checked_at ? `Kiểm tra lúc ${formatDateTime(credential.bot_health_checked_at)}` : undefined}
+        className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+      >
+        <CheckCircle2 className="h-4 w-4" />
+        Bot token ổn
+      </span>
+    );
+  }
+
+  if (credential.bot_health_status === "unhealthy") {
+    return (
+      <span
+        title={credential.bot_health_message ?? undefined}
+        className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+      >
+        <TriangleAlert className="h-4 w-4" />
+        Bot token lỗi
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+      <Clock3 className="h-4 w-4" />
+      Chưa kiểm tra bot token
+    </span>
+  );
+}
+
 export function AdminTeachers() {
   const [teachers, setTeachers] = useState<BackendAdminTeacher[]>([]);
   const [account, setAccount] = useState<AuthTeacher | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showResetModalFor, setShowResetModalFor] = useState<BackendAdminTeacher | null>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showDiscordBotModal, setShowDiscordBotModal] = useState(false);
@@ -80,36 +129,6 @@ export function AdminTeachers() {
 
     return { total, active, sysadmin };
   }, [teachers]);
-
-  const handleCreateTeacher = async (payload: {
-    username: string;
-    password: string;
-    role: "teacher" | "sysadmin";
-    codeforces_handle?: string | null;
-    codeforces_api_key?: string | null;
-    codeforces_api_secret?: string | null;
-  }) => {
-    setSubmitting(true);
-    setRequestError("");
-
-    try {
-      await createTeacherByAdmin({
-        username: payload.username,
-        password: payload.password,
-        role: payload.role,
-        is_active: true,
-        codeforces_handle: payload.codeforces_handle ?? null,
-        codeforces_api_key: payload.codeforces_api_key ?? null,
-        codeforces_api_secret: payload.codeforces_api_secret ?? null,
-      });
-      setShowCreateModal(false);
-      await loadData();
-    } catch (error) {
-      setRequestError(toErrorMessage(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleToggleActive = async (teacher: BackendAdminTeacher) => {
     setUpdatingTeacherId(teacher.id);
@@ -217,13 +236,6 @@ export function AdminTeachers() {
             <Settings className="w-5 h-5" />
             Tài khoản của tôi
           </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Tạo tài khoản
-          </button>
         </div>
       </div>
 
@@ -251,12 +263,22 @@ export function AdminTeachers() {
       <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900">Discord bot của hệ thống</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-lg font-semibold text-zinc-900">Discord bot của hệ thống</h2>
+              <DiscordBotHealthBadge credential={discordBotCredential} />
+            </div>
             <p className="mt-1 text-sm text-zinc-600">
               Credential của bot được cấu hình một lần ở đây. Giáo viên chỉ nhận invite link và chọn server/channel đã đồng bộ.
             </p>
             <div className="mt-4 space-y-1 text-sm text-zinc-700">
               <p>Bot token: {discordBotCredential?.has_bot_token ? "đã cấu hình" : "chưa cấu hình"}</p>
+              <p>
+                Health: {discordBotCredential?.bot_health_status ?? "unknown"}
+                {discordBotCredential?.bot_health_checked_at ? `, ${formatDateTime(discordBotCredential.bot_health_checked_at)}` : ""}
+              </p>
+              {discordBotCredential?.bot_health_message && (
+                <p>Health detail: {discordBotCredential.bot_health_message}</p>
+              )}
               <p>Client secret: {discordBotCredential?.has_client_secret ? "đã cấu hình" : "chưa cấu hình"}</p>
               <p>Client ID: {discordBotCredential?.client_id || "chưa cấu hình"}</p>
               <p>Invite link: {discordBotCredential?.invite_link || "chưa có"}</p>
@@ -356,14 +378,6 @@ export function AdminTeachers() {
           )}
         </div>
       </div>
-
-      {showCreateModal && (
-        <CreateTeacherModal
-          submitting={submitting}
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateTeacher}
-        />
-      )}
 
       {showResetModalFor && (
         <ResetPasswordModal
@@ -510,139 +524,6 @@ function DiscordBotCredentialModal({
             </button>
             <button type="submit" disabled={submitting} className="flex-1 rounded-lg bg-zinc-900 px-4 py-3 text-white hover:bg-zinc-800 disabled:opacity-60">
               {submitting ? "Đang lưu..." : "Lưu bot"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function CreateTeacherModal({
-  submitting,
-  onClose,
-  onSubmit,
-}: {
-  submitting: boolean;
-  onClose: () => void;
-  onSubmit: (payload: {
-    username: string;
-    password: string;
-    role: "teacher" | "sysadmin";
-    codeforces_handle?: string | null;
-    codeforces_api_key?: string | null;
-    codeforces_api_secret?: string | null;
-  }) => Promise<void>;
-}) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"teacher" | "sysadmin">("teacher");
-  const [codeforcesHandle, setCodeforcesHandle] = useState("");
-  const [codeforcesApiKey, setCodeforcesApiKey] = useState("");
-  const [codeforcesApiSecret, setCodeforcesApiSecret] = useState("");
-  const [localError, setLocalError] = useState("");
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setLocalError("");
-
-    if (!username.trim() || !password.trim()) {
-      setLocalError("Username và password là bắt buộc");
-      return;
-    }
-
-    await onSubmit({
-      username: username.trim(),
-      password,
-      role,
-      codeforces_handle: codeforcesHandle.trim() || null,
-      codeforces_api_key: codeforcesApiKey.trim() || null,
-      codeforces_api_secret: codeforcesApiSecret.trim() || null,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white border border-zinc-200 rounded-xl p-6 w-full max-w-md shadow-xl">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Username</label>
-            <input
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="teacher02"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Role</label>
-            <select
-              value={role}
-              onChange={(event) => setRole(event.target.value as "teacher" | "sysadmin")}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            >
-              <option value="teacher">Teacher</option>
-              <option value="sysadmin">System Admin</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Codeforces Handle (optional)</label>
-            <input
-              value={codeforcesHandle}
-              onChange={(event) => setCodeforcesHandle(event.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              placeholder="tourist"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Codeforces API Key (optional)</label>
-            <input
-              value={codeforcesApiKey}
-              onChange={(event) => setCodeforcesApiKey(event.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-700 mb-2">Codeforces API Secret (optional)</label>
-            <input
-              type="password"
-              value={codeforcesApiSecret}
-              onChange={(event) => setCodeforcesApiSecret(event.target.value)}
-              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            />
-          </div>
-
-          {localError && <p className="text-sm text-red-600">{localError}</p>}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="flex-1 px-4 py-3 bg-zinc-100 text-zinc-900 rounded-lg hover:bg-zinc-200 transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 px-4 py-3 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-60"
-            >
-              {submitting ? "Đang tạo..." : "Tạo tài khoản"}
             </button>
           </div>
         </form>

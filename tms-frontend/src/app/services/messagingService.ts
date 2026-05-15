@@ -45,7 +45,7 @@ export interface DiscordSetupIssue {
   severity: "critical" | "warning" | "info";
   title: string;
   description: string;
-  cta_action?: "open_bot_invite" | "sync_servers" | "sync_membership" | "open_class_server" | "review_students" | null;
+  cta_action?: "open_bot_invite" | "open_class_server" | "review_students" | null;
   cta_label?: string | null;
 }
 
@@ -56,6 +56,8 @@ export interface DiscordSetupStatus {
     active_students: number;
     students_with_discord_username: number;
     students_missing_discord_username: number;
+    students_with_discord_authorization: number;
+    students_missing_discord_authorization: number;
     active_classes: number;
     configured_class_servers: number;
     classes_missing_server: number;
@@ -65,40 +67,9 @@ export interface DiscordSetupStatus {
   issues: DiscordSetupIssue[];
 }
 
-export interface DiscordMembershipSyncResult {
-  synced_servers: number;
-  total_students: number;
-  resolved_students: number;
-  discord_user_ids_updated: number;
-  already_in_class_server: number;
-  joined_class_server: number;
-  kicked_from_class_server: number;
-  failed: number;
-  failures: Array<{
-    student_id: number | null;
-    student_name: string | null;
-    class_id: number | null;
-    class_name: string | null;
-    code: string;
-    message: string;
-  }>;
-}
-
 export async function listDiscordServers(): Promise<BackendDiscordServer[]> {
   const data = await apiRequest<{ servers: BackendDiscordServer[] }>("/discord/servers");
   return data.servers;
-}
-
-export async function syncDiscordServers(): Promise<{ synced_servers: number }> {
-  return apiRequest<{ synced_servers: number }>("/discord/servers/sync", {
-    method: "POST",
-  });
-}
-
-export async function syncDiscordMembership(): Promise<DiscordMembershipSyncResult> {
-  return apiRequest<DiscordMembershipSyncResult>("/discord/membership/sync", {
-    method: "POST",
-  });
 }
 
 export async function getStudentDiscordAuthorizationUrl(studentId: number): Promise<string> {

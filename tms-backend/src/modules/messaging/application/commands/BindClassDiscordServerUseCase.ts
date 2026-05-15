@@ -6,23 +6,23 @@ export class BindClassDiscordServerUseCase {
   constructor(private readonly messagingWriter: TypeOrmMessagingWriter) {}
 
   async execute(teacherId: number, classId: number, input: SelectClassDiscordServerInput) {
-    const serverCache = await this.messagingWriter.findTeacherDiscordServerCacheById(
+    const serverOwnership = await this.messagingWriter.findDiscordServerOwnershipById(
       teacherId,
       input.server_id,
     );
 
-    if (!serverCache) {
+    if (!serverOwnership) {
       throw new ServiceError('selected server is invalid', 404);
     }
 
     const notificationChannel = input.notification_channel_id
-      ? await this.messagingWriter.findTeacherDiscordChannelCacheById(teacherId, Number(input.notification_channel_id))
+      ? await this.messagingWriter.findDiscordServerChannelById(teacherId, Number(input.notification_channel_id))
       : null;
     const voiceChannel = input.attendance_voice_channel_id
-      ? await this.messagingWriter.findTeacherDiscordChannelCacheById(teacherId, Number(input.attendance_voice_channel_id))
+      ? await this.messagingWriter.findDiscordServerChannelById(teacherId, Number(input.attendance_voice_channel_id))
       : null;
 
-    if (notificationChannel && notificationChannel.discord_server_id !== serverCache.discord_server_id) {
+    if (notificationChannel && notificationChannel.discord_server_id !== serverOwnership.discord_server_id) {
       throw new ServiceError('notification channel does not belong to selected server', 400);
     }
 
@@ -30,7 +30,7 @@ export class BindClassDiscordServerUseCase {
       throw new ServiceError('notification channel must be a text channel', 400);
     }
 
-    if (voiceChannel && voiceChannel.discord_server_id !== serverCache.discord_server_id) {
+    if (voiceChannel && voiceChannel.discord_server_id !== serverOwnership.discord_server_id) {
       throw new ServiceError('voice channel does not belong to selected server', 400);
     }
 
@@ -41,7 +41,7 @@ export class BindClassDiscordServerUseCase {
     const existing = await this.messagingWriter.findDiscordServerByClass(teacherId, classId);
     const existingByServer = await this.messagingWriter.findDiscordServerByDiscordServerId(
       teacherId,
-      serverCache.discord_server_id,
+      serverOwnership.discord_server_id,
     );
 
     if (existingByServer && existingByServer.class_id !== classId) {
@@ -49,12 +49,12 @@ export class BindClassDiscordServerUseCase {
     }
 
     if (existing) {
-      if (existing.discord_server_id !== serverCache.discord_server_id) {
+      if (existing.discord_server_id !== serverOwnership.discord_server_id) {
         throw new ServiceError('current class already has another server binding', 409);
       }
 
-      existing.discord_server_id = serverCache.discord_server_id;
-      existing.name = serverCache.name;
+      existing.discord_server_id = serverOwnership.discord_server_id;
+      existing.name = serverOwnership.name;
       existing.notification_channel_id = notificationChannel?.discord_channel_id ?? null;
       existing.attendance_voice_channel_id = voiceChannel?.discord_channel_id ?? null;
       return this.messagingWriter.saveDiscordServer(existing);
@@ -64,8 +64,8 @@ export class BindClassDiscordServerUseCase {
       this.messagingWriter.createDiscordServer({
         teacher_id: teacherId,
         class_id: classId,
-        discord_server_id: serverCache.discord_server_id,
-        name: serverCache.name,
+        discord_server_id: serverOwnership.discord_server_id,
+        name: serverOwnership.name,
         notification_channel_id: notificationChannel?.discord_channel_id ?? null,
         attendance_voice_channel_id: voiceChannel?.discord_channel_id ?? null,
         bot_token: null,

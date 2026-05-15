@@ -23,3 +23,4 @@ export {
 } from './presentation/middlewares/ownership.js';
 export { requireRoles } from './presentation/middlewares/rbac.js';
 export { ensureSystemAdminAccount } from './infrastructure/bootstrap/ensureSystemAdminAccount.js';
+export { createSysadminDiscordBotHealthJob } from './jobs/sysadmin-discord-bot-health.job.js';

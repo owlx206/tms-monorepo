@@ -6,7 +6,6 @@ import { TypeOrmClassCommandHandlers } from './infrastructure/persistence/typeor
 import { TypeOrmAttendanceCommandHandlers } from './infrastructure/persistence/typeorm/TypeOrmAttendanceCommandHandlers.js';
 import { TypeOrmAttendanceReader } from './infrastructure/persistence/typeorm/TypeOrmAttendanceReader.js';
 import { TypeOrmClassReader } from './infrastructure/persistence/typeorm/TypeOrmClassReader.js';
-import { TypeOrmClassScheduleCommandHandlers } from './infrastructure/persistence/typeorm/TypeOrmClassScheduleCommandHandlers.js';
 import { TypeOrmClassScheduleReader } from './infrastructure/persistence/typeorm/TypeOrmClassScheduleReader.js';
 import { TypeOrmSessionCommandHandlers } from './infrastructure/persistence/typeorm/TypeOrmSessionCommandHandlers.js';
 import { TypeOrmSessionReader } from './infrastructure/persistence/typeorm/TypeOrmSessionReader.js';
@@ -22,7 +21,6 @@ import { createSessionRouter } from './presentation/routes/session.routes.js';
 import { AppDataSource } from '../../infrastructure/database/data-source.js';
 
 const classCommandHandlers = new TypeOrmClassCommandHandlers();
-const classScheduleCommandHandlers = new TypeOrmClassScheduleCommandHandlers();
 const sessionCommandHandlers = new TypeOrmSessionCommandHandlers();
 const attendanceCommandHandlers = new TypeOrmAttendanceCommandHandlers();
 const classReader = new TypeOrmClassReader(AppDataSource.manager);
@@ -72,19 +70,6 @@ const classroomRouter = createClassroomRouter({
 const classScheduleRouter = createClassScheduleRouter({
   listClassSchedules: new ClassScheduleController('listClassSchedules', {
     classSchedules: classScheduleReader,
-    commandHandlers: classScheduleCommandHandlers,
-  }),
-  createClassSchedule: new ClassScheduleController('createClassSchedule', {
-    classSchedules: classScheduleReader,
-    commandHandlers: classScheduleCommandHandlers,
-  }),
-  updateClassSchedule: new ClassScheduleController('updateClassSchedule', {
-    classSchedules: classScheduleReader,
-    commandHandlers: classScheduleCommandHandlers,
-  }),
-  deleteClassSchedule: new ClassScheduleController('deleteClassSchedule', {
-    classSchedules: classScheduleReader,
-    commandHandlers: classScheduleCommandHandlers,
   }),
 });
 
@@ -121,10 +106,6 @@ const attendanceRouter = createAttendanceRouter({
     commandHandlers: attendanceCommandHandlers,
   }),
   listAttendanceRecords: new AttendanceController('listAttendanceRecords', {
-    attendance: attendanceReader,
-    commandHandlers: attendanceCommandHandlers,
-  }),
-  resetSessionAttendance: new AttendanceController('resetSessionAttendance', {
     attendance: attendanceReader,
     commandHandlers: attendanceCommandHandlers,
   }),

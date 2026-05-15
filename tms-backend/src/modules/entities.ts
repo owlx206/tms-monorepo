@@ -10,8 +10,8 @@ import { Transaction } from '../entities/transaction.entity.js';
 import { Teacher } from '../entities/teacher.entity.js';
 import { SysadminDiscordBotCredential } from '../entities/sysadmin-discord-bot-credential.entity.js';
 import { DiscordServer } from '../entities/discord-server.entity.js';
-import { TeacherDiscordChannelCache } from '../entities/teacher-discord-channel-cache.entity.js';
-import { TeacherDiscordServerCache } from '../entities/teacher-discord-server-cache.entity.js';
+import { DiscordServerChannel } from '../entities/discord-server-channel.entity.js';
+import { DiscordServerOwnership } from '../entities/discord-server-ownership.entity.js';
 import { TopicProblem } from '../entities/topic-problem.entity.js';
 import { TopicStanding } from '../entities/topic-standing.entity.js';
 import { Topic } from '../entities/topic.entity.js';
@@ -28,8 +28,8 @@ export const appEntities = [
   FeeRecord,
   Transaction,
   DiscordServer,
-  TeacherDiscordServerCache,
-  TeacherDiscordChannelCache,
+  DiscordServerOwnership,
+  DiscordServerChannel,
   Topic,
   TopicProblem,
   TopicStanding,

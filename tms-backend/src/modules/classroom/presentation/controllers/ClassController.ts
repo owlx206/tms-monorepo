@@ -6,6 +6,7 @@ import type {
   ClassListFilters,
   ClassDetails,
   ClassSummary,
+  ClassSummaryWithSchedules,
   CreateClassInput,
   UpdateClassInput,
 } from '../../application/dto/ClassDto.js';
@@ -23,7 +24,7 @@ type ClassroomControllerDependencies = {
       name: string;
       feePerSession: string;
       schedules: CreateClassInput['schedules'];
-    }): Promise<ClassSummary>;
+    }): Promise<ClassSummaryWithSchedules>;
   };
   updateClass: {
     updateClass(input: {
@@ -32,7 +33,7 @@ type ClassroomControllerDependencies = {
       name?: string;
       feePerSession?: string;
       schedules?: UpdateClassInput['schedules'];
-    }): Promise<ClassSummary>;
+    }): Promise<ClassSummaryWithSchedules>;
   };
   archiveClass: {
     archiveClass(input: {

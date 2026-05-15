@@ -20,6 +20,9 @@ export interface BackendSysadminDiscordBotCredential {
   invite_link: string;
   verification_redirect_uri: string;
   has_bot_token: boolean;
+  bot_health_status: "unknown" | "healthy" | "unhealthy";
+  bot_health_message: string | null;
+  bot_health_checked_at: string | null;
   has_client_secret: boolean;
   updated_at: string;
 }
@@ -27,22 +30,6 @@ export interface BackendSysadminDiscordBotCredential {
 export async function listTeachersForAdmin(): Promise<BackendAdminTeacher[]> {
   const data = await apiRequest<{ teachers: BackendAdminTeacher[] }>("/admin/teachers");
   return data.teachers;
-}
-
-export async function createTeacherByAdmin(payload: {
-  username: string;
-  password: string;
-  role?: TeacherRole;
-  is_active?: boolean;
-  codeforces_handle?: string | null;
-  codeforces_api_key?: string | null;
-  codeforces_api_secret?: string | null;
-}): Promise<BackendAdminTeacher> {
-  const data = await apiRequest<{ teacher: BackendAdminTeacher }>("/admin/teachers", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return data.teacher;
 }
 
 export async function updateTeacherByAdmin(

@@ -74,11 +74,6 @@ export const classIdParamSchema = z.object({
   classId: positiveIntegerSchema,
 });
 
-export const classScheduleParamSchema = z.object({
-  classId: positiveIntegerSchema,
-  scheduleId: positiveIntegerSchema,
-});
-
 export const sessionIdParamSchema = z.object({
   sessionId: positiveIntegerSchema,
 });
@@ -109,24 +104,6 @@ export const updateClassBodySchema = z.object({
   schedules: z.array(classScheduleBodySchema).min(1, 'class must have at least one schedule').optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: 'at least one field is required',
-});
-
-export const updateClassScheduleBodySchema = z.object({
-  day_of_week: z.coerce.number().int().min(0).max(6).optional(),
-  start_time: normalizedTimeSchema.optional(),
-  end_time: normalizedTimeSchema.optional(),
-}).superRefine((value, ctx) => {
-  if (Object.keys(value).length === 0) {
-    ctx.addIssue({ code: 'custom', message: 'at least one field is required' });
-  }
-
-  if (value.start_time !== undefined && value.end_time !== undefined && value.end_time <= value.start_time) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'end_time must be later than start_time',
-      path: ['end_time'],
-    });
-  }
 });
 
 export const sessionListQuerySchema = z.object({
@@ -203,12 +180,10 @@ export const createManualSessionBodySchema = z.object({
 });
 
 export type ClassIdParam = z.infer<typeof classIdParamSchema>;
-export type ClassScheduleParam = z.infer<typeof classScheduleParamSchema>;
 export type SessionIdParam = z.infer<typeof sessionIdParamSchema>;
 export type ClassListQuery = z.infer<typeof classListQuerySchema>;
 export type CreateClassBody = z.infer<typeof createClassBodySchema>;
 export type UpdateClassBody = z.infer<typeof updateClassBodySchema>;
 export type CreateClassScheduleBody = z.infer<typeof classScheduleBodySchema>;
-export type UpdateClassScheduleBody = z.infer<typeof updateClassScheduleBodySchema>;
 export type SessionListQuery = z.infer<typeof sessionListQuerySchema>;
 export type CreateManualSessionBody = z.infer<typeof createManualSessionBodySchema>;

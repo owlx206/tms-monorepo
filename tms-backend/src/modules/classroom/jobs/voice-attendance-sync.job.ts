@@ -11,9 +11,10 @@ import {
   SessionStatus,
   Student,
 } from '../../../entities/index.js';
+import { AttendanceSource, AttendanceStatus } from '../../../entities/enums.js';
 import type { IntervalJob } from '../../../jobs/index.js';
+import { ClassServiceError } from '../../../shared/errors/class.error.js';
 import { ServiceError } from '../../../shared/errors/service.error.js';
-import { UpsertBotSessionAttendanceUseCase } from '../application/commands/UpsertBotSessionAttendanceUseCase.js';
 import { TypeOrmAttendanceWriter } from '../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
 import { TypeOrmSessionFinanceService } from '../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 
@@ -301,9 +302,10 @@ async function markPresentStudentsForSession(
     const attendance = await AppDataSource.transaction(async (manager) => {
       const attendanceWriter = new TypeOrmAttendanceWriter(manager);
       const finance = new TypeOrmSessionFinanceService(manager);
-      const useCase = new UpsertBotSessionAttendanceUseCase(attendanceWriter, finance);
 
-      return useCase.execute({
+      return upsertBotSessionAttendance({
+        attendanceWriter,
+        finance,
         teacherId: session.teacher_id,
         sessionId: session.session_id,
         studentId: student.id,
@@ -315,6 +317,97 @@ async function markPresentStudentsForSession(
   }
 
   return markedCount;
+}
+
+async function upsertBotSessionAttendance(input: {
+  attendanceWriter: TypeOrmAttendanceWriter;
+  finance: TypeOrmSessionFinanceService;
+  teacherId: number;
+  sessionId: number;
+  studentId: number;
+}): Promise<boolean> {
+  const session = await input.attendanceWriter.findSessionById(input.teacherId, input.sessionId);
+
+  if (!session) {
+    throw new ClassServiceError('session not found', 404);
+  }
+
+  const classEntity = await input.attendanceWriter.findClassById(input.teacherId, session.class_id);
+
+  if (!classEntity) {
+    throw new ClassServiceError('class not found', 404);
+  }
+
+  const student = await input.attendanceWriter.findStudentById(input.teacherId, input.studentId);
+
+  if (!student) {
+    throw new ClassServiceError('student not found', 404);
+  }
+
+  const enrollment = await input.attendanceWriter.findEnrollmentAtSessionTime(
+    input.teacherId,
+    input.studentId,
+    session.class_id,
+    session.scheduled_at,
+  );
+
+  if (!enrollment) {
+    throw new ClassServiceError('student is not enrolled in class at this session', 409);
+  }
+
+  if (session.isCancelled()) {
+    throw new ClassServiceError('cannot update attendance for a cancelled session', 409);
+  }
+
+  let attendance = await input.attendanceWriter.findAttendanceForStudent(
+    input.teacherId,
+    input.sessionId,
+    input.studentId,
+  );
+
+  if (attendance?.source === AttendanceSource.Manual) {
+    return false;
+  }
+
+  if (attendance?.status === AttendanceStatus.AbsentExcused) {
+    return false;
+  }
+
+  if (
+    attendance?.source === AttendanceSource.Bot
+    && attendance.status === AttendanceStatus.Present
+  ) {
+    return true;
+  }
+
+  if (!attendance) {
+    attendance = input.attendanceWriter.create({
+      teacher_id: input.teacherId,
+      session_id: input.sessionId,
+      student_id: input.studentId,
+      status: AttendanceStatus.Present,
+      source: AttendanceSource.Bot,
+      overridden_at: null,
+      notes: null,
+    });
+  } else {
+    attendance.status = AttendanceStatus.Present;
+    attendance.source = AttendanceSource.Bot;
+    attendance.overridden_at = null;
+  }
+
+  await input.attendanceWriter.save(attendance);
+
+  await input.finance.syncAttendanceFeeRecord({
+    teacherId: input.teacherId,
+    sessionId: session.id,
+    studentId: input.studentId,
+    enrollmentId: enrollment.id,
+    amount: classEntity.fee_per_session,
+    shouldCharge: true,
+  });
+
+  return true;
 }
 
 async function collectVoiceIdentities(

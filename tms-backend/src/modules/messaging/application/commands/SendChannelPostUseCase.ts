@@ -1,6 +1,6 @@
 import { ServiceError } from '../../../../shared/errors/service.error.js';
+import type { DiscordClientFactory } from '../../../../infrastructure/external/discord/discord-api.service.js';
 import type { ChannelPostInput } from '../dto/MessagingDto.js';
-import type { StoredDiscordGateway } from '../../infrastructure/discord/StoredDiscordGateway.js';
 import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 
 function normalizeIdArray(values: number[] | undefined): number[] {
@@ -26,7 +26,7 @@ function toFailureMessage(error: unknown, fallback: string): string {
 export class SendChannelPostUseCase {
   constructor(
     private readonly messagingWriter: TypeOrmMessagingWriter,
-    private readonly discordGateway: StoredDiscordGateway,
+    private readonly discordClientFactory: DiscordClientFactory,
   ) {}
 
   async execute(teacherId: number, input: ChannelPostInput) {
@@ -53,21 +53,16 @@ export class SendChannelPostUseCase {
       }
 
       try {
-        await this.discordGateway.ensureChannelBelongsToGuild(
-          {
-            channelId: server.notification_channel_id,
-            guildId: server.discord_server_id,
-            fieldName: 'notification_channel_id',
-          },
-          server.bot_token,
-        );
-        await this.discordGateway.postChannelMessage(
-          {
-            channelId: server.notification_channel_id,
-            content,
-          },
-          server.bot_token,
-        );
+        const discord = await this.discordClientFactory.getClient(server.bot_token);
+        await discord.ensureChannelBelongsToGuild({
+          channelId: server.notification_channel_id,
+          guildId: server.discord_server_id,
+          fieldName: 'notification_channel_id',
+        });
+        await discord.postChannelMessage({
+          channelId: server.notification_channel_id,
+          content,
+        });
         successfulServers.push(server);
       } catch (error) {
         failures.push({

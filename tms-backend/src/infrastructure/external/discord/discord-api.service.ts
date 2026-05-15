@@ -398,6 +398,41 @@ export async function listDiscordGuilds(botToken: string): Promise<Array<{ id: s
     .filter((item): item is { id: string; name: string } => item !== null);
 }
 
+export async function checkDiscordBotTokenHealth(botToken: string): Promise<{
+  healthy: boolean;
+  message: string;
+}> {
+  const response = await discordApiRequest('/users/@me', botToken);
+
+  if (response.status === 401 || response.status === 403) {
+    return {
+      healthy: false,
+      message: 'Bot token is invalid or rejected by Discord.',
+    };
+  }
+
+  if (!response.ok) {
+    const detail = await getDiscordErrorMessage(response);
+    return {
+      healthy: false,
+      message: detail ? `Discord API error: ${detail}` : `Discord API error HTTP ${response.status}.`,
+    };
+  }
+
+  const payload = await parseJsonSafe(response) as DiscordUserPayload | null;
+  if (!payload?.id) {
+    return {
+      healthy: false,
+      message: 'Discord /users/@me response is invalid.',
+    };
+  }
+
+  return {
+    healthy: true,
+    message: payload.username ? `Authenticated as ${payload.username}.` : 'Bot token is valid.',
+  };
+}
+
 export async function listDiscordGuildChannels(input: {
   guildId: string;
   botToken: string;
@@ -820,6 +855,10 @@ export class DiscordClient {
     return listDiscordGuilds(this.botToken);
   }
 
+  checkBotTokenHealth(): Promise<{ healthy: boolean; message: string }> {
+    return checkDiscordBotTokenHealth(this.botToken);
+  }
+
   fetchGuildMetadata(discordServerId: string): Promise<{
     id: string;
     name: string;
@@ -930,5 +969,28 @@ export class DiscordClient {
       ...input,
       botToken: this.botToken,
     });
+  }
+}
+
+export type DiscordBotCredentialSource = {
+  findDefault(): Promise<{ bot_token: string | null } | null>;
+};
+
+export class DiscordClientFactory {
+  constructor(private readonly credentialSource: DiscordBotCredentialSource) {}
+
+  async getClient(botToken?: string | null): Promise<DiscordClient> {
+    const provided = botToken?.trim();
+    if (provided) {
+      return new DiscordClient(provided);
+    }
+
+    const credential = await this.credentialSource.findDefault();
+    const stored = credential?.bot_token?.trim();
+    if (!stored) {
+      throw new ServiceError('discord bot is not configured by sysadmin', 503);
+    }
+
+    return new DiscordClient(stored);
   }
 }

@@ -4,7 +4,7 @@ import type { DiscordServer } from '../../../../../entities/discord-server.entit
 import { DiscordClient } from '../../../../../infrastructure/external/discord/discord-api.service.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../../identity/index.js';
 import type { SysadminDiscordBotCredential } from '../../../../../entities/sysadmin-discord-bot-credential.entity.js';
-import { refreshStudentDiscordToken } from '../../../../messaging/infrastructure/discord/DiscordStudentOAuth.js';
+import { refreshStudentDiscordToken } from '../../../../identity/infrastructure/discord/DiscordStudentOAuth.js';
 import {
   findActiveEnrollment,
   findDiscordServerByClass,

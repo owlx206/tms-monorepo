@@ -1,14 +1,25 @@
-import { DiscordServer } from '../../../entities/index.js';
 import { ServiceError } from '../../../shared/errors/service.error.js';
-import {
-  DiscordClient,
-  type DiscordGuildMemberIdentity,
+import type {
+  DiscordBotCredentialSource,
+  DiscordGuildMemberIdentity,
 } from './discord-api.service.js';
 
 export type DiscordRecipientResolution = {
   userId: string | null;
   error: string | null;
 };
+
+export type DiscordRecipientServer = {
+  discord_server_id: string;
+  bot_token?: string | null;
+};
+
+export type DiscordGuildMemberSearch = (input: {
+  guildId: string;
+  query: string;
+  limit?: number;
+  botToken: string;
+}) => Promise<DiscordGuildMemberIdentity[]>;
 
 function parseDiscordUserId(discordUsername: string | null): string | null {
   if (typeof discordUsername !== 'string') {
@@ -120,7 +131,22 @@ function toFailureMessage(error: unknown, fallback: string): string {
 export class DiscordRecipientResolver {
   private readonly cache = new Map<string, DiscordRecipientResolution>();
 
-  async resolve(server: DiscordServer, discordUsername: string | null): Promise<DiscordRecipientResolution> {
+  constructor(
+    private readonly searchGuildMembers: DiscordGuildMemberSearch,
+    private readonly credentialSource?: DiscordBotCredentialSource,
+  ) {}
+
+  private async getBotToken(server: DiscordRecipientServer): Promise<string | null> {
+    const serverToken = server.bot_token?.trim();
+    if (serverToken) {
+      return serverToken;
+    }
+
+    const credential = await this.credentialSource?.findDefault();
+    return credential?.bot_token?.trim() || null;
+  }
+
+  async resolve(server: DiscordRecipientServer, discordUsername: string | null): Promise<DiscordRecipientResolution> {
     const rawDiscordUsername = discordUsername?.trim() ?? '';
     if (!rawDiscordUsername) {
       return {
@@ -140,7 +166,8 @@ export class DiscordRecipientResolver {
       return cached;
     }
 
-    if (!server.bot_token) {
+    const botToken = await this.getBotToken(server);
+    if (!botToken) {
       const result = {
         userId: null,
         error: 'bot_token is missing for this class server',
@@ -153,10 +180,11 @@ export class DiscordRecipientResolver {
     const query = tag ? tag.username : rawDiscordUsername.trim().replace(/^@/, '');
     let members: DiscordGuildMemberIdentity[];
     try {
-      members = await new DiscordClient(server.bot_token).searchGuildMembers({
+      members = await this.searchGuildMembers({
         guildId: server.discord_server_id,
         query,
         limit: 25,
+        botToken,
       });
     } catch (error) {
       const result = {

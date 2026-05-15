@@ -2,8 +2,13 @@ import { z } from 'zod';
 
 import {
   nullableOptionalTrimmedStringSchema,
+  positiveIntegerSchema,
   requiredTrimmedStringSchema,
 } from '../../../../shared/schemas/common.schemas.js';
+
+export const studentIdParamSchema = z.object({
+  studentId: positiveIntegerSchema,
+});
 
 export const loginBodySchema = z.object({
   username: requiredTrimmedStringSchema,

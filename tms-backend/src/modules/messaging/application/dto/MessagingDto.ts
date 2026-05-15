@@ -35,6 +35,8 @@ export type DiscordSetupStatus = {
     active_students: number;
     students_with_discord_username: number;
     students_missing_discord_username: number;
+    students_with_discord_authorization: number;
+    students_missing_discord_authorization: number;
     active_classes: number;
     configured_class_servers: number;
     classes_missing_server: number;

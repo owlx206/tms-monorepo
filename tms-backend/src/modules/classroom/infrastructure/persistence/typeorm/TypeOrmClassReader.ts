@@ -34,15 +34,6 @@ export class TypeOrmClassReader {
             .getQuery();
           return `EXISTS ${scheduleSubquery}`;
         })
-        .andWhere((qb) => {
-          const serverSubquery = qb.subQuery()
-            .select('1')
-            .from(DiscordServer, 'server')
-            .where('server.teacher_id = classEntity.teacher_id')
-            .andWhere('server.class_id = classEntity.id')
-            .getQuery();
-          return `EXISTS ${serverSubquery}`;
-        })
         .orderBy('classEntity.created_at', 'DESC')
         .getMany();
 

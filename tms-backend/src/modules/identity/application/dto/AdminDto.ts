@@ -1,15 +1,5 @@
 import { TeacherRole } from '../../../../entities/index.js';
 
-export type CreateTeacherByAdminInput = {
-  username: string;
-  password: string;
-  role: TeacherRole;
-  is_active: boolean;
-  codeforces_handle?: string | null;
-  codeforces_api_key?: string | null;
-  codeforces_api_secret?: string | null;
-};
-
 export type UpdateTeacherByAdminInput = {
   username?: string;
   password?: string;
@@ -47,6 +37,9 @@ export type SysadminDiscordBotCredentialView = {
   invite_link: string;
   verification_redirect_uri: string;
   has_bot_token: boolean;
+  bot_health_status: 'unknown' | 'healthy' | 'unhealthy';
+  bot_health_message: string | null;
+  bot_health_checked_at: Date | null;
   has_client_secret: boolean;
   updated_at: Date;
 };

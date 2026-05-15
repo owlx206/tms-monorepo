@@ -3,6 +3,7 @@ import type { SessionSummary } from '../dto/ClassDto.js';
 import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 import { SessionMapper } from '../../infrastructure/persistence/typeorm/SessionMapper.js';
 import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/TypeOrmSessionWriter.js';
+import type { TypeOrmAttendanceWriter } from '../../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
 
 type CancelSessionCommand = {
   teacherId: number;
@@ -13,6 +14,7 @@ type CancelSessionCommand = {
 export class CancelSessionUseCase {
   constructor(
     private readonly sessions: TypeOrmSessionWriter,
+    private readonly attendance: TypeOrmAttendanceWriter,
     private readonly finance: TypeOrmSessionFinanceService,
   ) {}
 
@@ -29,6 +31,15 @@ export class CancelSessionUseCase {
 
     session.cancel(command.cancelledAt);
     const saved = await this.sessions.save(session);
+
+    const existingAttendance = await this.attendance.findAttendanceBySession(
+      command.teacherId,
+      saved.id,
+    );
+
+    if (existingAttendance.length > 0) {
+      await this.attendance.remove(existingAttendance);
+    }
 
     await this.finance.cancelFeeRecordsForSessions(
       command.teacherId,

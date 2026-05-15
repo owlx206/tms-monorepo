@@ -25,6 +25,9 @@ export class TypeOrmSysadminDiscordBotCredentialStore implements SysadminDiscord
       existing.client_secret = input.client_secret;
       existing.permissions = input.permissions ?? null;
       existing.scopes = input.scopes ?? null;
+      existing.bot_health_status = 'unknown';
+      existing.bot_health_message = 'Bot token health has not been checked after the latest update.';
+      existing.bot_health_checked_at = null;
       existing.updated_at = new Date();
       return repo.save(existing);
     }
@@ -36,6 +39,9 @@ export class TypeOrmSysadminDiscordBotCredentialStore implements SysadminDiscord
       client_secret: input.client_secret,
       permissions: input.permissions ?? null,
       scopes: input.scopes ?? null,
+      bot_health_status: 'unknown',
+      bot_health_message: 'Bot token health has not been checked yet.',
+      bot_health_checked_at: null,
     }));
   }
 }

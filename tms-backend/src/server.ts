@@ -2,7 +2,7 @@ import config from './config.js';
 import { AppDataSource, initializeDatabase } from './infrastructure/database/data-source.js';
 import { createApp } from './app.js';
 import { createJobRunner } from './jobs/index.js';
-import { ensureSystemAdminAccount } from './modules/identity/index.js';
+import { createSysadminDiscordBotHealthJob, ensureSystemAdminAccount } from './modules/identity/index.js';
 import { createDiscordServerSyncJob } from './modules/messaging/index.js';
 import { createSessionStatusSyncJob, createVoiceAttendanceSyncJob } from './modules/classroom/index.js';
 import { createCodeforcesTopicSyncJob } from './modules/topic/index.js';
@@ -13,6 +13,10 @@ export async function main(): Promise<void> {
 
   const jobRunner = createJobRunner([
     createDiscordServerSyncJob({
+      enabled: config.autoSync.enabled && config.autoSync.syncDiscord,
+      intervalSeconds: config.autoSync.intervalSeconds,
+    }),
+    createSysadminDiscordBotHealthJob({
       enabled: config.autoSync.enabled && config.autoSync.syncDiscord,
       intervalSeconds: config.autoSync.intervalSeconds,
     }),

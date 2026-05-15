@@ -7,7 +7,6 @@ import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express
 import { AdminController } from '../controllers/AdminController.js';
 import { requireRoles } from '../middlewares/rbac.js';
 import {
-  createTeacherByAdminBodySchema,
   teacherIdParamSchema,
   upsertSysadminDiscordBotCredentialBodySchema,
   updateTeacherByAdminBodySchema,
@@ -15,7 +14,6 @@ import {
 
 type AdminRouteControllers = {
   listTeachers: AdminController;
-  createTeacher: AdminController;
   updateTeacher: AdminController;
   getDiscordBotCredential: AdminController;
   upsertDiscordBotCredential: AdminController;
@@ -34,7 +32,6 @@ export function createAdminRouter(controllers: AdminRouteControllers): Router {
     validate({ body: upsertSysadminDiscordBotCredentialBodySchema }),
     adaptExpressRoute(controllers.upsertDiscordBotCredential),
   );
-  router.post('/teachers', validate({ body: createTeacherByAdminBodySchema }), adaptExpressRoute(controllers.createTeacher));
   router.patch(
     '/teachers/:teacherId',
     validate({ params: teacherIdParamSchema, body: updateTeacherByAdminBodySchema }),

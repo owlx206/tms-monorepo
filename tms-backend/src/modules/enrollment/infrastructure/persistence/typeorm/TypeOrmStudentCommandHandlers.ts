@@ -98,9 +98,8 @@ export class TypeOrmStudentCommandHandlers {
         context.balanceSnapshots,
       ).execute(input));
 
-      this.assertDiscordMembershipAdded(
-        await this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, input.studentId, input.classId),
-      );
+      void this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, input.studentId, input.classId)
+        .catch(() => {});
       return result;
     },
   };

@@ -3,7 +3,7 @@ import type { EntityManager } from 'typeorm';
 import { Class } from '../../../../entities/class.entity.js';
 import { ClassServiceError } from '../../../../shared/errors/class.error.js';
 import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/TypeOrmClassScheduleService.js';
-import type { ClassSummary, CreateClassInput } from '../dto/ClassDto.js';
+import type { ClassSummary, ClassSummaryWithSchedules, CreateClassInput } from '../dto/ClassDto.js';
 
 type CreateClassCommand = {
   teacherId: number;
@@ -38,7 +38,7 @@ export class CreateClassUseCase {
     private readonly classSchedules: TypeOrmClassScheduleService,
   ) {}
 
-  async execute(command: CreateClassCommand): Promise<ClassSummary> {
+  async execute(command: CreateClassCommand): Promise<ClassSummaryWithSchedules> {
     if (command.schedules.length === 0) {
       throw new ClassServiceError('class must have at least one schedule', 400);
     }
@@ -54,8 +54,12 @@ export class CreateClassUseCase {
     const schedules = command.schedules;
 
     await this.classSchedules.replaceSchedules(command.teacherId, savedClass.id, schedules);
+    const savedSchedules = await this.classSchedules.listSchedules(command.teacherId, savedClass.id);
 
-    return this.toSummary(savedClass);
+    return {
+      ...this.toSummary(savedClass),
+      schedules: savedSchedules,
+    };
   }
 
   private toSummary(classEntity: Class): ClassSummary {

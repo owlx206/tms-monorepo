@@ -17,8 +17,7 @@ type AttendanceAction =
   | 'getSessionAttendance'
   | 'syncSessionAttendance'
   | 'upsertSessionAttendance'
-  | 'listAttendanceRecords'
-  | 'resetSessionAttendance';
+  | 'listAttendanceRecords';
 
 type AttendanceParams = {
   sessionId?: number;
@@ -41,10 +40,6 @@ type AttendanceDependencies = {
       teacherId: number;
       sessionId: number;
     }): Promise<unknown>;
-    resetSessionAttendance(input: {
-      teacherId: number;
-      sessionId: number;
-    }): Promise<void>;
   };
 };
 
@@ -66,8 +61,6 @@ export class AttendanceController implements Controller {
         return this.upsertSessionAttendance(request);
       case 'listAttendanceRecords':
         return this.listAttendanceRecords(request);
-      case 'resetSessionAttendance':
-        return this.resetSessionAttendance(request);
     }
   }
 
@@ -126,20 +119,6 @@ export class AttendanceController implements Controller {
     return {
       statusCode: 200,
       body: { attendance },
-    };
-  }
-
-  private async resetSessionAttendance(
-    request: HttpRequest<unknown, AttendanceParams>,
-  ): Promise<HttpResponse> {
-    await this.dependencies.commandHandlers.resetSessionAttendance({
-      teacherId: getTeacherId(request),
-      sessionId: getSessionId(request),
-    });
-
-    return {
-      statusCode: 204,
-      body: undefined,
     };
   }
 }

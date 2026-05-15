@@ -2,7 +2,6 @@ import type { EntityManager } from 'typeorm';
 
 import { Class } from '../../../../../entities/class.entity.js';
 import { ClassSchedule } from '../../../../../entities/class-schedule.entity.js';
-import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
 import { ClassStatus } from '../../../../../entities/enums.js';
 import { StudentServiceError } from '../../../../../shared/errors/student.error.js';
 
@@ -31,12 +30,5 @@ export class TypeOrmClassroomAccess {
       throw new StudentServiceError('class must have at least one schedule', 409);
     }
 
-    const serverCount = await this.manager.getRepository(DiscordServer).countBy({
-      teacher_id: teacherId,
-      class_id: classId,
-    });
-    if (serverCount === 0) {
-      throw new StudentServiceError('class must be bound to a Discord server', 409);
-    }
   }
 }

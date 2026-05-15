@@ -7,7 +7,6 @@ import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express
 import {
   authorizeOwnedClassBody,
   authorizeOwnedClassParam,
-  authorizeOwnedStudentParam,
   requireRoles,
 } from '../../../identity/index.js';
 import { MessagingController } from '../controllers/MessagingController.js';
@@ -16,18 +15,13 @@ import {
   channelPostBodySchema,
   classIdParamSchema,
   serverIdParamSchema,
-  studentIdParamSchema,
   upsertDiscordServerBodySchema,
 } from './messaging.schema.js';
 
 type MessagingRouteControllers = {
   listDiscordServers: MessagingController;
-  syncDiscordServers: MessagingController;
-  syncDiscordMembership: MessagingController;
   listDiscordChannels: MessagingController;
   completeDiscordInstall: MessagingController;
-  startStudentDiscordAuthorization: MessagingController;
-  completeStudentDiscordAuthorization: MessagingController;
   getBotInviteLink: MessagingController;
   getSetupStatus: MessagingController;
   upsertDiscordServer: MessagingController;
@@ -37,26 +31,19 @@ type MessagingRouteControllers = {
 
 export function createMessagingRouter(controllers: MessagingRouteControllers): Router {
   const router = Router();
+  const publicDiscordCallbacks = Router();
+
+  publicDiscordCallbacks.get('/discord/oauth/callback', adaptExpressRoute(controllers.completeDiscordInstall));
+  router.use(publicDiscordCallbacks);
+
   const teacherAuth = [
     passport.authenticate('jwt', { session: false }),
     requireRoles([TeacherRole.Teacher]),
   ];
 
-  router.get('/discord/oauth/callback', adaptExpressRoute(controllers.completeDiscordInstall));
-  router.get('/discord/student/callback', adaptExpressRoute(controllers.completeStudentDiscordAuthorization));
-
   router.get('/discord/bot-invite-link', ...teacherAuth, adaptExpressRoute(controllers.getBotInviteLink));
   router.get('/discord/setup-status', ...teacherAuth, adaptExpressRoute(controllers.getSetupStatus));
   router.get('/discord/servers', ...teacherAuth, adaptExpressRoute(controllers.listDiscordServers));
-  router.post('/discord/servers/sync', ...teacherAuth, adaptExpressRoute(controllers.syncDiscordServers));
-  router.post('/discord/membership/sync', ...teacherAuth, adaptExpressRoute(controllers.syncDiscordMembership));
-  router.get(
-    '/students/:studentId/discord/authorization-url',
-    ...teacherAuth,
-    validate({ params: studentIdParamSchema }),
-    authorizeOwnedStudentParam(),
-    adaptExpressRoute(controllers.startStudentDiscordAuthorization),
-  );
   router.get(
     '/discord/servers/:serverId/channels',
     ...teacherAuth,

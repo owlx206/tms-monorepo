@@ -31,21 +31,26 @@ async function installPreSynchronizeSchemaPatches(): Promise<void> {
   await patchDataSource.initialize();
 
   try {
-    await patchDataSource.query("ALTER TYPE session_status ADD VALUE IF NOT EXISTS 'in_progress' AFTER 'scheduled'");
-  } catch (error) {
-    const driverError = error as { code?: string };
-    if (driverError.code !== '42704') {
-      throw error;
+    try {
+      await patchDataSource.query("ALTER TYPE session_status ADD VALUE IF NOT EXISTS 'in_progress' AFTER 'scheduled'");
+    } catch (error) {
+      const driverError = error as { code?: string };
+      if (driverError.code !== '42704') {
+        throw error;
+      }
     }
-  }
 
-  try {
-    await patchDataSource.query("ALTER TYPE attendance_source ADD VALUE IF NOT EXISTS 'system' AFTER 'bot'");
-  } catch (error) {
-    const driverError = error as { code?: string };
-    if (driverError.code !== '42704') {
-      throw error;
+    try {
+      await patchDataSource.query("ALTER TYPE attendance_source ADD VALUE IF NOT EXISTS 'system' AFTER 'bot'");
+    } catch (error) {
+      const driverError = error as { code?: string };
+      if (driverError.code !== '42704') {
+        throw error;
+      }
     }
+
+    await patchDataSource.query('DROP TABLE IF EXISTS teacher_discord_channel_caches CASCADE');
+    await patchDataSource.query('DROP TABLE IF EXISTS teacher_discord_server_caches CASCADE');
   } finally {
     await patchDataSource.destroy();
   }

@@ -115,6 +115,9 @@ export class CompleteTeacherDiscordVerificationUseCase {
       redirectUri: `${config.backendPublicUrl}${config.apiPrefix}/discord/verification/callback`,
     });
     const discordUser = await fetchDiscordUser(accessToken);
+    if (teacher.discord_user_id && teacher.discord_user_id !== discordUser.id) {
+      await this.teacherWriter.clearDiscordWorkspaceData(teacher.id, teacher.discord_user_id);
+    }
 
     teacher.discord_user_id = discordUser.id;
     teacher.discord_username = discordUser.username;

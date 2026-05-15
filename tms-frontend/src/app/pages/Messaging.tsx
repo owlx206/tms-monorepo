@@ -8,7 +8,6 @@ import {
   Hash,
   Link2,
   ListChecks,
-  RefreshCw,
   Search,
   Send,
   Server,
@@ -32,12 +31,9 @@ import {
   listDiscordServers,
   sendStudentMessages,
   sendChannelPost,
-  syncDiscordMembership,
-  syncDiscordServers,
   upsertDiscordServerByClass,
   type BackendDiscordChannel,
   type BackendDiscordServer,
-  type DiscordMembershipSyncResult,
   type DiscordSetupStatus,
 } from "../services/messagingService";
 import { getStudentLearningProfile } from "../services/reportingService";
@@ -114,7 +110,6 @@ function parseAmount(value: string): number {
 export function Messaging() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [showSyncServersModal, setShowSyncServersModal] = useState(false);
   const [showBindServerModal, setShowBindServerModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedServer, setSelectedServer] = useState<BackendDiscordServer | null>(null);
@@ -128,7 +123,6 @@ export function Messaging() {
   const [botInviteLink, setBotInviteLink] = useState<string | null>(null);
   const [teacherDiscordUsername, setTeacherDiscordUsername] = useState<string | null>(null);
   const [teacherDiscordVerifiedAt, setTeacherDiscordVerifiedAt] = useState<string | null>(null);
-  const [membershipSyncResult, setMembershipSyncResult] = useState<DiscordMembershipSyncResult | null>(null);
 
   const loadData = async () => {
     setRequestError("");
@@ -271,7 +265,7 @@ export function Messaging() {
     botConfigured: Boolean(botInviteLink),
     hasServers: servers.length > 0,
     classServersSet: discordStatus ? discordStatus.metrics.classes_missing_server === 0 : classBoundServers.length > 0,
-    studentsHaveDiscord: discordStatus ? discordStatus.metrics.students_missing_discord_username === 0 : students.every((student) => student.discord_username),
+    studentsAuthorizedDiscord: discordStatus ? discordStatus.metrics.students_missing_discord_authorization === 0 : students.every((student) => student.discord_user_id),
   };
 
   const openBotInvite = () => {
@@ -289,41 +283,9 @@ export function Messaging() {
     }
   };
 
-  const handleSyncDiscordServers = async () => {
-    setSubmitting(true);
-    setRequestError("");
-    try {
-      await syncDiscordServers();
-      setShowSyncServersModal(false);
-      await loadData();
-    } catch (error) {
-      setRequestError(toErrorMessage(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSyncDiscordMembership = async () => {
-    setSubmitting(true);
-    setRequestError("");
-    try {
-      const result = await syncDiscordMembership();
-      setMembershipSyncResult(result);
-      await loadData();
-    } catch (error) {
-      setRequestError(toErrorMessage(error));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleSetupIssueAction = (action: DiscordSetupStatus["issues"][number]["cta_action"]) => {
     if (action === "open_bot_invite") {
       openBotInvite();
-    } else if (action === "sync_servers") {
-      setShowSyncServersModal(true);
-    } else if (action === "sync_membership") {
-      void handleSyncDiscordMembership();
     } else if (action === "open_class_server") {
       setShowBindServerModal(true);
     } else if (action === "review_students") {
@@ -347,15 +309,6 @@ export function Messaging() {
           >
             <Server className="h-5 w-5" />
             Mời bot
-          </button>
-          <button
-            type="button"
-            onClick={() => { void handleSyncDiscordMembership(); }}
-            disabled={submitting || !teacherDiscordVerifiedAt}
-            className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-3 font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
-          >
-            <RefreshCw className="h-5 w-5" />
-            Đồng bộ Discord
           </button>
         </div>
       </div>
@@ -391,7 +344,7 @@ export function Messaging() {
           <StatusItem label="Bot đã cấu hình" status={setupStatus.botConfigured} />
           <StatusItem label="Có server Discord" status={setupStatus.hasServers} />
           <StatusItem label="Server lớp đã gắn đủ" status={setupStatus.classServersSet} />
-          <StatusItem label="Học sinh có Discord username" status={setupStatus.studentsHaveDiscord} />
+          <StatusItem label="Học sinh đã authorize Discord" status={setupStatus.studentsAuthorizedDiscord} />
         </div>
       </div>
 
@@ -422,21 +375,9 @@ export function Messaging() {
         </div>
       )}
 
-      {membershipSyncResult && (
-        <DiscordMembershipSyncPanel result={membershipSyncResult} />
-      )}
-
       <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-zinc-900">Quản lý server Discord</h2>
-            <button
-              type="button"
-              onClick={() => setShowSyncServersModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-white transition-colors hover:bg-zinc-800"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Đồng bộ server
-            </button>
           </div>
 
           <section>
@@ -502,14 +443,6 @@ export function Messaging() {
             </section>
           )}
       </div>
-
-      {showSyncServersModal && (
-        <SyncServersModal
-          submitting={submitting}
-          onClose={() => setShowSyncServersModal(false)}
-          onSubmit={handleSyncDiscordServers}
-        />
-      )}
 
       {showBindServerModal && (
         <ServerModal
@@ -598,72 +531,6 @@ function StatusItem({ label, status }: { label: string; status: boolean }) {
       <span className={`text-sm ${status ? "text-zinc-900" : "text-zinc-500"}`}>
         {label}
       </span>
-    </div>
-  );
-}
-
-function DiscordMembershipSyncPanel({ result }: { result: DiscordMembershipSyncResult }) {
-  return (
-    <div className="mb-6 rounded-xl border border-zinc-200 bg-white p-5">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-900">Kết quả đồng bộ Discord</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Add học sinh đã authorize vào server lớp hiện tại và gỡ khỏi server lớp cũ nếu đã nghỉ.
-          </p>
-        </div>
-        <span className={`rounded-full px-3 py-1 text-sm ${
-          result.failed === 0 ? "bg-zinc-900 text-white" : "bg-red-50 text-red-700"
-        }`}>
-          {result.failed === 0 ? "Hoàn tất" : `${result.failed} lỗi`}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MetricCard label="Server đã sync" value={result.synced_servers} />
-        <MetricCard label="Học sinh" value={result.total_students} />
-        <MetricCard label="Đã resolve" value={result.resolved_students} />
-        <MetricCard label="User ID cập nhật" value={result.discord_user_ids_updated} />
-        <MetricCard label="Đang ở server lớp" value={result.already_in_class_server} />
-        <MetricCard label="Đã add vào server lớp" value={result.joined_class_server} />
-        <MetricCard label="Đã kick khỏi lớp cũ" value={result.kicked_from_class_server} />
-        <MetricCard label="Lỗi" value={result.failed} />
-      </div>
-
-      {result.failures.length > 0 && (
-        <div className="mt-4 overflow-hidden rounded-lg border border-zinc-200">
-          <table className="w-full">
-            <thead className="bg-zinc-100">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-zinc-600">Học sinh</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-zinc-600">Lớp</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-zinc-600">Lỗi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {result.failures.slice(0, 20).map((failure, index) => (
-                <tr key={`${failure.student_id ?? "server"}-${failure.code}-${index}`}>
-                  <td className="px-4 py-3 text-sm text-zinc-900">
-                    {failure.student_name ?? "Hệ thống"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-zinc-600">
-                    {failure.class_name ?? "N/A"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-zinc-700">
-                    <span className="font-mono text-xs text-zinc-500">{failure.code}</span>
-                    <p className="mt-1">{failure.message}</p>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {result.failures.length > 20 && (
-            <p className="border-t border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-              Còn {result.failures.length - 20} lỗi khác.
-            </p>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -1064,51 +931,6 @@ function SendMessageTab({
         {submitting ? "Đang gửi..." : "Gửi tin nhắn"}
       </button>
     </form>
-  );
-}
-
-function SyncServersModal({
-  submitting,
-  onClose,
-  onSubmit,
-}: {
-  submitting: boolean;
-  onClose: () => void;
-  onSubmit: () => Promise<void>;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl">
-        <h2 className="mb-6 text-xl font-semibold text-zinc-900">Đồng bộ server Discord</h2>
-        <div className="space-y-4">
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-            <p className="mb-3 text-sm text-zinc-700">
-              Hệ thống sẽ lấy danh sách Discord server mà bot đã được thêm vào.
-            </p>
-            <p className="text-xs text-zinc-600">Đảm bảo bot đã ở trong server Discord trước khi đồng bộ.</p>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="flex-1 rounded-lg bg-zinc-100 px-4 py-3 text-zinc-900 transition-colors hover:bg-zinc-200"
-            >
-              Hủy
-            </button>
-            <button
-              type="button"
-              onClick={() => { void onSubmit(); }}
-              disabled={submitting}
-              className="flex-1 rounded-lg bg-zinc-900 px-4 py-3 font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-60"
-            >
-              {submitting ? "Đang đồng bộ..." : "Đồng bộ ngay"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 

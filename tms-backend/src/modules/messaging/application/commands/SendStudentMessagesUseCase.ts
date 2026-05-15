@@ -1,7 +1,7 @@
 import { ServiceError } from '../../../../shared/errors/service.error.js';
+import type { DiscordClientFactory } from '../../../../infrastructure/external/discord/discord-api.service.js';
+import type { DiscordRecipientResolver } from '../../../../infrastructure/external/discord/discord-recipient-resolver.js';
 import type { StudentMessageInput } from '../dto/MessagingDto.js';
-import type { StoredDiscordGateway } from '../../infrastructure/discord/StoredDiscordGateway.js';
-import type { StoredDiscordRecipientResolver } from '../../infrastructure/discord/StoredDiscordRecipientResolver.js';
 import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
 
 function normalizeIdArray(values: number[] | undefined): number[] {
@@ -27,8 +27,8 @@ function toFailureMessage(error: unknown, fallback: string): string {
 export class SendStudentMessagesUseCase {
   constructor(
     private readonly messagingWriter: TypeOrmMessagingWriter,
-    private readonly discordGateway: StoredDiscordGateway,
-    private readonly discordRecipientResolver: StoredDiscordRecipientResolver,
+    private readonly discordClientFactory: DiscordClientFactory,
+    private readonly discordRecipientResolver: DiscordRecipientResolver,
   ) {}
 
   async execute(teacherId: number, input: StudentMessageInput) {
@@ -112,13 +112,11 @@ export class SendStudentMessagesUseCase {
       }
 
       try {
-        await this.discordGateway.sendDirectMessage(
-          {
-            recipientUserId: resolvedRecipient.userId,
-            content,
-          },
-          server.bot_token,
-        );
+        const discord = await this.discordClientFactory.getClient(server.bot_token);
+        await discord.sendDirectMessage({
+          recipientUserId: resolvedRecipient.userId,
+          content,
+        });
         deliveryResults.push({
           student_id: recipient.student_id,
           student_name: recipient.student_name,

@@ -45,6 +45,10 @@ export type ClassSummary = {
   archived_at: Date | null;
 };
 
+export type ClassSummaryWithSchedules = ClassSummary & {
+  schedules: ClassScheduleSummary[];
+};
+
 export type ClassScheduleSummary = {
   id: number;
   teacher_id: number;

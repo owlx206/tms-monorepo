@@ -2,11 +2,12 @@ import { EntityManager, In } from 'typeorm';
 
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
-import { TeacherDiscordChannelCache } from '../../../../../entities/teacher-discord-channel-cache.entity.js';
-import { TeacherDiscordServerCache } from '../../../../../entities/teacher-discord-server-cache.entity.js';
+import { DiscordServerChannel } from '../../../../../entities/discord-server-channel.entity.js';
+import { DiscordServerOwnership } from '../../../../../entities/discord-server-ownership.entity.js';
 import { Class } from '../../../../../entities/class.entity.js';
 import { Enrollment } from '../../../../../entities/enrollment.entity.js';
 import { Student } from '../../../../../entities/student.entity.js';
+import { Teacher } from '../../../../../entities/teacher.entity.js';
 import type { DiscordServerContext } from '../../discord/discord.types.js';
 
 export type StudentMessageRecipientContext = {
@@ -213,6 +214,15 @@ function studentMessageRecipientQuery(manager: EntityManager, teacherId: number)
 export class TypeOrmMessagingWriter {
   constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
 
+  async getTeacherDiscordUserId(teacherId: number): Promise<string | null> {
+    const teacher = await this.manager.getRepository(Teacher).findOne({
+      where: { id: teacherId },
+      select: { id: true, discord_user_id: true },
+    });
+
+    return teacher?.discord_user_id ?? null;
+  }
+
   findDiscordServerByClass(teacherId: number, classId: number) {
     return this.manager.getRepository(DiscordServer).findOneBy({
       teacher_id: teacherId,
@@ -232,25 +242,51 @@ export class TypeOrmMessagingWriter {
     return this.manager.getRepository(DiscordServer).save(server);
   }
 
-  async replaceTeacherDiscordServerCaches(
-    teacherId: number,
+  async listKnownTeacherDiscordServerIds(teacherId: number): Promise<string[]> {
+    const discordUserId = await this.getTeacherDiscordUserId(teacherId);
+    const [ownedServers, boundServers] = await Promise.all([
+      discordUserId
+        ? this.manager.getRepository(DiscordServerOwnership).find({
+          where: { discord_user_id: discordUserId },
+          select: { discord_server_id: true },
+        })
+        : Promise.resolve([]),
+      this.manager.getRepository(DiscordServer).find({
+        where: { teacher_id: teacherId },
+        select: { discord_server_id: true },
+      }),
+    ]);
+
+    return Array.from(new Set(
+      [...ownedServers, ...boundServers]
+        .map((server) => server.discord_server_id.trim())
+        .filter((discordServerId) => discordServerId.length > 0),
+    ));
+  }
+
+  async replaceDiscordServerOwnerships(
+    discordUserId: string,
     servers: Array<{ discord_server_id: string; name: string }>,
-  ): Promise<TeacherDiscordServerCache[]> {
-    const repo = this.manager.getRepository(TeacherDiscordServerCache);
-    await repo.delete({ teacher_id: teacherId });
+  ): Promise<DiscordServerOwnership[]> {
+    const repo = this.manager.getRepository(DiscordServerOwnership);
+    await repo.delete({ discord_user_id: discordUserId });
     if (servers.length === 0) {
       return [];
     }
 
     return repo.save(servers.map((server) => repo.create({
-      teacher_id: teacherId,
+      discord_user_id: discordUserId,
       discord_server_id: server.discord_server_id,
       name: server.name,
       synced_at: new Date(),
     })));
   }
 
-  async pruneDiscordDataForMissingServers(teacherId: number, syncedDiscordServerIds: string[]) {
+  async pruneDiscordDataForMissingServers(
+    teacherId: number,
+    discordUserId: string,
+    syncedDiscordServerIds: string[],
+  ) {
     const normalizedIds = Array.from(new Set(
       syncedDiscordServerIds.map((id) => id.trim()).filter((id) => id.length > 0),
     ));
@@ -261,68 +297,68 @@ export class TypeOrmMessagingWriter {
       .from(DiscordServer)
       .where('teacher_id = :teacherId', { teacherId });
 
-    const channelCacheQuery = this.manager.getRepository(TeacherDiscordChannelCache)
+    const channelQuery = this.manager.getRepository(DiscordServerChannel)
       .createQueryBuilder()
       .delete()
-      .from(TeacherDiscordChannelCache)
-      .where('teacher_id = :teacherId', { teacherId });
+      .from(DiscordServerChannel)
+      .where('discord_user_id = :discordUserId', { discordUserId });
 
     if (normalizedIds.length > 0) {
       serverBindingQuery.andWhere('discord_server_id NOT IN (:...discordServerIds)', {
         discordServerIds: normalizedIds,
       });
-      channelCacheQuery.andWhere('discord_server_id NOT IN (:...discordServerIds)', {
+      channelQuery.andWhere('discord_server_id NOT IN (:...discordServerIds)', {
         discordServerIds: normalizedIds,
       });
     }
 
-    const [serverBindings, channelCaches] = await Promise.all([
+    const [serverBindings, channels] = await Promise.all([
       serverBindingQuery.execute(),
-      channelCacheQuery.execute(),
+      channelQuery.execute(),
     ]);
 
     return {
       removed_server_bindings: serverBindings.affected ?? 0,
-      removed_channel_caches: channelCaches.affected ?? 0,
+      removed_channels: channels.affected ?? 0,
     };
   }
 
-  listTeacherDiscordServerCaches(teacherId: number) {
-    return this.manager.getRepository(TeacherDiscordServerCache).find({
-      where: { teacher_id: teacherId },
+  listDiscordServerOwnerships(discordUserId: string) {
+    return this.manager.getRepository(DiscordServerOwnership).find({
+      where: { discord_user_id: discordUserId },
       order: { name: 'ASC' },
     });
   }
 
-  findTeacherDiscordServerCacheByDiscordServerId(teacherId: number, discordServerId: string) {
-    return this.manager.getRepository(TeacherDiscordServerCache).findOneBy({
-      teacher_id: teacherId,
+  findDiscordServerOwnershipByDiscordServerId(discordUserId: string, discordServerId: string) {
+    return this.manager.getRepository(DiscordServerOwnership).findOneBy({
+      discord_user_id: discordUserId,
       discord_server_id: discordServerId,
     });
   }
 
-  findAnyTeacherDiscordServerCacheByDiscordServerId(discordServerId: string) {
-    return this.manager.getRepository(TeacherDiscordServerCache).findOneBy({
+  findAnyDiscordServerOwnershipByDiscordServerId(discordServerId: string) {
+    return this.manager.getRepository(DiscordServerOwnership).findOneBy({
       discord_server_id: discordServerId,
     });
   }
 
-  createTeacherDiscordServerCache(values: Partial<TeacherDiscordServerCache>) {
-    return this.manager.getRepository(TeacherDiscordServerCache).create(values);
+  createDiscordServerOwnership(values: Partial<DiscordServerOwnership>) {
+    return this.manager.getRepository(DiscordServerOwnership).create(values);
   }
 
-  saveTeacherDiscordServerCache(server: TeacherDiscordServerCache) {
-    return this.manager.getRepository(TeacherDiscordServerCache).save(server);
+  saveDiscordServerOwnership(server: DiscordServerOwnership) {
+    return this.manager.getRepository(DiscordServerOwnership).save(server);
   }
 
-  async replaceTeacherDiscordChannelCaches(
-    teacherId: number,
+  async replaceDiscordServerChannels(
+    discordUserId: string,
     discordServerId: string,
     channels: Array<{ discord_channel_id: string; name: string; type: 'text' | 'voice' }>,
-  ): Promise<TeacherDiscordChannelCache[]> {
-    const repo = this.manager.getRepository(TeacherDiscordChannelCache);
+  ): Promise<DiscordServerChannel[]> {
+    const repo = this.manager.getRepository(DiscordServerChannel);
     await repo.delete({
-      teacher_id: teacherId,
+      discord_user_id: discordUserId,
       discord_server_id: discordServerId,
     });
 
@@ -331,7 +367,7 @@ export class TypeOrmMessagingWriter {
     }
 
     return repo.save(channels.map((channel) => repo.create({
-      teacher_id: teacherId,
+      discord_user_id: discordUserId,
       discord_server_id: discordServerId,
       discord_channel_id: channel.discord_channel_id,
       name: channel.name,
@@ -340,17 +376,27 @@ export class TypeOrmMessagingWriter {
     })));
   }
 
-  findTeacherDiscordServerCacheById(teacherId: number, serverCacheId: number) {
-    return this.manager.getRepository(TeacherDiscordServerCache).findOneBy({
-      teacher_id: teacherId,
-      id: serverCacheId,
+  async findDiscordServerOwnershipById(teacherId: number, serverOwnershipId: number) {
+    const discordUserId = await this.getTeacherDiscordUserId(teacherId);
+    if (!discordUserId) {
+      return null;
+    }
+
+    return this.manager.getRepository(DiscordServerOwnership).findOneBy({
+      discord_user_id: discordUserId,
+      id: serverOwnershipId,
     });
   }
 
-  findTeacherDiscordChannelCacheById(teacherId: number, channelCacheId: number) {
-    return this.manager.getRepository(TeacherDiscordChannelCache).findOneBy({
-      teacher_id: teacherId,
-      id: channelCacheId,
+  async findDiscordServerChannelById(teacherId: number, channelId: number) {
+    const discordUserId = await this.getTeacherDiscordUserId(teacherId);
+    if (!discordUserId) {
+      return null;
+    }
+
+    return this.manager.getRepository(DiscordServerChannel).findOneBy({
+      discord_user_id: discordUserId,
+      id: channelId,
     });
   }
 

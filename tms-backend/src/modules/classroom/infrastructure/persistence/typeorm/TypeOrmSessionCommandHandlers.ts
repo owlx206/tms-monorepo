@@ -4,6 +4,7 @@ import { CreateManualSessionUseCase } from '../../../application/commands/Create
 import type { CreateManualSessionInput, SessionSummary } from '../../../application/dto/ClassDto.js';
 import { TypeOrmSessionFinanceService } from './TypeOrmSessionFinanceService.js';
 import { TypeOrmSessionWriter } from './TypeOrmSessionWriter.js';
+import { TypeOrmAttendanceWriter } from './TypeOrmAttendanceWriter.js';
 
 export class TypeOrmSessionCommandHandlers {
   async createManualSession(input: {
@@ -24,8 +25,9 @@ export class TypeOrmSessionCommandHandlers {
   }): Promise<SessionSummary> {
     return AppDataSource.transaction(async (manager) => {
       const sessions = new TypeOrmSessionWriter(manager);
+      const attendance = new TypeOrmAttendanceWriter(manager);
       const finance = new TypeOrmSessionFinanceService(manager);
-      const useCase = new CancelSessionUseCase(sessions, finance);
+      const useCase = new CancelSessionUseCase(sessions, attendance, finance);
       return useCase.execute({
         ...input,
         cancelledAt: new Date(),
