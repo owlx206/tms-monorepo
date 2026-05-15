@@ -5,6 +5,7 @@ import { Student } from '../../../../../entities/student.entity.js';
 import { Attendance } from '../../../../../entities/attendance.entity.js';
 import { Class } from '../../../../../entities/class.entity.js';
 import { Session } from '../../../../../entities/session.entity.js';
+import { AttendanceSource, AttendanceStatus } from '../../../../../entities/enums.js';
 
 export class TypeOrmAttendanceWriter {
   constructor(private readonly manager: EntityManager) {}
@@ -99,6 +100,51 @@ export class TypeOrmAttendanceWriter {
 
   save(attendance: Attendance): Promise<Attendance> {
     return this.manager.getRepository(Attendance).save(attendance);
+  }
+
+  async markBotPresentIfNotManual(input: {
+    teacherId: number;
+    sessionId: number;
+    studentId: number;
+  }): Promise<boolean> {
+    const rows = await this.manager.query(`
+      INSERT INTO attendance (
+        teacher_id,
+        session_id,
+        student_id,
+        status,
+        source,
+        overridden_at,
+        notes
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4::attendance_status,
+        $5::attendance_source,
+        NULL,
+        NULL
+      )
+      ON CONFLICT (session_id, student_id) DO UPDATE
+      SET
+        status = EXCLUDED.status,
+        source = EXCLUDED.source,
+        overridden_at = NULL
+      WHERE attendance.source <> $6::attendance_source
+        AND attendance.status <> $7::attendance_status
+      RETURNING id
+    `, [
+      input.teacherId,
+      input.sessionId,
+      input.studentId,
+      AttendanceStatus.Present,
+      AttendanceSource.Bot,
+      AttendanceSource.Manual,
+      AttendanceStatus.AbsentExcused,
+    ]) as Array<{ id: number }>;
+
+    return rows.length > 0;
   }
 
   remove(records: Attendance[]): Promise<Attendance[]> {

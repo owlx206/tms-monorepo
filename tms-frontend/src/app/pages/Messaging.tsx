@@ -991,10 +991,12 @@ function ServerModal({
     void listDiscordChannels(Number(serverId)).then((nextChannels) => {
       if (!cancelled) {
         setChannels(nextChannels);
+        setLocalError("");
       }
-    }).catch(() => {
+    }).catch((error) => {
       if (!cancelled) {
         setChannels([]);
+        setLocalError(toErrorMessage(error));
       }
     });
 
@@ -1058,6 +1060,11 @@ function ServerModal({
                 <option key={server.id} value={server.id}>{server.name}</option>
               ))}
             </select>
+            {availableServers.length === 0 && (
+              <p className="mt-2 text-xs text-zinc-500">
+                Chưa có server Discord đã đồng bộ. Hãy xác thực Discord, mời bot vào server, rồi mở lại màn hình này.
+              </p>
+            )}
           </div>
 
           <div>
@@ -1072,6 +1079,9 @@ function ServerModal({
                 <option key={channel.id} value={channel.id}>{channel.name}</option>
               ))}
             </select>
+            {serverId && channels.filter((channel) => channel.type === "text").length === 0 && (
+              <p className="mt-2 text-xs text-zinc-500">Chưa tìm thấy text channel cho server này.</p>
+            )}
           </div>
 
           <div>
@@ -1086,6 +1096,9 @@ function ServerModal({
                 <option key={channel.id} value={channel.id}>{channel.name}</option>
               ))}
             </select>
+            {serverId && channels.filter((channel) => channel.type === "voice").length === 0 && (
+              <p className="mt-2 text-xs text-zinc-500">Chưa tìm thấy voice channel cho server này.</p>
+            )}
           </div>
 
           {localError && <p className="text-sm text-red-600">{localError}</p>}

@@ -12,8 +12,16 @@ function getCredentialSecret(): string {
   return config.discord.credentialSecret ?? config.auth.jwtSecret ?? 'local-discord-credential-secret';
 }
 
-function getEncryptionKey(): Buffer {
-  return createHash('sha256').update(getCredentialSecret()).digest();
+function getCredentialSecrets(): string[] {
+  return Array.from(new Set([
+    getCredentialSecret(),
+    config.auth.jwtSecret,
+    'local-discord-credential-secret',
+  ].filter((secret): secret is string => Boolean(secret))));
+}
+
+function getEncryptionKey(secret = getCredentialSecret()): Buffer {
+  return createHash('sha256').update(secret).digest();
 }
 
 export function encodeCredential(value: string | null | undefined): string | null | undefined {
@@ -42,10 +50,18 @@ export function decodeCredential(value: string | null | undefined): string | nul
   const iv = payload.subarray(0, IV_LENGTH);
   const authTag = payload.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
   const ciphertext = payload.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
-  const decipher = createDecipheriv(ALGORITHM, getEncryptionKey(), iv);
-  decipher.setAuthTag(authTag);
 
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+  for (const secret of getCredentialSecrets()) {
+    try {
+      const decipher = createDecipheriv(ALGORITHM, getEncryptionKey(secret), iv);
+      decipher.setAuthTag(authTag);
+      return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    } catch {
+      // Try the next historical secret so existing local credentials remain readable.
+    }
+  }
+
+  throw new Error('failed to decrypt credential');
 }
 
 export const credentialTransformer: ValueTransformer = {

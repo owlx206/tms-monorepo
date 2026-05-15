@@ -109,6 +109,12 @@ export async function upsertDiscordServerByClass(
   return data.server;
 }
 
+export async function unbindDiscordServerByClass(classId: number): Promise<void> {
+  await apiRequest<{ server: null }>(`/classes/${classId}/discord-server`, {
+    method: "DELETE",
+  });
+}
+
 export async function sendStudentMessages(payload: {
   content: string;
   student_ids?: number[];

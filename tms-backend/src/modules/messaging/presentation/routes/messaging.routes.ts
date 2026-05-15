@@ -25,6 +25,7 @@ type MessagingRouteControllers = {
   getBotInviteLink: MessagingController;
   getSetupStatus: MessagingController;
   upsertDiscordServer: MessagingController;
+  unbindDiscordServer: MessagingController;
   sendStudentMessages: MessagingController;
   sendChannelPost: MessagingController;
 };
@@ -56,6 +57,13 @@ export function createMessagingRouter(controllers: MessagingRouteControllers): R
     validate({ params: classIdParamSchema, body: upsertDiscordServerBodySchema }),
     authorizeOwnedClassParam(),
     adaptExpressRoute(controllers.upsertDiscordServer),
+  );
+  router.delete(
+    '/classes/:classId/discord-server',
+    ...teacherAuth,
+    validate({ params: classIdParamSchema }),
+    authorizeOwnedClassParam(),
+    adaptExpressRoute(controllers.unbindDiscordServer),
   );
   router.post(
     '/discord/messages/students',

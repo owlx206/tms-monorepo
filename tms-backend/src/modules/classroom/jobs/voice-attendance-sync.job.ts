@@ -10,8 +10,8 @@ import {
   Session,
   SessionStatus,
   Student,
+  SysadminDiscordBotCredential,
 } from '../../../entities/index.js';
-import { AttendanceSource, AttendanceStatus } from '../../../entities/enums.js';
 import type { IntervalJob } from '../../../jobs/index.js';
 import { ClassServiceError } from '../../../shared/errors/class.error.js';
 import { ServiceError } from '../../../shared/errors/service.error.js';
@@ -40,8 +40,6 @@ type VoiceAttendanceClientState = {
   tokenKey: string;
   ready: boolean;
 };
-
-const DEFAULT_SYNC_INTERVAL_MS = 15_000;
 
 const clientByToken = new Map<string, VoiceAttendanceClientState>();
 
@@ -93,7 +91,8 @@ function identityCandidates(identity: VoiceMemberIdentity): Set<string> {
 }
 
 function studentDiscordKey(student: Student): string | null {
-  return normalizeDiscordIdentity(student.discord_username);
+  return normalizeDiscordIdentity(student.discord_user_id)
+    ?? normalizeDiscordIdentity(student.discord_username);
 }
 
 function identityFromVoiceState(voiceState: VoiceState): VoiceMemberIdentity | null {
@@ -112,6 +111,10 @@ function identityFromVoiceState(voiceState: VoiceState): VoiceMemberIdentity | n
 }
 
 async function getOpenVoiceAttendanceSessions(now: Date): Promise<OpenVoiceAttendanceSession[]> {
+  const credential = await AppDataSource.getRepository(SysadminDiscordBotCredential).findOneBy({
+    singleton_key: 'default',
+  });
+  const defaultBotToken = credential?.bot_token?.trim() || null;
   const rows = await AppDataSource.getRepository(Session)
     .createQueryBuilder('session')
     .innerJoin(Class, 'class', 'class.id = session.class_id AND class.teacher_id = session.teacher_id')
@@ -143,7 +146,6 @@ async function getOpenVoiceAttendanceSessions(now: Date): Promise<OpenVoiceAtten
     .andWhere('class.status = :classStatus', { classStatus: ClassStatus.Active })
     .andWhere('session.scheduled_at >= :dayStart', { dayStart: startOfDay(now) })
     .andWhere('session.scheduled_at <= :dayEnd', { dayEnd: endOfDay(now) })
-    .andWhere('discord_server.bot_token IS NOT NULL')
     .andWhere('discord_server.attendance_voice_channel_id IS NOT NULL')
     .setParameters({
       dayOfWeek: now.getDay(),
@@ -165,7 +167,7 @@ async function getOpenVoiceAttendanceSessions(now: Date): Promise<OpenVoiceAtten
       session_id: Number(row.session_id),
       discord_server_id: row.discord_server_id,
       attendance_voice_channel_id: row.attendance_voice_channel_id,
-      bot_token: row.bot_token,
+      bot_token: row.bot_token?.trim() || defaultBotToken || '',
     }))
     .filter((row) => row.bot_token && row.attendance_voice_channel_id);
 }
@@ -200,7 +202,7 @@ async function listStudentsByClassSession(
       { classId, scheduledAt: session.scheduled_at },
     )
     .where('student.teacher_id = :teacherId', { teacherId })
-    .andWhere('student.discord_username IS NOT NULL')
+    .andWhere('(student.discord_user_id IS NOT NULL OR student.discord_username IS NOT NULL)')
     .getMany();
 }
 
@@ -359,44 +361,15 @@ async function upsertBotSessionAttendance(input: {
     throw new ClassServiceError('cannot update attendance for a cancelled session', 409);
   }
 
-  let attendance = await input.attendanceWriter.findAttendanceForStudent(
-    input.teacherId,
-    input.sessionId,
-    input.studentId,
-  );
+  const markedPresent = await input.attendanceWriter.markBotPresentIfNotManual({
+    teacherId: input.teacherId,
+    sessionId: input.sessionId,
+    studentId: input.studentId,
+  });
 
-  if (attendance?.source === AttendanceSource.Manual) {
+  if (!markedPresent) {
     return false;
   }
-
-  if (attendance?.status === AttendanceStatus.AbsentExcused) {
-    return false;
-  }
-
-  if (
-    attendance?.source === AttendanceSource.Bot
-    && attendance.status === AttendanceStatus.Present
-  ) {
-    return true;
-  }
-
-  if (!attendance) {
-    attendance = input.attendanceWriter.create({
-      teacher_id: input.teacherId,
-      session_id: input.sessionId,
-      student_id: input.studentId,
-      status: AttendanceStatus.Present,
-      source: AttendanceSource.Bot,
-      overridden_at: null,
-      notes: null,
-    });
-  } else {
-    attendance.status = AttendanceStatus.Present;
-    attendance.source = AttendanceSource.Bot;
-    attendance.overridden_at = null;
-  }
-
-  await input.attendanceWriter.save(attendance);
 
   await input.finance.syncAttendanceFeeRecord({
     teacherId: input.teacherId,
@@ -474,6 +447,10 @@ async function getVoiceAttendanceSessionForTeacher(
   teacherId: number,
   sessionId: number,
 ): Promise<OpenVoiceAttendanceSession> {
+  const credential = await AppDataSource.getRepository(SysadminDiscordBotCredential).findOneBy({
+    singleton_key: 'default',
+  });
+  const defaultBotToken = credential?.bot_token?.trim() || null;
   const row = await AppDataSource.getRepository(Session)
     .createQueryBuilder('session')
     .innerJoin(Class, 'class', 'class.id = session.class_id AND class.teacher_id = session.teacher_id')
@@ -509,7 +486,8 @@ async function getVoiceAttendanceSessionForTeacher(
     throw new ServiceError('cannot sync attendance for a cancelled session', 409);
   }
 
-  if (!row.bot_token) {
+  const botToken = row.bot_token?.trim() || defaultBotToken;
+  if (!botToken) {
     throw new ServiceError('bot_token is missing for this class server', 400);
   }
 
@@ -523,7 +501,7 @@ async function getVoiceAttendanceSessionForTeacher(
     session_id: Number(row.session_id),
     discord_server_id: row.discord_server_id,
     attendance_voice_channel_id: row.attendance_voice_channel_id,
-    bot_token: row.bot_token,
+    bot_token: botToken,
   };
 }
 
@@ -606,12 +584,12 @@ function destroyVoiceAttendanceClients(): void {
 
 export function createVoiceAttendanceSyncJob(options: {
   enabled: boolean;
-  intervalMs?: number;
+  intervalMs: number;
 }): IntervalJob {
   return {
     name: 'voice-attendance-sync',
     enabled: options.enabled,
-    intervalMs: options.intervalMs ?? DEFAULT_SYNC_INTERVAL_MS,
+    intervalMs: options.intervalMs,
     run: syncVoiceAttendanceOnce,
     onStop: destroyVoiceAttendanceClients,
   };

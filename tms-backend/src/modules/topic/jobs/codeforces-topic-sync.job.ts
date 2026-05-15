@@ -10,8 +10,6 @@ import {
 } from '../../../infrastructure/external/codeforces/codeforces-api.service.js';
 import type { IntervalJob } from '../../../jobs/index.js';
 
-const CODEFORCES_STANDING_SYNC_INTERVAL_MS = 15 * 1000;
-
 function hasPartialCodeforcesCredentials(teacher: Teacher): boolean {
   const hasApiKey = typeof teacher.codeforces_api_key === 'string' && teacher.codeforces_api_key.trim().length > 0;
   const hasApiSecret = typeof teacher.codeforces_api_secret === 'string'
@@ -70,7 +68,7 @@ async function fetchCodeforcesGymStandingsSafely(
   }
 }
 
-function shouldPullTopicStanding(topic: Topic, now: Date): boolean {
+function shouldPullTopicStanding(topic: Topic, now: Date, standingIntervalMs: number): boolean {
   if (topic.closed_at) {
     return false;
   }
@@ -79,7 +77,7 @@ function shouldPullTopicStanding(topic: Topic, now: Date): boolean {
     return true;
   }
 
-  return now.getTime() - topic.last_pulled_at.getTime() >= CODEFORCES_STANDING_SYNC_INTERVAL_MS;
+  return now.getTime() - topic.last_pulled_at.getTime() >= standingIntervalMs;
 }
 
 async function syncTopicStanding(
@@ -156,7 +154,9 @@ async function syncTopicStanding(
 
     const resultByStudentProblem = new Map<string, { solved: boolean; penalty_minutes: number | null }>();
     standings.rows.forEach((row) => {
-      const student = row.handles.map((handle) => studentByHandle.get(handle)).find(Boolean);
+      const student = row.handles
+        .map((handle) => studentByHandle.get(handle.trim().toLowerCase()))
+        .find(Boolean);
       if (!student) {
         return;
       }
@@ -218,7 +218,9 @@ async function syncTopicStanding(
   return true;
 }
 
-export async function syncCodeforcesTopicsOnce(): Promise<void> {
+export async function syncCodeforcesTopicsOnce(options: {
+  standingIntervalMs: number;
+}): Promise<void> {
   if (!AppDataSource.isInitialized) {
     return;
   }
@@ -246,7 +248,10 @@ export async function syncCodeforcesTopicsOnce(): Promise<void> {
     }
 
     if (topic.gym_id === synced.gym_id && topic.title === synced.title) {
-      if (shouldPullTopicStanding(topic, now) && await syncTopicStanding(topic, codeforces, now)) {
+      if (
+        shouldPullTopicStanding(topic, now, options.standingIntervalMs)
+        && await syncTopicStanding(topic, codeforces, now)
+      ) {
         standingSyncCount += 1;
       }
       continue;
@@ -256,7 +261,10 @@ export async function syncCodeforcesTopicsOnce(): Promise<void> {
     topic.title = synced.title;
     dirty.push(topic);
 
-    if (shouldPullTopicStanding(topic, now) && await syncTopicStanding(topic, codeforces, now)) {
+    if (
+      shouldPullTopicStanding(topic, now, options.standingIntervalMs)
+      && await syncTopicStanding(topic, codeforces, now)
+    ) {
       standingSyncCount += 1;
     }
   }
@@ -274,11 +282,14 @@ export async function syncCodeforcesTopicsOnce(): Promise<void> {
 export function createCodeforcesTopicSyncJob(options: {
   enabled: boolean;
   intervalSeconds: number;
+  standingIntervalSeconds: number;
 }): IntervalJob {
   return {
     name: 'codeforces-topic-sync',
     enabled: options.enabled,
     intervalMs: Math.max(1, options.intervalSeconds) * 1000,
-    run: syncCodeforcesTopicsOnce,
+    run: () => syncCodeforcesTopicsOnce({
+      standingIntervalMs: Math.max(1, options.standingIntervalSeconds) * 1000,
+    }),
   };
 }

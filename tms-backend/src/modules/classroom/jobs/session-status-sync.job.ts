@@ -5,8 +5,6 @@ import { ClassServiceError } from '../../../shared/errors/class.error.js';
 import { TypeOrmAttendanceWriter } from '../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
 import { TypeOrmSessionFinanceService } from '../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
 
-const DEFAULT_SYNC_INTERVAL_MS = 15_000;
-
 type UpdatedSessionRow = {
   id: number;
 };
@@ -180,12 +178,12 @@ export async function syncSessionStatusesOnce(): Promise<void> {
 
 export function createSessionStatusSyncJob(options: {
   enabled: boolean;
-  intervalMs?: number;
+  intervalMs: number;
 }): IntervalJob {
   return {
     name: 'session-status-sync',
     enabled: options.enabled,
-    intervalMs: options.intervalMs ?? DEFAULT_SYNC_INTERVAL_MS,
+    intervalMs: options.intervalMs,
     run: syncSessionStatusesOnce,
   };
 }

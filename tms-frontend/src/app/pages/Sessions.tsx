@@ -72,6 +72,7 @@ export function Sessions() {
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<SessionStatusFilter>('all');
+  const [sessionDate, setSessionDate] = useState("");
   const [classes, setClasses] = useState<BackendClass[]>([]);
   const [sessions, setSessions] = useState<SessionCard[]>([]);
   const [requestError, setRequestError] = useState("");
@@ -85,7 +86,13 @@ export function Sessions() {
 
     try {
       const dateFilters: { from?: string; to?: string } = {};
-      if (rangeToggleVisible && !showAllSessions) {
+      if (sessionDate) {
+        const [year, month, day] = sessionDate.split("-").map(Number);
+        const startOfSelectedDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+        const endOfSelectedDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+        dateFilters.from = startOfSelectedDay.toISOString();
+        dateFilters.to = endOfSelectedDay.toISOString();
+      } else if (rangeToggleVisible && !showAllSessions) {
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const sevenDaysLater = new Date(startOfToday.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -107,7 +114,7 @@ export function Sessions() {
     } catch (error) {
       setRequestError(toErrorMessage(error));
     }
-  }, [filterStatus, rangeToggleVisible, showAllSessions]);
+  }, [filterStatus, rangeToggleVisible, sessionDate, showAllSessions]);
 
   useEffect(() => {
     void loadData();
@@ -178,7 +185,9 @@ export function Sessions() {
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Buổi học</h1>
           <p className="text-zinc-600">
-            {filterStatus === 'completed'
+            {sessionDate
+              ? `Buổi học ngày ${formatSessionDate(new Date(`${sessionDate}T00:00:00`))}`
+              : filterStatus === 'completed'
               ? "Tất cả buổi học đã hoàn thành"
               : filterStatus === 'cancelled'
                 ? "Tất cả buổi học đã hủy"
@@ -188,7 +197,7 @@ export function Sessions() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {rangeToggleVisible && (
+          {rangeToggleVisible && !sessionDate && (
             <button
               onClick={() => setShowAllSessions(!showAllSessions)}
               className={`px-4 py-3 rounded-lg font-medium transition-colors ${
@@ -217,28 +226,52 @@ export function Sessions() {
       )}
 
       <div className="mb-6">
-        <div className="flex gap-2">
-          {(['all', 'scheduled', 'in_progress', 'completed', 'cancelled'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                filterStatus === status
-                  ? 'bg-zinc-900 text-white'
-                  : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-              }`}
-            >
-              {status === 'all'
-                ? 'Tất cả'
-                : status === 'scheduled'
-                  ? 'Sắp diễn ra'
-                  : status === 'in_progress'
-                    ? 'Đang diễn ra'
-                    : status === 'completed'
-                      ? 'Đã hoàn thành'
-                      : 'Đã hủy'}
-            </button>
-          ))}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'scheduled', 'in_progress', 'completed', 'cancelled'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                  filterStatus === status
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                }`}
+              >
+                {status === 'all'
+                  ? 'Tất cả'
+                  : status === 'scheduled'
+                    ? 'Sắp diễn ra'
+                    : status === 'in_progress'
+                      ? 'Đang diễn ra'
+                      : status === 'completed'
+                        ? 'Đã hoàn thành'
+                        : 'Đã hủy'}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="session-date-filter" className="text-sm font-medium text-zinc-600">
+              Ngày học
+            </label>
+            <input
+              id="session-date-filter"
+              type="date"
+              value={sessionDate}
+              onChange={(event) => setSessionDate(event.target.value)}
+              className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400"
+            />
+            {sessionDate && (
+              <button
+                type="button"
+                onClick={() => setSessionDate("")}
+                className="h-10 rounded-lg bg-zinc-100 px-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+              >
+                Xóa lọc
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,3 +1,44 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+function readEnvFileValue(key: string): string | undefined {
+  const sourceDir = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    resolve(process.cwd(), '.env'),
+    resolve(process.cwd(), '../.env'),
+    join(sourceDir, '../../.env'),
+    join(sourceDir, '../../../.env'),
+  ];
+  const envPath = candidates.find((candidate) => existsSync(candidate));
+  if (!envPath) {
+    return undefined;
+  }
+
+  const rows = readFileSync(envPath, 'utf8').split(/\r?\n/);
+  for (const row of rows) {
+    const trimmed = row.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf('=');
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const envKey = trimmed.slice(0, separatorIndex).trim();
+    if (envKey !== key) {
+      continue;
+    }
+
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    return rawValue.replace(/^(['"])(.*)\1$/, '$2');
+  }
+
+  return undefined;
+}
+
 function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined) {
     return fallback;
@@ -33,9 +74,12 @@ const config = {
   host: process.env.HOST,
   port: Number(process.env.PORT),
   apiPrefix: process.env.API_PREFIX as string,
-  frontendUrl: parseOptionalString(process.env.FRONTEND_URL) ?? 'http://localhost:5173',
+  frontendUrl: parseOptionalString(process.env.FRONTEND_PUBLIC_URL)
+    ?? parseOptionalString(process.env.FRONTEND_URL)
+    ?? `http://localhost:${parsePositiveInteger(process.env.FRONTEND_PORT, 5173)}`,
   backendPublicUrl: parseOptionalString(process.env.BACKEND_PUBLIC_URL)
-    ?? `http://localhost:${Number(process.env.PORT)}`,
+    ?? parseOptionalString(readEnvFileValue('BACKEND_PUBLIC_URL'))
+    ?? `http://localhost:${parsePositiveInteger(process.env.PORT ?? process.env.BACKEND_PORT, 4000)}`,
   auth: {
     jwtSecret: process.env.JWT_SECRET as string,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN,
@@ -81,6 +125,9 @@ const config = {
   sessionStatusSync: {
     enabled: parseBoolean(process.env.SESSION_STATUS_SYNC_ENABLED, true),
     intervalSeconds: parsePositiveInteger(process.env.SESSION_STATUS_SYNC_INTERVAL_SECONDS, 15),
+  },
+  codeforcesStandingSync: {
+    intervalSeconds: parsePositiveInteger(process.env.CODEFORCES_STANDING_SYNC_INTERVAL_SECONDS, 15),
   },
 };
 

@@ -23,6 +23,7 @@ export async function main(): Promise<void> {
     createCodeforcesTopicSyncJob({
       enabled: config.autoSync.enabled && config.autoSync.syncCodeforces,
       intervalSeconds: config.autoSync.intervalSeconds,
+      standingIntervalSeconds: config.codeforcesStandingSync.intervalSeconds,
     }),
     createSessionStatusSyncJob({
       enabled: config.sessionStatusSync.enabled,

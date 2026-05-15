@@ -16,6 +16,7 @@ type MessagingControllerAction =
   | 'getBotInviteLink'
   | 'getSetupStatus'
   | 'upsertDiscordServer'
+  | 'unbindDiscordServer'
   | 'sendStudentMessages'
   | 'sendChannelPost';
 
@@ -35,6 +36,7 @@ type MessagingControllerDependencies = {
     classId: number,
     input: SelectClassDiscordServerInput,
   ): Promise<unknown>;
+  unbindDiscordServerByClass(teacherId: number, classId: number): Promise<unknown>;
   sendStudentMessages(teacherId: number, input: StudentMessageInput): Promise<unknown>;
   sendChannelPost(teacherId: number, input: ChannelPostInput): Promise<unknown>;
 };
@@ -66,6 +68,8 @@ export class MessagingController implements Controller {
           return this.getSetupStatus(request);
         case 'upsertDiscordServer':
           return this.upsertDiscordServer(request);
+        case 'unbindDiscordServer':
+          return this.unbindDiscordServer(request);
         case 'sendStudentMessages':
           return this.sendStudentMessages(request);
         case 'sendChannelPost':
@@ -153,6 +157,18 @@ export class MessagingController implements Controller {
     return {
       statusCode: 200,
       body: { server },
+    };
+  }
+
+  private async unbindDiscordServer(request: MessagingHttpRequest): Promise<HttpResponse> {
+    await this.dependencies.unbindDiscordServerByClass(
+      getTeacherId(request),
+      getClassId(request),
+    );
+
+    return {
+      statusCode: 200,
+      body: { server: null },
     };
   }
 

@@ -16,6 +16,7 @@ import { listStudents } from "../services/studentService";
 import {
   listDiscordServers,
   sendChannelPost,
+  unbindDiscordServerByClass,
   upsertDiscordServerByClass,
   type BackendDiscordServer,
 } from "../services/messagingService";
@@ -217,7 +218,7 @@ export function Classes() {
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
-    serverId: number;
+    serverId: number | null;
   }) => {
     setSubmitting(true);
     setRequestError("");
@@ -228,9 +229,13 @@ export function Classes() {
         fee_per_session: payload.feePerSession,
         schedules: payload.schedules,
       });
-      await upsertDiscordServerByClass(payload.classId, {
-        server_id: payload.serverId,
-      });
+      if (payload.serverId !== null) {
+        await upsertDiscordServerByClass(payload.classId, {
+          server_id: payload.serverId,
+        });
+      } else if (selectedClass?.discordServerId != null) {
+        await unbindDiscordServerByClass(payload.classId);
+      }
       await refreshClasses();
       setShowEditModal(false);
       setSelectedClass(null);
@@ -274,10 +279,21 @@ export function Classes() {
         return;
       }
 
-      await sendChannelPost({
+      const serverBindingId = server.binding.server_binding_id;
+      if (!serverBindingId) {
+        setRequestError("Lớp này chưa gắn Discord server hợp lệ");
+        return;
+      }
+
+      const result = await sendChannelPost({
         content: payload.content,
-        server_ids: [server.id],
+        server_ids: [serverBindingId],
       });
+      if (result.failed > 0) {
+        setRequestError(result.failures[0]?.error ?? "Không gửi được tin nhắn vào Discord channel");
+        return;
+      }
+
       setShowClassMessageModal(false);
       setSelectedClass(null);
     } catch (error) {
@@ -810,7 +826,7 @@ function EditClassModal({
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
-    serverId: number;
+    serverId: number | null;
   }) => Promise<void>;
   submitting: boolean;
   error: string;
@@ -843,9 +859,9 @@ function EditClassModal({
       return;
     }
 
-    const parsedServerId = Number(serverId);
-    if (!Number.isInteger(parsedServerId) || parsedServerId <= 0) {
-      setLocalError("Discord server là bắt buộc");
+    const parsedServerId = serverId ? Number(serverId) : null;
+    if (parsedServerId !== null && (!Number.isInteger(parsedServerId) || parsedServerId <= 0)) {
+      setLocalError("Discord server không hợp lệ");
       return;
     }
 
@@ -907,7 +923,7 @@ function EditClassModal({
               onChange={(event) => setServerId(event.target.value)}
               className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             >
-              <option value="">Chọn server</option>
+              <option value="">Không gắn server</option>
               {availableServers.map((server) => (
                 <option key={server.id} value={server.id}>{server.name}</option>
               ))}

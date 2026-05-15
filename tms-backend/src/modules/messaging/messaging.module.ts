@@ -1,6 +1,7 @@
 import type { AppModule } from '../module.types.js';
 import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
 import { BindClassDiscordServerUseCase } from './application/commands/BindClassDiscordServerUseCase.js';
+import { UnbindClassDiscordServerUseCase } from './application/commands/UnbindClassDiscordServerUseCase.js';
 import { CompleteDiscordGuildInstallUseCase } from '../identity/application/commands/CompleteDiscordGuildInstallUseCase.js';
 import { SendStudentMessagesUseCase } from './application/commands/SendStudentMessagesUseCase.js';
 import { SendChannelPostUseCase } from './application/commands/SendChannelPostUseCase.js';
@@ -41,6 +42,7 @@ const completeDiscordGuildInstallUseCase = new CompleteDiscordGuildInstallUseCas
   discordBotCredentialStore,
 );
 const bindClassDiscordServerUseCase = new BindClassDiscordServerUseCase(messagingWriter);
+const unbindClassDiscordServerUseCase = new UnbindClassDiscordServerUseCase(messagingWriter);
 const sendStudentMessagesUseCase = new SendStudentMessagesUseCase(
   messagingWriter,
   discordClientFactory,
@@ -60,6 +62,18 @@ const messagingControllerDependencies = {
       return [];
     }
 
+    const discord = await discordClientFactory.getClient();
+    const channels = await discord.listGuildChannels(server.discord_server_id);
+    await messagingWriter.replaceDiscordServerChannels(
+      server.discord_user_id,
+      server.discord_server_id,
+      channels.map((channel) => ({
+        discord_channel_id: channel.id,
+        name: channel.name,
+        type: channel.type,
+      })),
+    );
+
     return listTeacherDiscordChannelsUseCase.execute(teacherId, server.discord_server_id);
   },
   getBotInviteLink: (teacherId: number) => getBotInviteLinkUseCase.execute(teacherId),
@@ -69,6 +83,8 @@ const messagingControllerDependencies = {
     classId: number,
     input: Parameters<BindClassDiscordServerUseCase['execute']>[2],
   ) => bindClassDiscordServerUseCase.execute(teacherId, classId, input),
+  unbindDiscordServerByClass: (teacherId: number, classId: number) =>
+    unbindClassDiscordServerUseCase.execute(teacherId, classId),
   sendStudentMessages: (teacherId: number, input: Parameters<SendStudentMessagesUseCase['execute']>[1]) =>
     sendStudentMessagesUseCase.execute(teacherId, input),
   sendChannelPost: (teacherId: number, input: Parameters<SendChannelPostUseCase['execute']>[1]) =>
@@ -82,6 +98,7 @@ const messagingRouter = createMessagingRouter({
   getBotInviteLink: new MessagingController('getBotInviteLink', messagingControllerDependencies),
   getSetupStatus: new MessagingController('getSetupStatus', messagingControllerDependencies),
   upsertDiscordServer: new MessagingController('upsertDiscordServer', messagingControllerDependencies),
+  unbindDiscordServer: new MessagingController('unbindDiscordServer', messagingControllerDependencies),
   sendStudentMessages: new MessagingController('sendStudentMessages', messagingControllerDependencies),
   sendChannelPost: new MessagingController('sendChannelPost', messagingControllerDependencies),
 });
