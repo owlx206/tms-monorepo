@@ -1,5 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
+import { credentialTransformer } from '../infrastructure/security/credential-transformer.js';
+
 @Entity('sysadmin_discord_bot_credentials')
 @Unique('uq_sysadmin_discord_bot_credentials_singleton', ['singleton_key'])
 export class SysadminDiscordBotCredential {
@@ -9,13 +11,13 @@ export class SysadminDiscordBotCredential {
   @Column({ type: 'varchar', length: 32, default: 'default' })
   singleton_key!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', transformer: credentialTransformer })
   bot_token!: string;
 
   @Column({ type: 'varchar', length: 64 })
   client_id!: string;
 
-  @Column({ type: 'text', default: '' })
+  @Column({ type: 'text', default: '', transformer: credentialTransformer })
   client_secret!: string;
 
   @Column({ type: 'varchar', length: 128, nullable: true })

@@ -51,6 +51,7 @@ const config = {
     botClientId: parseOptionalString(process.env.DISCORD_BOT_CLIENT_ID),
     botPermissions: parseOptionalString(process.env.DISCORD_BOT_PERMISSIONS),
     botScopes: parseOptionalString(process.env.DISCORD_BOT_SCOPES) ?? 'bot applications.commands',
+    credentialSecret: parseOptionalString(process.env.DISCORD_CREDENTIAL_SECRET),
   },
   database: {
     host: process.env.DB_HOST,
