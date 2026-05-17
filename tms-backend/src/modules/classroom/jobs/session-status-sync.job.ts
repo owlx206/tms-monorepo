@@ -1,4 +1,7 @@
-import { AttendanceSource, AttendanceStatus } from '../../../entities/enums.js';
+import { In } from 'typeorm';
+
+import { Class, Session } from '../../../entities/index.js';
+import { AttendanceSource, AttendanceStatus, ClassStatus, SessionStatus } from '../../../entities/enums.js';
 import { AppDataSource } from '../../../infrastructure/database/data-source.js';
 import type { IntervalJob } from '../../../jobs/index.js';
 import { ClassServiceError } from '../../../shared/errors/class.error.js';
@@ -14,16 +17,15 @@ type MaterializeSessionRow = {
   teacher_id: number;
 };
 
-function getUpdatedSessionCount(result: unknown): number {
-  if (Array.isArray(result) && Array.isArray(result[0]) && typeof result[1] === 'number') {
-    return result[1];
+function getSessionEndAt(session: Pick<Session, 'scheduled_at' | 'end_time'>): Date | null {
+  if (!session.end_time) {
+    return null;
   }
 
-  if (Array.isArray(result)) {
-    return result.length;
-  }
-
-  return 0;
+  const [hours = '0', minutes = '0', seconds = '0'] = session.end_time.split(':');
+  const endAt = new Date(session.scheduled_at);
+  endAt.setHours(Number(hours), Number(minutes), Number(seconds), 0);
+  return endAt;
 }
 
 async function materializeSessionAttendance(input: {
@@ -109,17 +111,26 @@ export async function syncSessionStatusesOnce(): Promise<void> {
     return;
   }
 
-  const materializeRows = await AppDataSource.query(`
-    SELECT session.id, session.teacher_id
-    FROM sessions AS session
-    INNER JOIN classes AS class
-      ON class.teacher_id = session.teacher_id
-      AND class.id = session.class_id
-    WHERE class.status = 'active'::class_status
-      AND session.end_time IS NOT NULL
-      AND session.status IN ('scheduled'::session_status, 'in_progress'::session_status)
-      AND CURRENT_TIMESTAMP >= session.scheduled_at
-  `) as MaterializeSessionRow[];
+  const activeSessions = await AppDataSource
+    .getRepository(Session)
+    .createQueryBuilder('session')
+    .innerJoin(
+      Class,
+      'class',
+      'class.teacher_id = session.teacher_id AND class.id = session.class_id',
+    )
+    .where('class.status = :classStatus', { classStatus: ClassStatus.Active })
+    .andWhere('session.end_time IS NOT NULL')
+    .andWhere('session.status IN (:...statuses)', {
+      statuses: [SessionStatus.Scheduled, SessionStatus.InProgress],
+    })
+    .andWhere('CURRENT_TIMESTAMP >= session.scheduled_at')
+    .getMany();
+
+  const materializeRows: MaterializeSessionRow[] = activeSessions.map((session) => ({
+    id: session.id,
+    teacher_id: session.teacher_id,
+  }));
 
   let attendanceCreated = 0;
   let feeRecordsSynced = 0;
@@ -139,35 +150,42 @@ export async function syncSessionStatusesOnce(): Promise<void> {
     feeRecordsSynced += result.fee_records_synced;
   }
 
-  const completedResult = await AppDataSource.query(`
-    UPDATE sessions AS session
-    SET status = 'completed'::session_status
-    FROM classes AS class
-    WHERE session.teacher_id = class.teacher_id
-      AND session.class_id = class.id
-      AND class.status = 'active'::class_status
-      AND session.end_time IS NOT NULL
-      AND session.status IN ('scheduled'::session_status, 'in_progress'::session_status)
-      AND CURRENT_TIMESTAMP >= (session.scheduled_at::date + session.end_time)::timestamptz
-    RETURNING session.id
-  `) as UpdatedSessionRow[] | [UpdatedSessionRow[], number];
+  const now = new Date();
+  const completedRows: UpdatedSessionRow[] = [];
+  const startedRows: UpdatedSessionRow[] = [];
 
-  const startedResult = await AppDataSource.query(`
-    UPDATE sessions AS session
-    SET status = 'in_progress'::session_status
-    FROM classes AS class
-    WHERE session.teacher_id = class.teacher_id
-      AND session.class_id = class.id
-      AND class.status = 'active'::class_status
-      AND session.end_time IS NOT NULL
-      AND session.status = 'scheduled'::session_status
-      AND CURRENT_TIMESTAMP >= session.scheduled_at
-      AND CURRENT_TIMESTAMP < (session.scheduled_at::date + session.end_time)::timestamptz
-    RETURNING session.id
-  `) as UpdatedSessionRow[] | [UpdatedSessionRow[], number];
+  for (const session of activeSessions) {
+    const endAt = getSessionEndAt(session);
+    if (!endAt) {
+      continue;
+    }
 
-  const completedCount = getUpdatedSessionCount(completedResult);
-  const startedCount = getUpdatedSessionCount(startedResult);
+    if (now >= endAt) {
+      completedRows.push({ id: session.id });
+      continue;
+    }
+
+    if (session.status === SessionStatus.Scheduled && now >= session.scheduled_at) {
+      startedRows.push({ id: session.id });
+    }
+  }
+
+  if (completedRows.length > 0) {
+    await AppDataSource.getRepository(Session).update(
+      { id: In(completedRows.map((row) => row.id)) },
+      { status: SessionStatus.Completed },
+    );
+  }
+
+  if (startedRows.length > 0) {
+    await AppDataSource.getRepository(Session).update(
+      { id: In(startedRows.map((row) => row.id)) },
+      { status: SessionStatus.InProgress },
+    );
+  }
+
+  const completedCount = completedRows.length;
+  const startedCount = startedRows.length;
 
   if (startedCount > 0 || completedCount > 0 || attendanceCreated > 0 || feeRecordsSynced > 0) {
     console.log(

@@ -14,18 +14,18 @@ import {
   studentMessageBodySchema,
   channelPostBodySchema,
   classIdParamSchema,
-  serverIdParamSchema,
-  upsertDiscordServerBodySchema,
+  guildIdParamSchema,
+  upsertDiscordGuildBodySchema,
 } from './messaging.schema.js';
 
 type MessagingRouteControllers = {
-  listDiscordServers: MessagingController;
-  listDiscordChannels: MessagingController;
+  listDiscordGuilds: MessagingController;
+  listDiscordGuildChannels: MessagingController;
   completeDiscordInstall: MessagingController;
   getBotInviteLink: MessagingController;
   getSetupStatus: MessagingController;
-  upsertDiscordServer: MessagingController;
-  unbindDiscordServer: MessagingController;
+  upsertClassDiscordBinding: MessagingController;
+  unbindClassDiscordBinding: MessagingController;
   sendStudentMessages: MessagingController;
   sendChannelPost: MessagingController;
 };
@@ -44,26 +44,26 @@ export function createMessagingRouter(controllers: MessagingRouteControllers): R
 
   router.get('/discord/bot-invite-link', ...teacherAuth, adaptExpressRoute(controllers.getBotInviteLink));
   router.get('/discord/setup-status', ...teacherAuth, adaptExpressRoute(controllers.getSetupStatus));
-  router.get('/discord/servers', ...teacherAuth, adaptExpressRoute(controllers.listDiscordServers));
+  router.get('/discord/guilds', ...teacherAuth, adaptExpressRoute(controllers.listDiscordGuilds));
   router.get(
-    '/discord/servers/:serverId/channels',
+    '/discord/guilds/:guildId/channels',
     ...teacherAuth,
-    validate({ params: serverIdParamSchema }),
-    adaptExpressRoute(controllers.listDiscordChannels),
+    validate({ params: guildIdParamSchema }),
+    adaptExpressRoute(controllers.listDiscordGuildChannels),
   );
   router.put(
-    '/classes/:classId/discord-server/select',
+    '/classes/:classId/discord-guild/select',
     ...teacherAuth,
-    validate({ params: classIdParamSchema, body: upsertDiscordServerBodySchema }),
+    validate({ params: classIdParamSchema, body: upsertDiscordGuildBodySchema }),
     authorizeOwnedClassParam(),
-    adaptExpressRoute(controllers.upsertDiscordServer),
+    adaptExpressRoute(controllers.upsertClassDiscordBinding),
   );
   router.delete(
-    '/classes/:classId/discord-server',
+    '/classes/:classId/discord-guild',
     ...teacherAuth,
     validate({ params: classIdParamSchema }),
     authorizeOwnedClassParam(),
-    adaptExpressRoute(controllers.unbindDiscordServer),
+    adaptExpressRoute(controllers.unbindClassDiscordBinding),
   );
   router.post(
     '/discord/messages/students',

@@ -1,1 +1,1 @@
-export { createDiscordServerSyncJob } from './jobs/discord-server-sync.job.js';
+export { createDiscordGuildSyncJob } from './jobs/discord-guild-sync.job.js';

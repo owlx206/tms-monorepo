@@ -1,7 +1,7 @@
 import type { EntityManager } from 'typeorm';
 
 import type { FeeRecordStatus } from '../../../../entities/enums.js';
-import { FeeRecord } from '../../../../entities/fee-record.entity.js';
+import { FeeRecord } from '../../../../entities/tuition-fee.entity.js';
 import { AppDataSource } from '../../../../infrastructure/database/data-source.js';
 import { ServiceError } from '../../../../shared/errors/service.error.js';
 

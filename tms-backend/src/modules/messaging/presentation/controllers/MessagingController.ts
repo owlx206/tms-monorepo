@@ -5,24 +5,24 @@ import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.
 import type {
   StudentMessageInput,
   ChannelPostInput,
-  SelectClassDiscordServerInput,
+  SelectClassDiscordGuildInput,
 } from '../../application/dto/MessagingDto.js';
 import { getClassId, getTeacherId } from './request-context.js';
 
 type MessagingControllerAction =
-  | 'listDiscordServers'
-  | 'listDiscordChannels'
+  | 'listDiscordGuilds'
+  | 'listDiscordGuildChannels'
   | 'completeDiscordInstall'
   | 'getBotInviteLink'
   | 'getSetupStatus'
-  | 'upsertDiscordServer'
-  | 'unbindDiscordServer'
+  | 'upsertClassDiscordBinding'
+  | 'unbindClassDiscordBinding'
   | 'sendStudentMessages'
   | 'sendChannelPost';
 
 type MessagingControllerDependencies = {
-  listDiscordServers(teacherId: number): Promise<unknown>;
-  listDiscordChannels(teacherId: number, serverId: number): Promise<unknown>;
+  listDiscordGuilds(teacherId: number): Promise<unknown>;
+  listDiscordGuildChannels(teacherId: number, guildId: number): Promise<unknown>;
   completeDiscordInstall(input: {
     code?: string;
     state?: string;
@@ -31,19 +31,19 @@ type MessagingControllerDependencies = {
   }): Promise<string>;
   getBotInviteLink(teacherId: number): Promise<unknown> | unknown;
   getSetupStatus(teacherId: number): Promise<unknown>;
-  upsertDiscordServerByClass(
+  upsertDiscordGuildByClass(
     teacherId: number,
     classId: number,
-    input: SelectClassDiscordServerInput,
+    input: SelectClassDiscordGuildInput,
   ): Promise<unknown>;
-  unbindDiscordServerByClass(teacherId: number, classId: number): Promise<unknown>;
+  unbindDiscordGuildByClass(teacherId: number, classId: number): Promise<unknown>;
   sendStudentMessages(teacherId: number, input: StudentMessageInput): Promise<unknown>;
   sendChannelPost(teacherId: number, input: ChannelPostInput): Promise<unknown>;
 };
 
 type MessagingHttpRequest = HttpRequest<
-  SelectClassDiscordServerInput | StudentMessageInput | ChannelPostInput,
-  { classId?: number; serverId?: number; studentId?: number },
+  SelectClassDiscordGuildInput | StudentMessageInput | ChannelPostInput,
+  { classId?: number; guildId?: number; studentId?: number },
   { code?: string; state?: string; guild_id?: string; error?: string }
 >;
 
@@ -56,20 +56,20 @@ export class MessagingController implements Controller {
   async handle(request: MessagingHttpRequest): Promise<HttpResponse> {
     try {
       switch (this.action) {
-        case 'listDiscordServers':
-          return this.listDiscordServers(request);
-        case 'listDiscordChannels':
-          return this.listDiscordChannels(request);
+        case 'listDiscordGuilds':
+          return this.listDiscordGuilds(request);
+        case 'listDiscordGuildChannels':
+          return this.listDiscordGuildChannels(request);
         case 'completeDiscordInstall':
           return this.completeDiscordInstall(request);
         case 'getBotInviteLink':
           return this.getBotInviteLink(request);
         case 'getSetupStatus':
           return this.getSetupStatus(request);
-        case 'upsertDiscordServer':
-          return this.upsertDiscordServer(request);
-        case 'unbindDiscordServer':
-          return this.unbindDiscordServer(request);
+        case 'upsertClassDiscordBinding':
+          return this.upsertClassDiscordBinding(request);
+        case 'unbindClassDiscordBinding':
+          return this.unbindClassDiscordBinding(request);
         case 'sendStudentMessages':
           return this.sendStudentMessages(request);
         case 'sendChannelPost':
@@ -84,23 +84,23 @@ export class MessagingController implements Controller {
     }
   }
 
-  private async listDiscordServers(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const servers = await this.dependencies.listDiscordServers(getTeacherId(request));
+  private async listDiscordGuilds(request: MessagingHttpRequest): Promise<HttpResponse> {
+    const guilds = await this.dependencies.listDiscordGuilds(getTeacherId(request));
 
     return {
       statusCode: 200,
-      body: { servers },
+      body: { guilds },
     };
   }
 
-  private async listDiscordChannels(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const serverId = (request.params as { serverId?: number }).serverId;
+  private async listDiscordGuildChannels(request: MessagingHttpRequest): Promise<HttpResponse> {
+    const guildId = (request.params as { guildId?: number }).guildId;
 
-    if (typeof serverId !== 'number') {
-      throw new ServiceError('serverId is required', 400);
+    if (typeof guildId !== 'number') {
+      throw new ServiceError('guildId is required', 400);
     }
 
-    const channels = await this.dependencies.listDiscordChannels(getTeacherId(request), serverId);
+    const channels = await this.dependencies.listDiscordGuildChannels(getTeacherId(request), guildId);
 
     return {
       statusCode: 200,
@@ -147,28 +147,28 @@ export class MessagingController implements Controller {
     };
   }
 
-  private async upsertDiscordServer(request: MessagingHttpRequest): Promise<HttpResponse> {
-      const server = await this.dependencies.upsertDiscordServerByClass(
+  private async upsertClassDiscordBinding(request: MessagingHttpRequest): Promise<HttpResponse> {
+      const binding = await this.dependencies.upsertDiscordGuildByClass(
         getTeacherId(request),
         getClassId(request),
-        request.body as SelectClassDiscordServerInput,
+        request.body as SelectClassDiscordGuildInput,
       );
 
     return {
       statusCode: 200,
-      body: { server },
+      body: { binding },
     };
   }
 
-  private async unbindDiscordServer(request: MessagingHttpRequest): Promise<HttpResponse> {
-    await this.dependencies.unbindDiscordServerByClass(
+  private async unbindClassDiscordBinding(request: MessagingHttpRequest): Promise<HttpResponse> {
+    await this.dependencies.unbindDiscordGuildByClass(
       getTeacherId(request),
       getClassId(request),
     );
 
     return {
       statusCode: 200,
-      body: { server: null },
+      body: { binding: null },
     };
   }
 

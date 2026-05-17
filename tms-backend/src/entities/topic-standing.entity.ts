@@ -8,19 +8,19 @@ import { Topic } from './topic.entity.js';
 @Entity('topic_standings')
 @ForeignKey(() => Teacher, ['teacher_id'], ['id'], {
   name: 'fk_topic_standings_teacher_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Topic, ['topic_id'], ['id'], {
   name: 'fk_topic_standings_topic_id',
-  onDelete: 'CASCADE',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Student, ['student_id'], ['id'], {
   name: 'fk_topic_standings_student_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => TopicProblem, ['problem_id'], ['id'], {
   name: 'fk_topic_standings_problem_id',
-  onDelete: 'CASCADE',
+  onDelete: 'NO ACTION',
 })
 @Unique('uq_topic_standings_student_problem', ['topic_id', 'student_id', 'problem_id'])
 @Index('idx_topic_standings_teacher_id', ['teacher_id'])
@@ -30,24 +30,24 @@ export class TopicStanding {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   teacher_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   topic_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   student_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   problem_id!: number;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'bit', default: false })
   solved!: boolean;
 
-  @Column({ type: 'integer', nullable: true })
+  @Column({ type: 'int', nullable: true })
   penalty_minutes!: number | null;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ type: 'datetimeoffset', default: () => 'SYSDATETIMEOFFSET()' })
   pulled_at!: Date;
 }

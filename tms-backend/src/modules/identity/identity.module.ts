@@ -10,7 +10,8 @@ import { UpsertSysadminDiscordBotCredentialUseCase } from './application/command
 import { UpdateTeacherByAdminUseCase } from './application/commands/UpdateTeacherByAdminUseCase.js';
 import { UpdateMyProfileUseCase } from './application/commands/UpdateMyProfileUseCase.js';
 import { GetCurrentTeacherUseCase } from './application/queries/GetCurrentTeacherUseCase.js';
-import { SysadminDiscordBotCredential } from '../../entities/sysadmin-discord-bot-credential.entity.js';
+import { SysadminDiscordBotCredential } from '../../entities/discord-bot-credential.entity.js';
+import { TopicBotConfig } from '../../entities/topic-bot-config.entity.js';
 import { TypeOrmSysadminDiscordBotCredentialReader } from './infrastructure/persistence/typeorm/TypeOrmSysadminDiscordBotCredentialReader.js';
 import { TypeOrmSysadminDiscordBotCredentialStore } from './infrastructure/persistence/typeorm/TypeOrmSysadminDiscordBotCredentialStore.js';
 import { Teacher } from '../../entities/teacher.entity.js';
@@ -177,7 +178,7 @@ const adminRouter = createAdminRouter({
 
 export const identityModule: AppModule = {
   name: 'identity',
-  entities: [Teacher, SysadminDiscordBotCredential],
+  entities: [Teacher, SysadminDiscordBotCredential, TopicBotConfig],
   routes: [
     { path: '/', router: authRouter },
     { path: '/admin', router: adminRouter },

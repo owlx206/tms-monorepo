@@ -8,7 +8,6 @@ export type LoginInput = {
 export type RegisterInput = {
   username: string;
   password: string;
-  codeforces_handle?: string | null;
   codeforces_api_key?: string | null;
   codeforces_api_secret?: string | null;
 };
@@ -16,7 +15,6 @@ export type RegisterInput = {
 export type UpdateTeacherInput = {
   username?: string;
   password?: string;
-  codeforces_handle?: string | null;
   codeforces_api_key?: string | null;
   codeforces_api_secret?: string | null;
 };
@@ -26,7 +24,6 @@ export type AuthTeacher = {
   username: string;
   role: TeacherRole;
   is_active: boolean;
-  codeforces_handle: string | null;
   codeforces_api_key: string | null;
   codeforces_api_secret: string | null;
   discord_username: string | null;

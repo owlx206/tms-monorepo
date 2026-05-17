@@ -22,13 +22,15 @@ export class RegisterUseCase {
       password_hash: passwordHash,
       role: TeacherRole.Teacher,
       is_active: true,
-      codeforces_handle: input.codeforces_handle,
-      codeforces_api_key: input.codeforces_api_key,
-      codeforces_api_secret: input.codeforces_api_secret,
     });
 
     try {
       const savedTeacher = await this.teacherWriter.save(teacher);
+
+      const topicBotConfig = await this.teacherWriter.saveTopicBotConfig(savedTeacher.id, {
+        codeforces_api_key: input.codeforces_api_key,
+        codeforces_api_secret: input.codeforces_api_secret,
+      });
 
       return {
         accessToken: this.accessTokenSigner.sign({
@@ -38,7 +40,7 @@ export class RegisterUseCase {
         }),
         tokenType: 'Bearer' as const,
         expiresIn: this.tokenExpiresIn,
-        teacher: toAuthTeacher(savedTeacher),
+        teacher: toAuthTeacher(savedTeacher, topicBotConfig),
       };
     } catch (error) {
       if (isUniqueViolation(error)) {

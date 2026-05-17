@@ -9,8 +9,8 @@ export type DiscordRecipientResolution = {
   error: string | null;
 };
 
-export type DiscordRecipientServer = {
-  discord_server_id: string;
+export type DiscordRecipientGuild = {
+  discord_guild_id: string;
   bot_token?: string | null;
 };
 
@@ -91,7 +91,7 @@ function pickMemberByUsername(
     }
 
     if (exactByTag.length > 1) {
-      return { userId: null, error: 'discord_username is ambiguous in this server' };
+      return { userId: null, error: 'discord_username is ambiguous in this guild' };
     }
   }
 
@@ -106,14 +106,14 @@ function pickMemberByUsername(
   }
 
   if (exactMatches.length > 1) {
-    return { userId: null, error: 'discord_username is ambiguous in this server' };
+    return { userId: null, error: 'discord_username is ambiguous in this guild' };
   }
 
   if (members.length === 1) {
     return { userId: members[0].user_id, error: null };
   }
 
-  return { userId: null, error: `discord_username "${normalized}" not found in this server` };
+  return { userId: null, error: `discord_username "${normalized}" not found in this guild` };
 }
 
 function toFailureMessage(error: unknown, fallback: string): string {
@@ -136,17 +136,17 @@ export class DiscordRecipientResolver {
     private readonly credentialSource?: DiscordBotCredentialSource,
   ) {}
 
-  private async getBotToken(server: DiscordRecipientServer): Promise<string | null> {
-    const serverToken = server.bot_token?.trim();
-    if (serverToken) {
-      return serverToken;
+  private async getBotToken(guild: DiscordRecipientGuild): Promise<string | null> {
+    const guildToken = guild.bot_token?.trim();
+    if (guildToken) {
+      return guildToken;
     }
 
     const credential = await this.credentialSource?.findDefault();
     return credential?.bot_token?.trim() || null;
   }
 
-  async resolve(server: DiscordRecipientServer, discordUsername: string | null): Promise<DiscordRecipientResolution> {
+  async resolve(guild: DiscordRecipientGuild, discordUsername: string | null): Promise<DiscordRecipientResolution> {
     const rawDiscordUsername = discordUsername?.trim() ?? '';
     if (!rawDiscordUsername) {
       return {
@@ -160,17 +160,17 @@ export class DiscordRecipientResolver {
       return { userId: directUserId, error: null };
     }
 
-    const normalizedLookupKey = `${server.discord_server_id}:${normalizeDiscordName(rawDiscordUsername)}`;
+    const normalizedLookupKey = `${guild.discord_guild_id}:${normalizeDiscordName(rawDiscordUsername)}`;
     const cached = this.cache.get(normalizedLookupKey);
     if (cached) {
       return cached;
     }
 
-    const botToken = await this.getBotToken(server);
+    const botToken = await this.getBotToken(guild);
     if (!botToken) {
       const result = {
         userId: null,
-        error: 'bot_token is missing for this class server',
+        error: 'bot_token is missing for this class guild',
       };
       this.cache.set(normalizedLookupKey, result);
       return result;
@@ -181,7 +181,7 @@ export class DiscordRecipientResolver {
     let members: DiscordGuildMemberIdentity[];
     try {
       members = await this.searchGuildMembers({
-        guildId: server.discord_server_id,
+        guildId: guild.discord_guild_id,
         query,
         limit: 25,
         botToken,

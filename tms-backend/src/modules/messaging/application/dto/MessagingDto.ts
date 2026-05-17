@@ -1,12 +1,12 @@
-export type UpsertDiscordServerInput = {
-  discord_server_id: string;
+export type UpsertDiscordGuildInput = {
+  discord_guild_id: string;
   bot_token?: string | null;
   attendance_voice_channel_id?: string | null;
   notification_channel_id?: string | null;
 };
 
-export type SelectClassDiscordServerInput = {
-  server_id: number;
+export type SelectClassDiscordGuildInput = {
+  guild_id: number;
   notification_channel_id?: string | null;
   attendance_voice_channel_id?: string | null;
 };
@@ -14,9 +14,9 @@ export type SelectClassDiscordServerInput = {
 export type DiscordSetupIssueSeverity = 'critical' | 'warning' | 'info';
 export type DiscordSetupAction =
   | 'open_bot_invite'
-  | 'sync_servers'
+  | 'sync_guilds'
   | 'sync_membership'
-  | 'open_class_server'
+  | 'open_class_guild'
   | 'review_students';
 
 export type DiscordSetupIssue = {
@@ -38,23 +38,23 @@ export type DiscordSetupStatus = {
     students_with_discord_authorization: number;
     students_missing_discord_authorization: number;
     active_classes: number;
-    configured_class_servers: number;
-    classes_missing_server: number;
-    synced_servers: number;
+    configured_class_guilds: number;
+    classes_missing_guild: number;
+    synced_guilds: number;
   };
-  missing_class_server_names: string[];
+  missing_class_guild_names: string[];
   issues: DiscordSetupIssue[];
 };
 
-export type TeacherDiscordServerOption = {
+export type TeacherDiscordGuildOption = {
   id: number;
   teacher_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
   name: string;
   synced_at: Date;
   binding: {
     role: 'unbound' | 'class';
-    server_binding_id: number | null;
+    guild_binding_id: number | null;
     class_id: number | null;
     class_name: string | null;
     notification_channel_id: string | null;
@@ -69,7 +69,7 @@ export type TeacherDiscordServerOption = {
 export type TeacherDiscordChannelOption = {
   id: number;
   teacher_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
   discord_channel_id: string;
   name: string;
   type: 'text' | 'voice';
@@ -84,7 +84,7 @@ export type StudentMessageInput = {
 
 export type ChannelPostInput = {
   content: string;
-  server_ids: number[];
+  guild_ids: number[];
 };
 
 export type DiscordMembershipSyncFailure = {
@@ -97,13 +97,13 @@ export type DiscordMembershipSyncFailure = {
 };
 
 export type DiscordMembershipSyncResult = {
-  synced_servers: number;
+  synced_guilds: number;
   total_students: number;
   resolved_students: number;
   discord_user_ids_updated: number;
-  already_in_class_server: number;
-  joined_class_server: number;
-  kicked_from_class_server: number;
+  already_in_class_guild: number;
+  joined_class_guild: number;
+  kicked_from_class_guild: number;
   failed: number;
   failures: DiscordMembershipSyncFailure[];
 };

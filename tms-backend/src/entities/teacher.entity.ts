@@ -13,20 +13,11 @@ export class Teacher {
   @Column({ type: 'text' })
   password_hash!: string;
 
-  @Column({ type: 'enum', enum: TeacherRole, default: TeacherRole.Teacher })
+  @Column({ type: 'simple-enum', enum: TeacherRole, default: TeacherRole.Teacher })
   role!: TeacherRole;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: 'bit', default: true })
   is_active!: boolean;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  codeforces_handle!: string | null;
-
-  @Column({ type: 'text', nullable: true })
-  codeforces_api_key!: string | null;
-
-  @Column({ type: 'text', nullable: true })
-  codeforces_api_secret!: string | null;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   discord_username!: string | null;
@@ -34,9 +25,9 @@ export class Teacher {
   @Column({ type: 'varchar', length: 64, nullable: true })
   discord_user_id!: string | null;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   discord_verified_at!: Date | null;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ type: 'datetimeoffset', default: () => 'SYSDATETIMEOFFSET()' })
   created_at!: Date;
 }

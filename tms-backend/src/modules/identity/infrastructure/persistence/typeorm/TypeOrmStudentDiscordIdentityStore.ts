@@ -1,12 +1,12 @@
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
-import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
+import { ClassDiscordBinding } from '../../../../../entities/class-guild.entity.js';
 import { Enrollment } from '../../../../../entities/enrollment.entity.js';
 import { Student } from '../../../../../entities/student.entity.js';
 
-export type StudentActiveDiscordServer = {
+export type StudentActiveClassDiscordBinding = {
   student_id: number;
   active_class_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
 };
 
 export class TypeOrmStudentDiscordIdentityStore {
@@ -43,10 +43,10 @@ export class TypeOrmStudentDiscordIdentityStore {
     );
   }
 
-  async getActiveDiscordServer(
+  async getActiveClassDiscordBinding(
     teacherId: number,
     studentId: number,
-  ): Promise<StudentActiveDiscordServer | null> {
+  ): Promise<StudentActiveClassDiscordBinding | null> {
     const row = await AppDataSource.getRepository(Student)
       .createQueryBuilder('student')
       .innerJoin(
@@ -55,19 +55,19 @@ export class TypeOrmStudentDiscordIdentityStore {
         'enrollment.teacher_id = student.teacher_id AND enrollment.student_id = student.id AND enrollment.unenrolled_at IS NULL',
       )
       .innerJoin(
-        DiscordServer,
-        'discord_server',
-        'discord_server.teacher_id = student.teacher_id AND discord_server.class_id = enrollment.class_id',
+        ClassDiscordBinding,
+        'discord_guild',
+        'discord_guild.teacher_id = student.teacher_id AND discord_guild.class_id = enrollment.class_id',
       )
       .select('student.id', 'student_id')
       .addSelect('enrollment.class_id', 'active_class_id')
-      .addSelect('discord_server.discord_server_id', 'discord_server_id')
+      .addSelect('discord_guild.discord_guild_id', 'discord_guild_id')
       .where('student.teacher_id = :teacherId', { teacherId })
       .andWhere('student.id = :studentId', { studentId })
       .getRawOne<{
         student_id: number | string;
         active_class_id: number | string;
-        discord_server_id: string;
+        discord_guild_id: string;
       }>();
 
     if (!row) {
@@ -77,7 +77,7 @@ export class TypeOrmStudentDiscordIdentityStore {
     return {
       student_id: Number(row.student_id),
       active_class_id: Number(row.active_class_id),
-      discord_server_id: row.discord_server_id,
+      discord_guild_id: row.discord_guild_id,
     };
   }
 }

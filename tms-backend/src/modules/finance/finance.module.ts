@@ -5,7 +5,7 @@ import { UpdateTransactionUseCase } from './application/commands/UpdateTransacti
 import { TypeOrmIncomeReportReader } from './infrastructure/persistence/typeorm/TypeOrmIncomeReportReader.js';
 import { TypeOrmTransactionReader } from './infrastructure/persistence/typeorm/TypeOrmTransactionReader.js';
 import { TypeOrmTransactionWriter } from './infrastructure/persistence/typeorm/TypeOrmTransactionWriter.js';
-import { FeeRecord } from '../../entities/fee-record.entity.js';
+import { FeeRecord } from '../../entities/tuition-fee.entity.js';
 import { TransactionAuditLog } from '../../entities/transaction-audit-log.entity.js';
 import { Transaction } from '../../entities/transaction.entity.js';
 import { FinanceController } from './presentation/controllers/FinanceController.js';

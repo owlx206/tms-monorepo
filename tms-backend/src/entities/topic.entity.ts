@@ -8,11 +8,11 @@ const LEGACY_TOPIC_CLOSED_AT_COLUMN = ['expires', 'at'].join('_');
 @Entity('topics')
 @ForeignKey(() => Teacher, ['teacher_id'], ['id'], {
   name: 'fk_topics_teacher_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Class, ['class_id'], ['id'], {
   name: 'fk_topics_class_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @Index('idx_topics_teacher_id', ['teacher_id'])
 @Index('idx_topics_class_id', ['class_id'])
@@ -22,10 +22,10 @@ export class Topic {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   teacher_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   class_id!: number;
 
   @Column({ type: 'varchar', length: 255 })
@@ -37,15 +37,15 @@ export class Topic {
   @Column({ type: 'varchar', length: 50, nullable: true })
   gym_id!: string | null;
 
-  @Column({ name: LEGACY_TOPIC_CLOSED_AT_COLUMN, type: 'timestamptz', nullable: true })
+  @Column({ name: LEGACY_TOPIC_CLOSED_AT_COLUMN, type: 'datetimeoffset', nullable: true })
   closed_at!: Date | null;
 
-  @Column({ type: 'integer', default: 60 })
+  @Column({ type: 'int', default: 60 })
   pull_interval_minutes!: number;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   last_pulled_at!: Date | null;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ type: 'datetimeoffset', default: () => 'SYSDATETIMEOFFSET()' })
   created_at!: Date;
 }

@@ -14,11 +14,11 @@ import {
 } from "../services/classService";
 import { listStudents } from "../services/studentService";
 import {
-  listDiscordServers,
+  listDiscordGuilds,
   sendChannelPost,
-  unbindDiscordServerByClass,
-  upsertDiscordServerByClass,
-  type BackendDiscordServer,
+  unbindDiscordGuildByClass,
+  upsertDiscordGuildByClass,
+  type BackendClassDiscordBinding,
 } from "../services/messagingService";
 
 type ClassCard = {
@@ -86,7 +86,7 @@ function formatScheduleSummary(schedules: BackendClassSchedule[]): string {
   return Array.from(new Set(rows)).join(", ");
 }
 
-async function buildClassCards(rawClasses: BackendClass[], servers: BackendDiscordServer[]): Promise<ClassCard[]> {
+async function buildClassCards(rawClasses: BackendClass[], servers: BackendClassDiscordBinding[]): Promise<ClassCard[]> {
   const [students, scheduleRows] = await Promise.all([
     listStudents({ status: "active" }),
     Promise.all(
@@ -115,7 +115,7 @@ async function buildClassCards(rawClasses: BackendClass[], servers: BackendDisco
   const schedulesByClassId = new Map<number, BackendClassSchedule[]>(
     scheduleRows.map((row) => [row.class_id, row.schedules]),
   );
-  const serverByClassId = new Map<number, BackendDiscordServer>();
+  const serverByClassId = new Map<number, BackendClassDiscordBinding>();
   servers.forEach((server) => {
     if (server.binding.role === "class" && server.binding.class_id !== null) {
       serverByClassId.set(server.binding.class_id, server);
@@ -147,18 +147,18 @@ export function Classes() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showClassMessageModal, setShowClassMessageModal] = useState(false);
   const [classes, setClasses] = useState<ClassCard[]>([]);
-  const [discordServers, setDiscordServers] = useState<BackendDiscordServer[]>([]);
+  const [discordGuilds, setDiscordGuilds] = useState<BackendClassDiscordBinding[]>([]);
   const [requestError, setRequestError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const refreshClasses = async (): Promise<void> => {
     const [rawClasses, servers] = await Promise.all([
       listClasses(),
-      listDiscordServers(),
+      listDiscordGuilds(),
     ]);
     const classCards = await buildClassCards(rawClasses, servers);
     setClasses(classCards);
-    setDiscordServers(servers);
+    setDiscordGuilds(servers);
   };
 
   useEffect(() => {
@@ -199,8 +199,8 @@ export function Classes() {
         schedules: payload.schedules,
       });
       if (payload.serverId !== null) {
-        await upsertDiscordServerByClass(createdClass.id, {
-          server_id: payload.serverId,
+        await upsertDiscordGuildByClass(createdClass.id, {
+          guild_id: payload.serverId,
         });
       }
 
@@ -230,11 +230,11 @@ export function Classes() {
         schedules: payload.schedules,
       });
       if (payload.serverId !== null) {
-        await upsertDiscordServerByClass(payload.classId, {
-          server_id: payload.serverId,
+        await upsertDiscordGuildByClass(payload.classId, {
+          guild_id: payload.serverId,
         });
       } else if (selectedClass?.discordServerId != null) {
-        await unbindDiscordServerByClass(payload.classId);
+        await unbindDiscordGuildByClass(payload.classId);
       }
       await refreshClasses();
       setShowEditModal(false);
@@ -268,7 +268,7 @@ export function Classes() {
     setRequestError("");
 
     try {
-      const server = discordServers.find((item) => (
+      const server = discordGuilds.find((item) => (
         item.binding.role === "class"
         && item.binding.class_id === payload.classId
         && item.binding.notification_channel_id
@@ -279,15 +279,15 @@ export function Classes() {
         return;
       }
 
-      const serverBindingId = server.binding.server_binding_id;
+      const serverBindingId = server.binding.guild_binding_id;
       if (!serverBindingId) {
-        setRequestError("Lớp này chưa gắn Discord server hợp lệ");
+        setRequestError("Lớp này chưa gắn Discord guild hợp lệ");
         return;
       }
 
       const result = await sendChannelPost({
         content: payload.content,
-        server_ids: [serverBindingId],
+        guild_ids: [serverBindingId],
       });
       if (result.failed > 0) {
         setRequestError(result.failures[0]?.error ?? "Không gửi được tin nhắn vào Discord channel");
@@ -379,7 +379,7 @@ export function Classes() {
                 </div>
 
                 <div className="flex items-center justify-between gap-3 p-3 bg-zinc-100 rounded-lg">
-                  <span className="text-zinc-600 text-sm shrink-0">Discord server</span>
+                  <span className="text-zinc-600 text-sm shrink-0">Discord guild</span>
                   <span className="text-zinc-900 text-sm text-right">{cls.discordServerName ?? "Chưa gắn"}</span>
                 </div>
               </div>
@@ -446,7 +446,7 @@ export function Classes() {
 
       {showAddModal && (
         <AddClassModal
-          servers={discordServers}
+          servers={discordGuilds}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleCreateClass}
           submitting={submitting}
@@ -457,7 +457,7 @@ export function Classes() {
       {showEditModal && selectedClass && (
         <EditClassModal
           classData={selectedClass}
-          servers={discordServers}
+          servers={discordGuilds}
           onClose={() => {
             setShowEditModal(false);
             setSelectedClass(null);
@@ -681,7 +681,7 @@ function AddClassModal({
   submitting,
   error,
 }: {
-  servers: BackendDiscordServer[];
+  servers: BackendClassDiscordBinding[];
   onClose: () => void;
   onSubmit: (payload: {
     name: string;
@@ -718,7 +718,7 @@ function AddClassModal({
 
     const parsedServerId = serverId ? Number(serverId) : null;
     if (parsedServerId !== null && (!Number.isInteger(parsedServerId) || parsedServerId <= 0)) {
-      setLocalError("Discord server không hợp lệ");
+      setLocalError("Discord guild không hợp lệ");
       return;
     }
 
@@ -772,7 +772,7 @@ function AddClassModal({
           <ScheduleEditor schedules={schedules} onChange={setSchedules} />
 
           <div>
-            <label className="block text-sm text-zinc-600 mb-2">Discord server</label>
+            <label className="block text-sm text-zinc-600 mb-2">Discord guild</label>
             <select
               value={serverId}
               onChange={(event) => setServerId(event.target.value)}
@@ -819,7 +819,7 @@ function EditClassModal({
   error,
 }: {
   classData: ClassCard;
-  servers: BackendDiscordServer[];
+  servers: BackendClassDiscordBinding[];
   onClose: () => void;
   onSubmit: (payload: {
     classId: number;
@@ -861,7 +861,7 @@ function EditClassModal({
 
     const parsedServerId = serverId ? Number(serverId) : null;
     if (parsedServerId !== null && (!Number.isInteger(parsedServerId) || parsedServerId <= 0)) {
-      setLocalError("Discord server không hợp lệ");
+      setLocalError("Discord guild không hợp lệ");
       return;
     }
 
@@ -917,7 +917,7 @@ function EditClassModal({
           <ScheduleEditor schedules={schedules} onChange={setSchedules} />
 
           <div>
-            <label className="block text-sm text-zinc-600 mb-2">Discord server</label>
+            <label className="block text-sm text-zinc-600 mb-2">Discord guild</label>
             <select
               value={serverId}
               onChange={(event) => setServerId(event.target.value)}

@@ -2,9 +2,6 @@ services:
   tms-backend:
     build: ./tms-backend
     restart: always
-    depends_on:
-      database:
-        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -15,6 +12,8 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
+      - DB_ENCRYPT=${DB_ENCRYPT}
+      - DB_TRUST_SERVER_CERTIFICATE=${DB_TRUST_SERVER_CERTIFICATE}
       - DB_SYNCHRONIZE=${DB_SYNCHRONIZE}
       - DB_DROP_SCHEMA=${DB_DROP_SCHEMA}
       - AUTH_ALLOW_PUBLIC_REGISTRATION=${AUTH_ALLOW_PUBLIC_REGISTRATION}
@@ -35,39 +34,12 @@ services:
       - tms-network
     command: sh -c "npm install && npm run dev"
 
-  database:
-    image: postgres:18-alpine
-    restart: always
-    env_file:
-      - .env
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - PGDATA=/var/lib/postgresql/data/18/docker
-      - TZ=${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
-      - PGTZ=${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
-    command: postgres -c timezone=${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-    ports:
-      - "${POSTGRES_PORT}:${DB_PORT}"
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-    networks:
-      - tms-network
-
   tms-frontend:
     build: ./tms-frontend
     restart: always
-    env_file:
-      - .env
     environment:
       - PORT=${FRONTEND_PORT}
+      - VITE_API_URL=${VITE_API_URL}
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     volumes:

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Send, Server, Users, Hash } from "lucide-react";
 
-interface DiscordServer {
+interface ClassDiscordBinding {
   id: string;
   name: string;
   serverId: string;
@@ -9,7 +9,7 @@ interface DiscordServer {
   memberCount: number;
 }
 
-const mockServers: DiscordServer[] = [
+const mockServers: ClassDiscordBinding[] = [
   {
     id: '1',
     name: 'CP Training - Lớp Cơ Bản',
@@ -35,7 +35,7 @@ export function Discord() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Discord</h1>
-          <p className="text-zinc-600">Quản lý Discord servers và tin nhắn tự động</p>
+          <p className="text-zinc-600">Quản lý Discord guilds và tin nhắn tự động</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -95,7 +95,7 @@ export function Discord() {
           <div className="bg-zinc-100 border border-zinc-200 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-zinc-900 mb-3">Hướng dẫn</h3>
             <div className="space-y-2 text-sm text-zinc-600">
-              <p>1. Tạo Discord server và bot cho mỗi lớp học</p>
+              <p>1. Tạo Discord guild và bot cho mỗi lớp học</p>
               <p>2. Thêm server ID vào hệ thống để kết nối</p>
               <p>3. Bot sẽ tự động gửi thông báo điểm danh, học phí, nhắc làm bài</p>
               <p>4. Học sinh có thể báo nghỉ có lý do qua Discord</p>

@@ -1,6 +1,6 @@
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import type { SysadminDiscordBotCredentialStore } from './SysadminDiscordBotCredentialStore.js';
-import { SysadminDiscordBotCredential } from '../../../../../entities/sysadmin-discord-bot-credential.entity.js';
+import { SysadminDiscordBotCredential } from '../../../../../entities/discord-bot-credential.entity.js';
 
 export class TypeOrmSysadminDiscordBotCredentialStore implements SysadminDiscordBotCredentialStore {
   findDefault(): Promise<SysadminDiscordBotCredential | null> {

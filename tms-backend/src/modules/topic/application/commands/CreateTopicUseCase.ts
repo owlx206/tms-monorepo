@@ -32,7 +32,7 @@ export class CreateTopicUseCase {
       throw new ServiceError('gym_link must contain a valid gym id', 400);
     }
 
-    const codeforces = new CodeforcesClient(this.topicWriter.resolveTeacherCodeforcesCredentials(teacher));
+    const codeforces = new CodeforcesClient(await this.topicWriter.resolveTopicBotCodeforcesCredentials(teacherId));
     const gymMetadata = await codeforces.fetchGymMetadata(gymId);
 
     const existing = await this.topicWriter.findTopicByGym(

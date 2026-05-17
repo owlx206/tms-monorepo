@@ -4,12 +4,12 @@ import { Enrollment, Student, StudentStatus } from '../../../../../entities/inde
 import type { ClassStatus } from '../../../../../entities/enums.js';
 import type {
   ClassDetails,
-  ClassDiscordServerSummary,
+  ClassDiscordGuildSummary,
   ClassListFilters,
   ClassScheduleSummary,
   ClassSummary,
 } from '../../../application/dto/ClassDto.js';
-import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
+import { ClassDiscordBinding } from '../../../../../entities/class-guild.entity.js';
 import { ClassSchedule } from '../../../../../entities/class-schedule.entity.js';
 import { Class } from '../../../../../entities/class.entity.js';
 import { Topic } from '../../../../../entities/topic.entity.js';
@@ -74,7 +74,7 @@ export class TypeOrmClassReader {
       return null;
     }
 
-    const [schedules, discordServer, activeStudents, topics] = await Promise.all([
+    const [schedules, discordGuild, activeStudents, topics] = await Promise.all([
       this.manager.getRepository(ClassSchedule).find({
         where: {
           teacher_id: teacherId,
@@ -85,7 +85,7 @@ export class TypeOrmClassReader {
           start_time: 'ASC',
         },
       }),
-      this.manager.getRepository(DiscordServer).findOneBy({
+      this.manager.getRepository(ClassDiscordBinding).findOneBy({
         teacher_id: teacherId,
         class_id: classId,
       }),
@@ -183,7 +183,7 @@ export class TypeOrmClassReader {
     return {
       class: this.toSummary(classEntity),
       schedules: schedules.map((schedule) => this.toScheduleSummary(schedule)),
-      discord_server: discordServer ? this.toDiscordServerSummary(discordServer) : null,
+      discord_guild: discordGuild ? this.toDiscordGuildSummary(discordGuild) : null,
       active_students: activeStudents.map((student) => ({
         id: Number(student.id),
         teacher_id: Number(student.teacher_id),
@@ -238,7 +238,7 @@ export class TypeOrmClassReader {
           },
         };
       }),
-      is_ready: schedules.length > 0 && discordServer !== null,
+      is_ready: schedules.length > 0 && discordGuild !== null,
     };
   }
 
@@ -265,15 +265,15 @@ export class TypeOrmClassReader {
     };
   }
 
-  private toDiscordServerSummary(server: DiscordServer): ClassDiscordServerSummary {
+  private toDiscordGuildSummary(binding: ClassDiscordBinding): ClassDiscordGuildSummary {
     return {
-      id: server.id,
-      teacher_id: server.teacher_id,
-      class_id: server.class_id,
-      discord_server_id: server.discord_server_id,
-      name: server.name,
-      attendance_voice_channel_id: server.attendance_voice_channel_id,
-      notification_channel_id: server.notification_channel_id,
+      id: binding.id,
+      teacher_id: binding.teacher_id,
+      class_id: binding.class_id,
+      discord_guild_id: binding.discord_guild_id,
+      name: binding.name,
+      attendance_voice_channel_id: binding.attendance_voice_channel_id,
+      notification_channel_id: binding.notification_channel_id,
     };
   }
 }

@@ -8,7 +8,7 @@ import {
 } from '../../../../shared/schemas/common.schemas.js';
 
 const nonEmptyPositiveIntegerArraySchema = z.array(positiveIntegerSchema)
-  .min(1, 'at least one server is required')
+  .min(1, 'at least one guild is required')
   .transform((values) => Array.from(new Set(values)));
 
 export const classIdParamSchema = z.object({
@@ -19,12 +19,12 @@ export const studentIdParamSchema = z.object({
   studentId: positiveIntegerSchema,
 });
 
-export const serverIdParamSchema = z.object({
-  serverId: positiveIntegerSchema,
+export const guildIdParamSchema = z.object({
+  guildId: positiveIntegerSchema,
 });
 
-export const upsertDiscordServerBodySchema = z.object({
-  server_id: positiveIntegerSchema,
+export const upsertDiscordGuildBodySchema = z.object({
+  guild_id: positiveIntegerSchema,
   attendance_voice_channel_id: nullableOptionalTrimmedStringSchema,
   notification_channel_id: nullableOptionalTrimmedStringSchema,
 });
@@ -40,5 +40,5 @@ export const studentMessageBodySchema = z.object({
 
 export const channelPostBodySchema = z.object({
   content: requiredTrimmedStringSchema,
-  server_ids: nonEmptyPositiveIntegerArraySchema,
+  guild_ids: nonEmptyPositiveIntegerArraySchema,
 });

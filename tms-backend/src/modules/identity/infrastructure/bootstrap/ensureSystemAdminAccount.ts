@@ -19,9 +19,6 @@ export async function ensureSystemAdminAccount(): Promise<void> {
       password_hash: passwordHash,
       role: TeacherRole.SysAdmin,
       is_active: true,
-      codeforces_handle: null,
-      codeforces_api_key: null,
-      codeforces_api_secret: null,
     });
 
     await teacherWriter.save(sysAdmin);

@@ -4,6 +4,7 @@ import { AppDataSource } from '../../../../../infrastructure/database/data-sourc
 import { Class } from '../../../../../entities/class.entity.js';
 import { Student } from '../../../../../entities/student.entity.js';
 import { Teacher } from '../../../../../entities/teacher.entity.js';
+import { TopicBotConfig } from '../../../../../entities/topic-bot-config.entity.js';
 import { Topic } from '../../../../../entities/topic.entity.js';
 import { TopicProblem } from '../../../../../entities/topic-problem.entity.js';
 import { TopicStanding } from '../../../../../entities/topic-standing.entity.js';
@@ -22,10 +23,13 @@ export class TypeOrmTopicWriter {
     return this.manager.getRepository(Teacher).findOneBy({ id: teacherId });
   }
 
-  resolveTeacherCodeforcesCredentials(teacher: Teacher) {
+  async resolveTopicBotCodeforcesCredentials(teacherId: number) {
+    const config = await this.manager.getRepository(TopicBotConfig).findOneBy({
+      teacher_id: teacherId,
+    });
     const resolved = resolveCodeforcesCredentials(
-      teacher.codeforces_api_key,
-      teacher.codeforces_api_secret,
+      config?.codeforces_api_key,
+      config?.codeforces_api_secret,
     );
 
     return resolved

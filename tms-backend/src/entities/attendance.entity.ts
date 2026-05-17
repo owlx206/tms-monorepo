@@ -8,15 +8,15 @@ import { Teacher } from './teacher.entity.js';
 @Entity('attendance')
 @ForeignKey(() => Teacher, ['teacher_id'], ['id'], {
   name: 'fk_attendance_teacher_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Session, ['session_id'], ['id'], {
   name: 'fk_attendance_session_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Student, ['student_id'], ['id'], {
   name: 'fk_attendance_student_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @Unique('uq_attendance_session_student', ['session_id', 'student_id'])
 @Index('idx_attendance_teacher_id', ['teacher_id'])
@@ -30,31 +30,31 @@ export class Attendance {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   teacher_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   session_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   student_id!: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: AttendanceStatus,
     enumName: 'attendance_status',
   })
   status!: AttendanceStatus;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: AttendanceSource,
     enumName: 'attendance_source',
     default: AttendanceSource.System,
   })
   source!: AttendanceSource;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   overridden_at!: Date | null;
 
   @Column({ type: 'text', nullable: true })

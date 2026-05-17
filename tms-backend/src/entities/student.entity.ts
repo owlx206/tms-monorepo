@@ -6,7 +6,7 @@ import { Teacher } from './teacher.entity.js';
 @Entity('students')
 @ForeignKey(() => Teacher, ['teacher_id'], ['id'], {
   name: 'fk_students_teacher_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @Index('idx_students_teacher_id', ['teacher_id'])
 @Index('idx_students_status', ['status'])
@@ -26,7 +26,7 @@ export class Student {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   teacher_id!: number;
 
   @Column({ type: 'varchar', length: 255 })
@@ -47,10 +47,10 @@ export class Student {
   @Column({ type: 'text', nullable: true })
   discord_refresh_token!: string | null;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   discord_token_expires_at!: Date | null;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   discord_authorized_at!: Date | null;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
@@ -60,7 +60,7 @@ export class Student {
   note!: string | null;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: StudentStatus,
     enumName: 'student_status',
     default: StudentStatus.Active,
@@ -68,17 +68,17 @@ export class Student {
   status!: StudentStatus;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: PendingArchiveReason,
     enumName: 'pending_archive_reason',
     nullable: true,
   })
   pending_archive_reason!: PendingArchiveReason | null;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ type: 'datetimeoffset', default: () => 'SYSDATETIMEOFFSET()' })
   created_at!: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   archived_at!: Date | null;
 
   isActive(): boolean {

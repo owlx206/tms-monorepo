@@ -7,9 +7,9 @@ type MessagingReader = {
   countActiveStudentsWithDiscordUsernameForTeacher(teacherId: number): Promise<number>;
   countActiveStudentsWithDiscordAuthorizationForTeacher(teacherId: number): Promise<number>;
   countActiveClassesForTeacher(teacherId: number): Promise<number>;
-  countConfiguredDiscordServersForTeacher(teacherId: number): Promise<number>;
-  listActiveClassesMissingDiscordServerNamesForTeacher(teacherId: number): Promise<string[]>;
-  countDiscordServerOwnershipsForTeacher(teacherId: number): Promise<number>;
+  countConfiguredDiscordGuildsForTeacher(teacherId: number): Promise<number>;
+  listActiveClassesMissingDiscordGuildNamesForTeacher(teacherId: number): Promise<string[]>;
+  countDiscordUserGuildsForTeacher(teacherId: number): Promise<number>;
 };
 
 export class DiscordSetupStatus {
@@ -25,17 +25,17 @@ export class DiscordSetupStatus {
       studentsWithDiscordUsername,
       studentsWithDiscordAuthorization,
       activeClasses,
-      configuredClassServers,
-      missingClassServerNames,
-      syncedServers,
+      configuredClassGuilds,
+      missingClassGuildNames,
+      syncedGuilds,
     ] = await Promise.all([
       this.messaging.countActiveStudentsForTeacher(teacherId),
       this.messaging.countActiveStudentsWithDiscordUsernameForTeacher(teacherId),
       this.messaging.countActiveStudentsWithDiscordAuthorizationForTeacher(teacherId),
       this.messaging.countActiveClassesForTeacher(teacherId),
-      this.messaging.countConfiguredDiscordServersForTeacher(teacherId),
-      this.messaging.listActiveClassesMissingDiscordServerNamesForTeacher(teacherId),
-      this.messaging.countDiscordServerOwnershipsForTeacher(teacherId),
+      this.messaging.countConfiguredDiscordGuildsForTeacher(teacherId),
+      this.messaging.listActiveClassesMissingDiscordGuildNamesForTeacher(teacherId),
+      this.messaging.countDiscordUserGuildsForTeacher(teacherId),
     ]);
 
     const [inviteLink, credential] = await Promise.all([
@@ -46,23 +46,23 @@ export class DiscordSetupStatus {
 
     if (!credential?.bot_token || !inviteLink) {
       issues.push({
-        code: 'sysadmin_bot_missing',
+        code: 'discord_unavailable',
         severity: 'critical',
-        title: 'Bot Discord chưa được cấu hình',
-        description: 'Sysadmin cần cấu hình bot credential và bot invite link trước khi giáo viên có thể dùng Discord.',
+        title: 'Discord chưa sẵn sàng',
+        description: 'Tính năng Discord hiện chưa thể sử dụng. Vui lòng thử lại sau.',
         cta_action: null,
         cta_label: null,
       });
     }
 
-    if (credential?.bot_token && syncedServers === 0) {
+    if (credential?.bot_token && syncedGuilds === 0) {
       issues.push({
-        code: 'discord_servers_not_synced',
+        code: 'class_discord_bindings_not_synced',
         severity: 'critical',
-        title: 'Chưa đồng bộ được server Discord nào',
-        description: 'Mở invite link, thêm bot vào server của bạn, rồi bấm đồng bộ lại để hệ thống lấy danh sách server và channel.',
+        title: 'Chưa đồng bộ được Discord guild nào',
+        description: 'Mở invite link và thêm bot vào guild của bạn. Sau khi Discord chuyển về hệ thống, danh sách guild và channel sẽ được cập nhật tự động.',
         cta_action: inviteLink ? 'open_bot_invite' : null,
-        cta_label: inviteLink ? 'Mời bot vào server' : null,
+        cta_label: inviteLink ? 'Mời bot vào guild' : null,
       });
     }
 
@@ -73,7 +73,7 @@ export class DiscordSetupStatus {
         code: 'students_missing_discord_username',
         severity: 'warning',
         title: `Còn ${studentsMissingDiscordUsername} học sinh thiếu Discord username`,
-        description: 'Discord username chỉ là thông tin hiển thị. Với luồng mới, học sinh cần authorize Discord bằng link để hệ thống add/kick server lớp.',
+        description: 'Discord username chỉ là thông tin hiển thị. Với luồng mới, học sinh cần authorize Discord bằng link để hệ thống add/kick guild lớp.',
         cta_action: 'review_students',
         cta_label: 'Rà lại học sinh',
       });
@@ -84,7 +84,7 @@ export class DiscordSetupStatus {
         code: 'students_missing_discord_authorization',
         severity: 'warning',
         title: `Còn ${studentsMissingDiscordAuthorization} học sinh chưa authorize Discord`,
-        description: 'Học sinh chưa authorize sẽ không được hệ thống tự add/kick khỏi server lớp.',
+        description: 'Học sinh chưa authorize sẽ không được hệ thống tự add/kick khỏi guild lớp.',
         cta_action: 'review_students',
         cta_label: 'Rà lại học sinh',
       });
@@ -92,7 +92,7 @@ export class DiscordSetupStatus {
 
     if (
       credential?.bot_token
-      && configuredClassServers > 0
+      && configuredClassGuilds > 0
       && activeStudents > 0
       && studentsMissingDiscordAuthorization === 0
     ) {
@@ -100,23 +100,23 @@ export class DiscordSetupStatus {
         code: 'discord_membership_sync_available',
         severity: 'info',
         title: 'Có thể đồng bộ học sinh với Discord',
-        description: 'Chạy đồng bộ để add học sinh đã authorize vào server lớp hiện tại và gỡ học sinh đã nghỉ khỏi server lớp cũ.',
+        description: 'Chạy đồng bộ để add học sinh đã authorize vào guild lớp hiện tại và gỡ học sinh đã nghỉ khỏi guild lớp cũ.',
         cta_action: null,
         cta_label: null,
       });
     }
 
-    if (missingClassServerNames.length > 0) {
-      const preview = missingClassServerNames.slice(0, 3).join(', ');
+    if (missingClassGuildNames.length > 0) {
+      const preview = missingClassGuildNames.slice(0, 3).join(', ');
       issues.push({
-        code: 'class_servers_missing',
+        code: 'class_guilds_missing',
         severity: 'warning',
-        title: `Còn ${missingClassServerNames.length} lớp chưa có server riêng`,
-        description: missingClassServerNames.length <= 3
-          ? `Chưa cấu hình server cho: ${preview}.`
-          : `Chưa cấu hình server cho: ${preview} và ${missingClassServerNames.length - 3} lớp khác.`,
-        cta_action: 'open_class_server',
-        cta_label: 'Cấu hình server lớp',
+        title: `Còn ${missingClassGuildNames.length} lớp chưa có guild riêng`,
+        description: missingClassGuildNames.length <= 3
+          ? `Chưa cấu hình guild cho: ${preview}.`
+          : `Chưa cấu hình guild cho: ${preview} và ${missingClassGuildNames.length - 3} lớp khác.`,
+        cta_action: 'open_class_guild',
+        cta_label: 'Cấu hình guild lớp',
       });
     }
 
@@ -125,7 +125,7 @@ export class DiscordSetupStatus {
         code: 'setup_healthy',
         severity: 'info',
         title: 'Cấu hình Discord đang ổn',
-        description: 'Server lớp chính đã có đủ cấu hình để tiếp tục vận hành.',
+        description: 'Guild lớp chính đã có đủ cấu hình để tiếp tục vận hành.',
         cta_action: null,
         cta_label: null,
       });
@@ -141,11 +141,11 @@ export class DiscordSetupStatus {
         students_with_discord_authorization: studentsWithDiscordAuthorization,
         students_missing_discord_authorization: studentsMissingDiscordAuthorization,
         active_classes: activeClasses,
-        configured_class_servers: configuredClassServers,
-        classes_missing_server: Math.max(0, activeClasses - configuredClassServers),
-        synced_servers: syncedServers,
+        configured_class_guilds: configuredClassGuilds,
+        classes_missing_guild: Math.max(0, activeClasses - configuredClassGuilds),
+        synced_guilds: syncedGuilds,
       },
-      missing_class_server_names: missingClassServerNames,
+      missing_class_guild_names: missingClassGuildNames,
       issues,
     };
   }

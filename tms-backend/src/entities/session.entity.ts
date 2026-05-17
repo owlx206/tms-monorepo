@@ -7,11 +7,11 @@ import { Teacher } from './teacher.entity.js';
 @Entity('sessions')
 @ForeignKey(() => Teacher, ['teacher_id'], ['id'], {
   name: 'fk_sessions_teacher_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Class, ['class_id'], ['id'], {
   name: 'fk_sessions_class_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @Index('idx_sessions_teacher_id', ['teacher_id'])
 @Index('idx_sessions_class_id', ['class_id'])
@@ -21,38 +21,38 @@ import { Teacher } from './teacher.entity.js';
   'chk_sessions_cancelled',
   "(status = 'cancelled' AND cancelled_at IS NOT NULL) OR (status <> 'cancelled' AND cancelled_at IS NULL)",
 )
-@Check('chk_sessions_time_range', 'end_time IS NULL OR end_time > scheduled_at::time')
+@Check('chk_sessions_time_range', 'end_time IS NULL OR end_time > CAST(scheduled_at AS time)')
 export class Session {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   teacher_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   class_id!: number;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: 'datetimeoffset' })
   scheduled_at!: Date;
 
   @Column({ type: 'time', nullable: true })
   end_time!: string | null;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: SessionStatus,
     enumName: 'session_status',
     default: SessionStatus.Scheduled,
   })
   status!: SessionStatus;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'bit', default: false })
   is_manual!: boolean;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ type: 'datetimeoffset', default: () => 'SYSDATETIMEOFFSET()' })
   created_at!: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   cancelled_at!: Date | null;
 
   isCancelled(): boolean {

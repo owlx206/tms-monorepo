@@ -6,11 +6,11 @@ import { Teacher } from './teacher.entity.js';
 @Entity('class_schedules')
 @ForeignKey(() => Teacher, ['teacher_id'], ['id'], {
   name: 'fk_class_schedules_teacher_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Class, ['class_id'], ['id'], {
   name: 'fk_class_schedules_class_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @Index('idx_class_schedules_teacher_id', ['teacher_id'])
 @Index('idx_class_schedules_class_id', ['class_id'])
@@ -20,10 +20,10 @@ export class ClassSchedule {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   teacher_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   class_id!: number;
 
   @Column({ type: 'smallint' })

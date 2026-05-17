@@ -48,7 +48,6 @@ export class WithdrawStudentUseCase implements UseCase<WithdrawStudentCommand, S
     }
 
     const savedStudent = await this.students.save(student);
-    savedStudent.recordWithdrawn(command.withdrawnAt);
 
     return StudentSummaryMapper.fromSnapshots({
       student: savedStudent.toSnapshot(),

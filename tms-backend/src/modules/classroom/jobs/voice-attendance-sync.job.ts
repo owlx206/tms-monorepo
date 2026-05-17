@@ -5,7 +5,7 @@ import {
   Class,
   ClassSchedule,
   ClassStatus,
-  DiscordServer,
+  ClassDiscordBinding,
   Enrollment,
   Session,
   SessionStatus,
@@ -22,7 +22,7 @@ type OpenVoiceAttendanceSession = {
   teacher_id: number;
   class_id: number;
   session_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
   attendance_voice_channel_id: string;
   bot_token: string;
 };
@@ -130,23 +130,23 @@ async function getOpenVoiceAttendanceSessions(now: Date): Promise<OpenVoiceAtten
       `,
     )
     .innerJoin(
-      DiscordServer,
-      'discord_server',
-      'discord_server.teacher_id = session.teacher_id AND discord_server.class_id = session.class_id',
+      ClassDiscordBinding,
+      'discord_guild',
+      'discord_guild.teacher_id = session.teacher_id AND discord_guild.class_id = session.class_id',
     )
     .select('session.teacher_id', 'teacher_id')
     .addSelect('session.class_id', 'class_id')
     .addSelect('session.id', 'session_id')
-    .addSelect('discord_server.discord_server_id', 'discord_server_id')
-    .addSelect('discord_server.attendance_voice_channel_id', 'attendance_voice_channel_id')
-    .addSelect('discord_server.bot_token', 'bot_token')
+    .addSelect('discord_guild.discord_guild_id', 'discord_guild_id')
+    .addSelect('discord_guild.attendance_voice_channel_id', 'attendance_voice_channel_id')
+    .addSelect('discord_guild.bot_token', 'bot_token')
     .where('session.status IN (:...sessionStatuses)', {
       sessionStatuses: [SessionStatus.Scheduled, SessionStatus.InProgress],
     })
     .andWhere('class.status = :classStatus', { classStatus: ClassStatus.Active })
     .andWhere('session.scheduled_at >= :dayStart', { dayStart: startOfDay(now) })
     .andWhere('session.scheduled_at <= :dayEnd', { dayEnd: endOfDay(now) })
-    .andWhere('discord_server.attendance_voice_channel_id IS NOT NULL')
+    .andWhere('discord_guild.attendance_voice_channel_id IS NOT NULL')
     .setParameters({
       dayOfWeek: now.getDay(),
       timeOfDay: currentTimeString(now),
@@ -155,7 +155,7 @@ async function getOpenVoiceAttendanceSessions(now: Date): Promise<OpenVoiceAtten
       teacher_id: number;
       class_id: number;
       session_id: number;
-      discord_server_id: string;
+      discord_guild_id: string;
       attendance_voice_channel_id: string;
       bot_token: string;
     }>();
@@ -165,7 +165,7 @@ async function getOpenVoiceAttendanceSessions(now: Date): Promise<OpenVoiceAtten
       teacher_id: Number(row.teacher_id),
       class_id: Number(row.class_id),
       session_id: Number(row.session_id),
-      discord_server_id: row.discord_server_id,
+      discord_guild_id: row.discord_guild_id,
       attendance_voice_channel_id: row.attendance_voice_channel_id,
       bot_token: row.bot_token?.trim() || defaultBotToken || '',
     }))
@@ -436,7 +436,7 @@ async function syncOpenSession(session: OpenVoiceAttendanceSession): Promise<num
 
   const identities = await collectVoiceIdentities(
     state.client,
-    session.discord_server_id,
+    session.discord_guild_id,
     session.attendance_voice_channel_id,
   );
 
@@ -455,17 +455,17 @@ async function getVoiceAttendanceSessionForTeacher(
     .createQueryBuilder('session')
     .innerJoin(Class, 'class', 'class.id = session.class_id AND class.teacher_id = session.teacher_id')
     .innerJoin(
-      DiscordServer,
-      'discord_server',
-      'discord_server.teacher_id = session.teacher_id AND discord_server.class_id = session.class_id',
+      ClassDiscordBinding,
+      'discord_guild',
+      'discord_guild.teacher_id = session.teacher_id AND discord_guild.class_id = session.class_id',
     )
     .select('session.teacher_id', 'teacher_id')
     .addSelect('session.class_id', 'class_id')
     .addSelect('session.id', 'session_id')
     .addSelect('session.status', 'session_status')
-    .addSelect('discord_server.discord_server_id', 'discord_server_id')
-    .addSelect('discord_server.attendance_voice_channel_id', 'attendance_voice_channel_id')
-    .addSelect('discord_server.bot_token', 'bot_token')
+    .addSelect('discord_guild.discord_guild_id', 'discord_guild_id')
+    .addSelect('discord_guild.attendance_voice_channel_id', 'attendance_voice_channel_id')
+    .addSelect('discord_guild.bot_token', 'bot_token')
     .where('session.id = :sessionId', { sessionId })
     .andWhere('session.teacher_id = :teacherId', { teacherId })
     .getRawOne<{
@@ -473,13 +473,13 @@ async function getVoiceAttendanceSessionForTeacher(
       class_id: number;
       session_id: number;
       session_status: SessionStatus;
-      discord_server_id: string;
+      discord_guild_id: string;
       attendance_voice_channel_id: string | null;
       bot_token: string | null;
     }>();
 
   if (!row) {
-    throw new ServiceError('session not found or discord server is not configured for this class', 404);
+    throw new ServiceError('session not found or discord guild is not configured for this class', 404);
   }
 
   if (row.session_status === SessionStatus.Cancelled) {
@@ -488,18 +488,18 @@ async function getVoiceAttendanceSessionForTeacher(
 
   const botToken = row.bot_token?.trim() || defaultBotToken;
   if (!botToken) {
-    throw new ServiceError('bot_token is missing for this class server', 400);
+    throw new ServiceError('bot_token is missing for this class guild', 400);
   }
 
   if (!row.attendance_voice_channel_id) {
-    throw new ServiceError('attendance_voice_channel_id is missing for this class server', 400);
+    throw new ServiceError('attendance_voice_channel_id is missing for this class guild', 400);
   }
 
   return {
     teacher_id: Number(row.teacher_id),
     class_id: Number(row.class_id),
     session_id: Number(row.session_id),
-    discord_server_id: row.discord_server_id,
+    discord_guild_id: row.discord_guild_id,
     attendance_voice_channel_id: row.attendance_voice_channel_id,
     bot_token: botToken,
   };
@@ -518,7 +518,7 @@ export async function syncVoiceAttendanceForSession(teacherId: number, sessionId
 
   const identities = await collectVoiceIdentities(
     state.client,
-    session.discord_server_id,
+    session.discord_guild_id,
     session.attendance_voice_channel_id,
   );
   const markedCount = await markPresentStudentsForSession(session, identities);
@@ -542,7 +542,7 @@ async function syncVoiceState(voiceState: VoiceState): Promise<void> {
 
   const sessions = await getOpenVoiceAttendanceSessions(new Date());
   const matchedSessions = sessions.filter((session) => (
-    session.discord_server_id === voiceState.guild.id
+    session.discord_guild_id === voiceState.guild.id
     && session.attendance_voice_channel_id === voiceState.channelId
   ));
 

@@ -31,50 +31,50 @@ export class SendChannelPostUseCase {
 
   async execute(teacherId: number, input: ChannelPostInput) {
     const { content } = input;
-    const serverIds = normalizeIdArray(input.server_ids);
-    const servers = await this.messagingWriter.findDiscordServersByIds(teacherId, serverIds);
+    const guildIds = normalizeIdArray(input.guild_ids);
+    const guilds = await this.messagingWriter.findDiscordGuildsByIds(teacherId, guildIds);
 
-    if (servers.length !== serverIds.length) {
-      throw new ServiceError('some servers are invalid', 404);
+    if (guilds.length !== guildIds.length) {
+      throw new ServiceError('some guilds are invalid', 404);
     }
 
-    const serverById = new Map(servers.map((server) => [server.id, server]));
-    const orderedServers = serverIds
-      .map((serverId) => serverById.get(serverId))
+    const guildById = new Map(guilds.map((guild) => [guild.id, guild]));
+    const orderedGuilds = guildIds
+      .map((guildId) => guildById.get(guildId))
       .filter((item): item is NonNullable<typeof item> => item !== undefined);
 
-    const successfulServers: typeof orderedServers = [];
-    const failures: Array<{ server_id: number; error: string }> = [];
+    const successfulGuilds: typeof orderedGuilds = [];
+    const failures: Array<{ guild_id: number; error: string }> = [];
 
-    for (const server of orderedServers) {
-      if (!server.notification_channel_id) {
-        failures.push({ server_id: server.id, error: 'notification_channel_id is missing' });
+    for (const guild of orderedGuilds) {
+      if (!guild.notification_channel_id) {
+        failures.push({ guild_id: guild.id, error: 'notification_channel_id is missing' });
         continue;
       }
 
       try {
-        const discord = await this.discordClientFactory.getClient(server.bot_token);
+        const discord = await this.discordClientFactory.getClient(guild.bot_token);
         await discord.ensureChannelBelongsToGuild({
-          channelId: server.notification_channel_id,
-          guildId: server.discord_server_id,
+          channelId: guild.notification_channel_id,
+          guildId: guild.discord_guild_id,
           fieldName: 'notification_channel_id',
         });
         await discord.postChannelMessage({
-          channelId: server.notification_channel_id,
+          channelId: guild.notification_channel_id,
           content,
         });
-        successfulServers.push(server);
+        successfulGuilds.push(guild);
       } catch (error) {
         failures.push({
-          server_id: server.id,
+          guild_id: guild.id,
           error: toFailureMessage(error, 'failed to send message'),
         });
       }
     }
 
     return {
-      targets_total: orderedServers.length,
-      sent: successfulServers.length,
+      targets_total: orderedGuilds.length,
+      sent: successfulGuilds.length,
       failed: failures.length,
       failures,
     };

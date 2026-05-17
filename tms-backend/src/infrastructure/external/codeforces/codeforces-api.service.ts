@@ -40,6 +40,8 @@ type ContestStandingsFullResult = {
   }>;
 };
 
+const CODEFORCES_REQUEST_INTERVAL_MS = 2_000;
+
 const HTML_ENTITY_BY_NAME: Record<string, string> = {
   amp: '&',
   apos: "'",
@@ -64,10 +66,41 @@ const HTML_ENTITY_BY_NAME: Record<string, string> = {
   yacute: 'ý',
 };
 
+let nextCodeforcesRequestAt = 0;
+let codeforcesThrottleQueue = Promise.resolve();
+
 export type CodeforcesCredentials = {
   apiKey: string;
   apiSecret: string;
 };
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function waitForCodeforcesRequestSlot(): Promise<void> {
+  const previous = codeforcesThrottleQueue;
+  let releaseCurrentSlot: () => void = () => {};
+
+  codeforcesThrottleQueue = new Promise<void>((resolve) => {
+    releaseCurrentSlot = resolve;
+  });
+
+  await previous;
+
+  try {
+    const delayMs = Math.max(0, nextCodeforcesRequestAt - Date.now());
+    if (delayMs > 0) {
+      await sleep(delayMs);
+    }
+
+    nextCodeforcesRequestAt = Date.now() + CODEFORCES_REQUEST_INTERVAL_MS;
+  } finally {
+    releaseCurrentSlot();
+  }
+}
 
 function normalizeCredentialValue(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
@@ -170,6 +203,8 @@ export async function callCodeforcesApi<T>(
   params: Record<string, CodeforcesPrimitive>,
   credentials: CodeforcesCredentials | null,
 ): Promise<T> {
+  await waitForCodeforcesRequestSlot();
+
   const queryString = buildCodeforcesRequestQuery(methodName, params, credentials);
   const requestUrl = `https://codeforces.com/api/${methodName}?${queryString}`;
 

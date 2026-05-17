@@ -41,7 +41,6 @@ export class TransferStudentUseCase implements UseCase<TransferStudentCommand, S
       enrolledAt: command.transferredAt,
     });
     const savedNextEnrollment = await this.enrollments.save(nextEnrollment);
-    student.recordTransferred(command.toClassId, command.transferredAt);
 
     const balanceSnapshot = await this.balanceSnapshots.loadForStudent(command.teacherId, command.studentId);
 

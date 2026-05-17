@@ -1,7 +1,7 @@
 import { In, IsNull } from 'typeorm';
 
 import { AppDataSource } from '../../../infrastructure/database/data-source.js';
-import { Enrollment, Student, Teacher, Topic, TopicProblem, TopicStanding } from '../../../entities/index.js';
+import { Enrollment, Student, Topic, TopicBotConfig, TopicProblem, TopicStanding } from '../../../entities/index.js';
 import {
   CodeforcesClient,
   extractGymIdFromLink,
@@ -10,13 +10,10 @@ import {
 } from '../../../infrastructure/external/codeforces/codeforces-api.service.js';
 import type { IntervalJob } from '../../../jobs/index.js';
 
-function hasPartialCodeforcesCredentials(teacher: Teacher): boolean {
-  const hasApiKey = typeof teacher.codeforces_api_key === 'string' && teacher.codeforces_api_key.trim().length > 0;
-  const hasApiSecret = typeof teacher.codeforces_api_secret === 'string'
-    && teacher.codeforces_api_secret.trim().length > 0;
-
-  return hasApiKey !== hasApiSecret;
-}
+type ContestListItem = {
+  id?: number;
+  name?: string;
+};
 
 async function buildCodeforcesCredentialsByTeacherId(
   teacherIds: number[],
@@ -25,35 +22,51 @@ async function buildCodeforcesCredentialsByTeacherId(
     return new Map<number, CodeforcesCredentials | null>();
   }
 
-  const teachers = await AppDataSource.getRepository(Teacher).findBy({
-    id: In(teacherIds),
+  const configs = await AppDataSource.getRepository(TopicBotConfig).findBy({
+    teacher_id: In(teacherIds),
   });
-
+  const configByTeacherId = new Map(configs.map((config) => [config.teacher_id, config]));
   const map = new Map<number, CodeforcesCredentials | null>();
 
-  for (const teacher of teachers) {
-    if (hasPartialCodeforcesCredentials(teacher)) {
-      console.warn(`[codeforces-topic-sync] teacher ${teacher.id} has partial Codeforces credentials; using public API fallback`);
+  for (const teacherId of teacherIds) {
+    const config = configByTeacherId.get(teacherId) ?? null;
+    const hasApiKey = typeof config?.codeforces_api_key === 'string' && config.codeforces_api_key.trim().length > 0;
+    const hasApiSecret = typeof config?.codeforces_api_secret === 'string'
+      && config.codeforces_api_secret.trim().length > 0;
+
+    if (hasApiKey !== hasApiSecret) {
+      console.warn(`[codeforces-topic-sync] teacher ${teacherId} has partial Codeforces credentials; using public API fallback`);
     }
 
-    map.set(
-      teacher.id,
-      resolveCodeforcesCredentials(teacher.codeforces_api_key, teacher.codeforces_api_secret),
-    );
+    map.set(teacherId, resolveCodeforcesCredentials(config?.codeforces_api_key, config?.codeforces_api_secret));
   }
 
   return map;
 }
 
 async function fetchCodeforcesGymMetadataSafely(
-  gymId: string,
   codeforces: CodeforcesClient,
-): Promise<{ gym_id: string; title: string } | null> {
+): Promise<Map<string, { gym_id: string; title: string }> | null> {
   try {
-    return await codeforces.fetchGymMetadata(gymId);
+    const gyms = await codeforces.call<ContestListItem[]>('contest.list', { gym: true });
+    return new Map(
+      gyms
+        .filter((gym) => gym.id && typeof gym.name === 'string' && gym.name.trim().length > 0)
+        .map((gym) => [
+          String(gym.id),
+          {
+            gym_id: String(gym.id),
+            title: gym.name!.trim(),
+          },
+        ]),
+    );
   } catch {
     return null;
   }
+}
+
+function buildCredentialsCacheKey(credentials: CodeforcesCredentials | null): string {
+  return credentials ? `${credentials.apiKey}\0${credentials.apiSecret}` : 'public';
 }
 
 async function fetchCodeforcesGymStandingsSafely(
@@ -110,6 +123,24 @@ async function syncTopicStanding(
       topic_id: topic.id,
     });
     const problemByIndex = new Map(existingProblems.map((problem) => [problem.problem_index, problem]));
+    const syncedProblemIndexes = new Set(standings.problems.map((problem) => problem.index));
+    const staleProblemIds = existingProblems
+      .filter((problem) => !syncedProblemIndexes.has(problem.problem_index))
+      .map((problem) => problem.id);
+
+    if (staleProblemIds.length > 0) {
+      await standingRepo.delete({
+        teacher_id: topic.teacher_id,
+        topic_id: topic.id,
+        problem_id: In(staleProblemIds),
+      });
+      await problemRepo.delete({
+        teacher_id: topic.teacher_id,
+        topic_id: topic.id,
+        id: In(staleProblemIds),
+      });
+    }
+
     const syncedProblems: TopicProblem[] = [];
 
     for (const problemInput of standings.problems) {
@@ -233,6 +264,7 @@ export async function syncCodeforcesTopicsOnce(options: {
 
   const teacherIds = Array.from(new Set(topics.map((topic) => topic.teacher_id)));
   const credentialsByTeacherId = await buildCodeforcesCredentialsByTeacherId(teacherIds);
+  const gymMetadataByCredentials = new Map<string, Map<string, { gym_id: string; title: string }> | null>();
 
   for (const topic of topics) {
     const gymId = topic.gym_id ?? extractGymIdFromLink(topic.gym_link);
@@ -242,7 +274,15 @@ export async function syncCodeforcesTopicsOnce(options: {
 
     const credentials = credentialsByTeacherId.get(topic.teacher_id) ?? null;
     const codeforces = new CodeforcesClient(credentials);
-    const synced = await fetchCodeforcesGymMetadataSafely(gymId, codeforces);
+    const credentialsCacheKey = buildCredentialsCacheKey(credentials);
+    let gymMetadataById = gymMetadataByCredentials.get(credentialsCacheKey);
+
+    if (!gymMetadataByCredentials.has(credentialsCacheKey)) {
+      gymMetadataById = await fetchCodeforcesGymMetadataSafely(codeforces);
+      gymMetadataByCredentials.set(credentialsCacheKey, gymMetadataById);
+    }
+
+    const synced = gymMetadataById?.get(gymId) ?? null;
     if (!synced) {
       continue;
     }

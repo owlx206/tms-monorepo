@@ -25,11 +25,11 @@ export type ChannelMessagePayload = {
   content: string;
 };
 
-export type DiscordServerContext = {
+export type ClassDiscordBindingContext = {
   id: number;
   teacher_id: number;
   class_id: number | null;
-  discord_server_id: string;
+  discord_guild_id: string;
   name: string | null;
   bot_token: string | null;
   attendance_voice_channel_id: string | null;

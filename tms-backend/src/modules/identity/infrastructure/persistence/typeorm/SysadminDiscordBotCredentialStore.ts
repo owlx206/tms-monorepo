@@ -1,4 +1,4 @@
-import type { SysadminDiscordBotCredential } from '../../../../../entities/sysadmin-discord-bot-credential.entity.js';
+import type { SysadminDiscordBotCredential } from '../../../../../entities/discord-bot-credential.entity.js';
 
 export type SysadminDiscordBotCredentialRecord = {
   id: number;

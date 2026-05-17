@@ -3,7 +3,7 @@ import { AppDataSource, initializeDatabase } from './infrastructure/database/dat
 import { createApp } from './app.js';
 import { createJobRunner } from './jobs/index.js';
 import { createSysadminDiscordBotHealthJob, ensureSystemAdminAccount } from './modules/identity/index.js';
-import { createDiscordServerSyncJob } from './modules/messaging/index.js';
+import { createDiscordGuildSyncJob } from './modules/messaging/index.js';
 import { createSessionStatusSyncJob, createVoiceAttendanceSyncJob } from './modules/classroom/index.js';
 import { createCodeforcesTopicSyncJob } from './modules/topic/index.js';
 
@@ -12,7 +12,7 @@ export async function main(): Promise<void> {
   await ensureSystemAdminAccount();
 
   const jobRunner = createJobRunner([
-    createDiscordServerSyncJob({
+    createDiscordGuildSyncJob({
       enabled: config.autoSync.enabled && config.autoSync.syncDiscord,
       intervalSeconds: config.autoSync.intervalSeconds,
     }),

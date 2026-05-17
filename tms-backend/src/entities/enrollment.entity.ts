@@ -7,15 +7,15 @@ import { Teacher } from './teacher.entity.js';
 @Entity('enrollments')
 @ForeignKey(() => Teacher, ['teacher_id'], ['id'], {
   name: 'fk_enrollments_teacher_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Student, ['student_id'], ['id'], {
   name: 'fk_enrollments_student_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @ForeignKey(() => Class, ['class_id'], ['id'], {
   name: 'fk_enrollments_class_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @Index('uq_enrollments_one_active_per_student', ['teacher_id', 'student_id'], {
   unique: true,
@@ -29,18 +29,18 @@ export class Enrollment {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   teacher_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   student_id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   class_id!: number;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ type: 'datetimeoffset', default: () => 'SYSDATETIMEOFFSET()' })
   enrolled_at!: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   unenrolled_at!: Date | null;
 }

@@ -99,7 +99,7 @@ export class CompleteTeacherDiscordVerificationUseCase {
 
     const credential = await this.discordBotCredentialStore.findDefault();
     if (!credential?.client_id || !credential.client_secret) {
-      throw new AuthError('discord oauth is not configured by sysadmin', 503);
+      throw new AuthError('discord is not available right now', 503);
     }
 
     const verificationState = verifyDiscordVerificationState(input.state);

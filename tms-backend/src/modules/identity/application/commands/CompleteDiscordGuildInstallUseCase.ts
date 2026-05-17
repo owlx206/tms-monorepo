@@ -4,11 +4,11 @@ import { ServiceError } from '../../../../shared/errors/service.error.js';
 import { isDomainError } from '../../../../shared/errors/domain.error.js';
 import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
 import { verifyDiscordInstallState } from '../../infrastructure/discord/DiscordInstallState.js';
-import type { TypeOrmDiscordServerOwnershipStore } from '../../infrastructure/persistence/typeorm/TypeOrmDiscordServerOwnershipStore.js';
+import type { TypeOrmDiscordUserGuildStore } from '../../infrastructure/persistence/typeorm/TypeOrmDiscordUserGuildStore.js';
 
 export class CompleteDiscordGuildInstallUseCase {
   constructor(
-    private readonly ownershipStore: TypeOrmDiscordServerOwnershipStore,
+    private readonly userGuildStore: TypeOrmDiscordUserGuildStore,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
 
@@ -28,7 +28,7 @@ export class CompleteDiscordGuildInstallUseCase {
 
     const credential = await this.discordBotCredentialStore.findDefault();
     if (!credential?.bot_token) {
-      throw new ServiceError('discord bot is not configured by sysadmin', 503);
+      throw new ServiceError('discord is not available right now', 503);
     }
 
     let discordUserId: string;
@@ -43,8 +43,8 @@ export class CompleteDiscordGuildInstallUseCase {
       throw error;
     }
 
-    const existingOwner = await this.ownershipStore.findAnyByDiscordServerId(input.guild_id);
-    if (existingOwner && existingOwner.discord_user_id !== discordUserId) {
+    const existingUserGuild = await this.userGuildStore.findAnyByDiscordGuildId(input.guild_id);
+    if (existingUserGuild && existingUserGuild.discord_user_id !== discordUserId) {
       return `${config.frontendUrl}/messaging?discord_install=conflict`;
     }
 
@@ -52,18 +52,18 @@ export class CompleteDiscordGuildInstallUseCase {
     const guild = await discord.fetchGuildMetadata(input.guild_id);
     const channels = await discord.listGuildChannels(input.guild_id);
 
-    const existing = await this.ownershipStore.findByOwnerAndDiscordServerId(
+    const existing = await this.userGuildStore.findByOwnerAndDiscordGuildId(
       discordUserId,
       input.guild_id,
     );
-    const server = existing ?? this.ownershipStore.createOwnership({
+    const userGuild = existing ?? this.userGuildStore.createUserGuild({
       discord_user_id: discordUserId,
-      discord_server_id: input.guild_id,
+      discord_guild_id: input.guild_id,
     });
-    server.name = guild.name;
-    server.synced_at = new Date();
-    await this.ownershipStore.saveOwnership(server);
-    await this.ownershipStore.replaceChannels(
+    userGuild.name = guild.name;
+    userGuild.synced_at = new Date();
+    await this.userGuildStore.saveUserGuild(userGuild);
+    await this.userGuildStore.replaceChannelCache(
       discordUserId,
       input.guild_id,
       channels.map((channel) => ({

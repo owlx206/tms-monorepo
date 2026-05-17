@@ -1,13 +1,13 @@
 import type { DataSource } from 'typeorm';
 
-import type { DiscordServer } from '../../../../../entities/discord-server.entity.js';
+import type { ClassDiscordBinding } from '../../../../../entities/class-guild.entity.js';
 import { DiscordClient } from '../../../../../infrastructure/external/discord/discord-api.service.js';
 import type { SysadminDiscordBotCredentialStore } from '../../../../identity/index.js';
-import type { SysadminDiscordBotCredential } from '../../../../../entities/sysadmin-discord-bot-credential.entity.js';
+import type { SysadminDiscordBotCredential } from '../../../../../entities/discord-bot-credential.entity.js';
 import { refreshStudentDiscordToken } from '../../../../identity/infrastructure/discord/DiscordStudentOAuth.js';
 import {
   findActiveEnrollment,
-  findDiscordServerByClass,
+  findDiscordGuildByClass,
   findLastEnrollment,
   findRecentEnrollments,
 } from './EnrollmentDataAccess.js';
@@ -54,12 +54,12 @@ export class TypeOrmStudentDiscordMembershipService {
       id: studentId,
     });
     if (!student?.discord_user_id?.trim()) {
-      return { sent: false, reason: 'student must authorize Discord before being added to class server' };
+      return { sent: false, reason: 'student must authorize Discord before being added to class guild' };
     }
 
     const credential = await this.getSystemBotCredential();
     if (!credential) {
-      return { sent: false, reason: 'system Discord bot token is not configured' };
+      return { sent: false, reason: 'discord is not available right now' };
     }
 
     const accessToken = await this.getValidStudentAccessToken(student, credential);
@@ -67,12 +67,12 @@ export class TypeOrmStudentDiscordMembershipService {
       return { sent: false, reason: 'student must authorize Discord again' };
     }
 
-    const server = await findDiscordServerByClass(this.dataSource.manager, teacherId, classId);
+    const server = await findDiscordGuildByClass(this.dataSource.manager, teacherId, classId);
     if (!server) {
-      return { sent: false, reason: 'class Discord server is not configured' };
+      return { sent: false, reason: 'class Discord guild is not configured' };
     }
 
-    return this.addStudentToClassServer({
+    return this.addStudentToClassGuild({
       student,
       userAccessToken: accessToken,
       targetServer: server,
@@ -99,7 +99,7 @@ export class TypeOrmStudentDiscordMembershipService {
       return;
     }
 
-    const server = await findDiscordServerByClass(this.dataSource.manager, teacherId, lastEnrollment.class_id);
+    const server = await findDiscordGuildByClass(this.dataSource.manager, teacherId, lastEnrollment.class_id);
     if (!server) {
       return;
     }
@@ -121,19 +121,19 @@ export class TypeOrmStudentDiscordMembershipService {
       id: studentId,
     });
     if (!student?.discord_user_id?.trim()) {
-      return { sent: false, reason: 'student must authorize Discord before being added to class server' };
+      return { sent: false, reason: 'student must authorize Discord before being added to class guild' };
     }
 
     const credential = await this.getSystemBotCredential();
     if (!credential) {
-      return { sent: false, reason: 'system Discord bot token is not configured' };
+      return { sent: false, reason: 'discord is not available right now' };
     }
 
     const enrollments = await findRecentEnrollments(this.dataSource.manager, teacherId, studentId, 2);
     const oldEnrollment = enrollments.length >= 2 ? enrollments[1] : null;
 
     if (oldEnrollment) {
-      const oldServer = await findDiscordServerByClass(this.dataSource.manager, teacherId, oldEnrollment.class_id);
+      const oldServer = await findDiscordGuildByClass(this.dataSource.manager, teacherId, oldEnrollment.class_id);
       if (oldServer) {
         await this.kickFromServer({
           server: this.withSystemBotToken(oldServer, credential.bot_token),
@@ -143,9 +143,9 @@ export class TypeOrmStudentDiscordMembershipService {
       }
     }
 
-    const newServer = await findDiscordServerByClass(this.dataSource.manager, teacherId, newClassId);
+    const newServer = await findDiscordGuildByClass(this.dataSource.manager, teacherId, newClassId);
     if (!newServer) {
-      return { sent: false, reason: 'class Discord server is not configured' };
+      return { sent: false, reason: 'class Discord guild is not configured' };
     }
 
     const accessToken = await this.getValidStudentAccessToken(student, credential);
@@ -153,7 +153,7 @@ export class TypeOrmStudentDiscordMembershipService {
       return { sent: false, reason: 'student must authorize Discord again' };
     }
 
-    return this.addStudentToClassServer({
+    return this.addStudentToClassGuild({
       student,
       userAccessToken: accessToken,
       targetServer: newServer,
@@ -167,7 +167,7 @@ export class TypeOrmStudentDiscordMembershipService {
     return credential && token && token.length > 0 ? credential : null;
   }
 
-  private withSystemBotToken(server: DiscordServer, token: string): DiscordServer {
+  private withSystemBotToken(server: ClassDiscordBinding, token: string): ClassDiscordBinding {
     return {
       ...server,
       bot_token: token,
@@ -175,29 +175,29 @@ export class TypeOrmStudentDiscordMembershipService {
   }
 
   private async kickFromServer(input: {
-    server: DiscordServer;
+    server: ClassDiscordBinding;
     userId: string;
     token: string;
   }): Promise<void> {
     try {
       await new DiscordClient(input.token).kickGuildMember({
-        guildId: input.server.discord_server_id,
+        guildId: input.server.discord_guild_id,
         userId: input.userId,
       });
     } catch {
     }
   }
 
-  private async addStudentToClassServer(input: {
+  private async addStudentToClassGuild(input: {
     student: Student;
     userAccessToken: string;
-    targetServer: DiscordServer;
+    targetServer: ClassDiscordBinding;
     token: string;
   }): Promise<StudentDiscordInviteResult> {
     try {
       const discord = new DiscordClient(input.token);
       const existingMember = await discord.fetchGuildMember({
-        guildId: input.targetServer.discord_server_id,
+        guildId: input.targetServer.discord_guild_id,
         userId: input.student.discord_user_id ?? '',
       });
       if (existingMember) {
@@ -205,7 +205,7 @@ export class TypeOrmStudentDiscordMembershipService {
       }
 
       await discord.addGuildMember({
-        guildId: input.targetServer.discord_server_id,
+        guildId: input.targetServer.discord_guild_id,
         userId: input.student.discord_user_id ?? '',
         userAccessToken: input.userAccessToken,
       });
@@ -215,7 +215,7 @@ export class TypeOrmStudentDiscordMembershipService {
         sent: false,
         reason: error instanceof Error && error.message.trim()
           ? error.message
-          : 'failed to add student to Discord class server',
+          : 'failed to add student to Discord class guild',
       };
     }
   }

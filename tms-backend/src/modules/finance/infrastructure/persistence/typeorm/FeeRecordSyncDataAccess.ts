@@ -1,7 +1,7 @@
 import { In, type EntityManager } from 'typeorm';
 
 import { FeeRecordStatus } from '../../../../../entities/enums.js';
-import { FeeRecord } from '../../../../../entities/fee-record.entity.js';
+import { FeeRecord } from '../../../../../entities/tuition-fee.entity.js';
 
 export function findFeeRecordForAttendance(
   manager: EntityManager,

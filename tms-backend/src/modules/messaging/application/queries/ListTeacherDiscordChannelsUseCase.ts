@@ -1,8 +1,8 @@
 type MessagingReader = {
-  listTeacherDiscordChannelsForServer(teacherId: number, discordServerId: string): Promise<Array<{
+  listTeacherDiscordChannelsForGuild(teacherId: number, discordGuildId: string): Promise<Array<{
     id: number;
     teacher_id: number;
-    discord_server_id: string;
+    discord_guild_id: string;
     discord_channel_id: string;
     name: string;
     type: 'text' | 'voice';
@@ -13,7 +13,7 @@ type MessagingReader = {
 export class ListTeacherDiscordChannelsUseCase {
   constructor(private readonly messaging: MessagingReader) {}
 
-  execute(teacherId: number, discordServerId: string) {
-    return this.messaging.listTeacherDiscordChannelsForServer(teacherId, discordServerId);
+  execute(teacherId: number, discordGuildId: string) {
+    return this.messaging.listTeacherDiscordChannelsForGuild(teacherId, discordGuildId);
   }
 }

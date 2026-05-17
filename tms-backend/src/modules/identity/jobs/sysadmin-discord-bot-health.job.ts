@@ -1,6 +1,6 @@
-import { SysadminDiscordBotCredential } from '../../../entities/sysadmin-discord-bot-credential.entity.js';
+import { SysadminDiscordBotCredential } from '../../../entities/discord-bot-credential.entity.js';
 import { AppDataSource } from '../../../infrastructure/database/data-source.js';
-import { checkDiscordBotTokenHealth } from '../../../infrastructure/external/discord/discord-api.service.js';
+import { DiscordClient } from '../../../infrastructure/external/discord/discord-api.service.js';
 import type { IntervalJob } from '../../../jobs/index.js';
 
 export async function checkSysadminDiscordBotHealthOnce(): Promise<void> {
@@ -16,7 +16,7 @@ export async function checkSysadminDiscordBotHealthOnce(): Promise<void> {
 
   const checkedAt = new Date();
   try {
-    const health = await checkDiscordBotTokenHealth(credential.bot_token);
+    const health = await new DiscordClient(credential.bot_token).checkBotTokenHealth();
     credential.bot_health_status = health.healthy ? 'healthy' : 'unhealthy';
     credential.bot_health_message = health.message;
     credential.bot_health_checked_at = checkedAt;

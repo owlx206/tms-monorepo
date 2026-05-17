@@ -1,7 +1,7 @@
 import { EntityManager, In, IsNull } from 'typeorm';
 
-import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
-import { FeeRecord } from '../../../../../entities/fee-record.entity.js';
+import { ClassDiscordBinding } from '../../../../../entities/class-guild.entity.js';
+import { FeeRecord } from '../../../../../entities/tuition-fee.entity.js';
 import { FeeRecordStatus } from '../../../../../entities/enums.js';
 import { Transaction } from '../../../../../entities/transaction.entity.js';
 import { parseAmountToBigInt } from '../../../../../shared/helpers/money.js';
@@ -51,10 +51,10 @@ export async function listStudentsForTeacher(
   if (filters.search !== undefined) {
     queryBuilder.andWhere(
       `(
-        student.full_name ILIKE :search
-        OR student.codeforces_handle ILIKE :search
-        OR student.discord_username ILIKE :search
-        OR student.phone ILIKE :search
+        LOWER(student.full_name) LIKE LOWER(:search)
+        OR LOWER(student.codeforces_handle) LIKE LOWER(:search)
+        OR LOWER(student.discord_username) LIKE LOWER(:search)
+        OR LOWER(student.phone) LIKE LOWER(:search)
       )`,
       { search: `%${filters.search}%` },
     );
@@ -157,12 +157,12 @@ export async function findRecentEnrollments(
   });
 }
 
-export async function findDiscordServerByClass(
+export async function findDiscordGuildByClass(
   manager: EntityManager,
   teacherId: number,
   classId: number,
-): Promise<DiscordServer | null> {
-  return manager.getRepository(DiscordServer).findOneBy({
+): Promise<ClassDiscordBinding | null> {
+  return manager.getRepository(ClassDiscordBinding).findOneBy({
     teacher_id: teacherId,
     class_id: classId,
   });

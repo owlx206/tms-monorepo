@@ -17,7 +17,6 @@ export const updateTeacherByAdminBodySchema = z.object({
   password: requiredTrimmedStringSchema.optional(),
   role: z.nativeEnum(TeacherRole).optional(),
   is_active: booleanSchema.optional(),
-  codeforces_handle: nullableOptionalTrimmedStringSchema.optional(),
   codeforces_api_key: nullableOptionalTrimmedStringSchema.optional(),
   codeforces_api_secret: nullableOptionalTrimmedStringSchema.optional(),
 }).refine((value) => Object.keys(value).length > 0, {

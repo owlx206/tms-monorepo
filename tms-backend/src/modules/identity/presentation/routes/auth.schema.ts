@@ -16,7 +16,6 @@ export const loginBodySchema = z.object({
 });
 
 export const registerBodySchema = loginBodySchema.extend({
-  codeforces_handle: nullableOptionalTrimmedStringSchema,
   codeforces_api_key: nullableOptionalTrimmedStringSchema,
   codeforces_api_secret: nullableOptionalTrimmedStringSchema,
 });
@@ -24,7 +23,6 @@ export const registerBodySchema = loginBodySchema.extend({
 export const updateMeBodySchema = z.object({
   username: requiredTrimmedStringSchema.optional(),
   password: z.string().min(1).optional(),
-  codeforces_handle: nullableOptionalTrimmedStringSchema.optional(),
   codeforces_api_key: nullableOptionalTrimmedStringSchema.optional(),
   codeforces_api_secret: nullableOptionalTrimmedStringSchema.optional(),
 }).refine((value) => Object.keys(value).length > 0, {

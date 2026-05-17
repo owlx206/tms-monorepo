@@ -5,7 +5,6 @@ export type UpdateTeacherByAdminInput = {
   password?: string;
   role?: TeacherRole;
   is_active?: boolean;
-  codeforces_handle?: string | null;
   codeforces_api_key?: string | null;
   codeforces_api_secret?: string | null;
 };
@@ -15,7 +14,6 @@ export type AdminTeacher = {
   username: string;
   role: TeacherRole;
   is_active: boolean;
-  codeforces_handle: string | null;
   has_codeforces_api_key: boolean;
   has_codeforces_api_secret: boolean;
   created_at: Date;

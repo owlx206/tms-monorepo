@@ -41,7 +41,6 @@ export class ReinstateStudentUseCase implements UseCase<ReinstateStudentCommand,
     student.assertReinstatableAt(command.enrolledAt);
     student.reinstate();
     const savedStudent = await this.students.save(student);
-    savedStudent.recordReinstated(command.classId, command.enrolledAt);
 
     const enrollment = Enrollment.create({
       teacherId: command.teacherId,

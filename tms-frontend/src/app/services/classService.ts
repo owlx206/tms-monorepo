@@ -22,11 +22,11 @@ export interface BackendClassSchedule {
   end_time: string;
 }
 
-export interface BackendClassDiscordServer {
+export interface BackendClassDiscordGuildBinding {
   id: number;
   teacher_id: number;
   class_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
   name: string | null;
   attendance_voice_channel_id: string | null;
   notification_channel_id: string | null;
@@ -75,7 +75,7 @@ export interface BackendClassDetailTopic {
 export interface BackendClassDetails {
   class: BackendClass;
   schedules: BackendClassSchedule[];
-  discord_server: BackendClassDiscordServer | null;
+  discord_guild: BackendClassDiscordGuildBinding | null;
   active_students: BackendClassDetailStudent[];
   topics: BackendClassDetailTopic[];
   is_ready: boolean;

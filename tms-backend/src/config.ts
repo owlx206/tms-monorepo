@@ -90,19 +90,19 @@ const config = {
     sysAdminUsername: process.env.SYSADMIN_USERNAME ?? 'admin',
     sysAdminPassword: parseOptionalString(process.env.SYSADMIN_PASSWORD),
   },
-  discord: {
-    botToken: parseOptionalString(process.env.DISCORD_BOT_TOKEN),
-    botClientId: parseOptionalString(process.env.DISCORD_BOT_CLIENT_ID),
-    botPermissions: parseOptionalString(process.env.DISCORD_BOT_PERMISSIONS),
-    botScopes: parseOptionalString(process.env.DISCORD_BOT_SCOPES) ?? 'bot applications.commands',
-    credentialSecret: parseOptionalString(process.env.DISCORD_CREDENTIAL_SECRET),
+  security: {
+    credentialSecret: parseOptionalString(process.env.CREDENTIAL_SECRET)
+      ?? parseOptionalString(process.env.DISCORD_CREDENTIAL_SECRET),
   },
   database: {
+    client: process.env.DB_CLIENT ?? 'mssql',
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     name: process.env.DB_NAME,
+    encrypt: parseBoolean(process.env.DB_ENCRYPT, false),
+    trustServerCertificate: parseBoolean(process.env.DB_TRUST_SERVER_CERTIFICATE, false),
     synchronize: parseBoolean(process.env.DB_SYNCHRONIZE, true),
     dropSchema: parseBoolean(process.env.DB_DROP_SCHEMA, false),
     logging: process.env.DB_LOGGING ? parseBoolean(process.env.DB_LOGGING, false) : undefined,

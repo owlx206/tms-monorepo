@@ -7,6 +7,7 @@ import { UpsertTopicStandingUseCase } from './application/commands/UpsertTopicSt
 import { GetTopicStandingMatrixUseCase } from './application/queries/GetTopicStandingMatrixUseCase.js';
 import { ListTopicsUseCase } from './application/queries/ListTopicsUseCase.js';
 import { Topic } from '../../entities/topic.entity.js';
+import { TopicBotConfig } from '../../entities/topic-bot-config.entity.js';
 import { TopicProblem } from '../../entities/topic-problem.entity.js';
 import { TopicStanding } from '../../entities/topic-standing.entity.js';
 import { TypeOrmTopicReader } from './infrastructure/persistence/typeorm/TypeOrmTopicReader.js';
@@ -60,7 +61,7 @@ const topicStandingReportRouter = createTopicStandingReportRouter(
 
 export const topicModule: AppModule = {
   name: 'topic',
-  entities: [Topic, TopicProblem, TopicStanding],
+  entities: [Topic, TopicBotConfig, TopicProblem, TopicStanding],
   routes: [
     { path: '/', router: topicRouter },
     { path: '/', router: topicStandingReportRouter },

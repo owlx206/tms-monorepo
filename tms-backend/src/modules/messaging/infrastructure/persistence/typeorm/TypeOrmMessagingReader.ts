@@ -5,9 +5,9 @@ import {
   Student,
 } from '../../../../../entities/index.js';
 import { Class } from '../../../../../entities/class.entity.js';
-import { DiscordServer } from '../../../../../entities/discord-server.entity.js';
-import { DiscordServerChannel } from '../../../../../entities/discord-server-channel.entity.js';
-import { DiscordServerOwnership } from '../../../../../entities/discord-server-ownership.entity.js';
+import { ClassDiscordBinding } from '../../../../../entities/class-guild.entity.js';
+import { DiscordGuildChannelCache } from '../../../../../entities/discord-channel.entity.js';
+import { DiscordUserGuild } from '../../../../../entities/discord-guild.entity.js';
 import { Teacher } from '../../../../../entities/teacher.entity.js';
 
 export class TypeOrmMessagingReader {
@@ -20,25 +20,25 @@ export class TypeOrmMessagingReader {
     return teacher?.discord_user_id ?? null;
   }
 
-  async listDiscordServersForTeacher(teacherId: number) {
-    return AppDataSource.getRepository(DiscordServer).find({
+  async listDiscordGuildsForTeacher(teacherId: number) {
+    return AppDataSource.getRepository(ClassDiscordBinding).find({
       where: { teacher_id: teacherId },
       order: { id: 'DESC' },
     });
   }
 
-  async listTeacherDiscordServers(teacherId: number) {
+  async listTeacherDiscordGuilds(teacherId: number) {
     const discordUserId = await this.getTeacherDiscordUserId(teacherId);
     if (!discordUserId) {
       return [];
     }
 
-    return AppDataSource.getRepository(DiscordServerOwnership)
-      .createQueryBuilder('server_ownership')
+    return AppDataSource.getRepository(DiscordUserGuild)
+      .createQueryBuilder('user_guild')
       .leftJoin(
-        DiscordServer,
+        ClassDiscordBinding,
         'class_binding',
-        'class_binding.teacher_id = :teacherId AND class_binding.discord_server_id = server_ownership.discord_server_id',
+        'class_binding.teacher_id = :teacherId AND class_binding.discord_guild_id = user_guild.discord_guild_id',
       )
       .leftJoin(
         Class,
@@ -46,26 +46,26 @@ export class TypeOrmMessagingReader {
         'class.id = class_binding.class_id AND class.teacher_id = class_binding.teacher_id',
       )
       .leftJoin(
-        DiscordServerChannel,
+        DiscordGuildChannelCache,
         'notification_channel',
-        'notification_channel.discord_user_id = server_ownership.discord_user_id AND notification_channel.discord_server_id = class_binding.discord_server_id AND notification_channel.discord_channel_id = class_binding.notification_channel_id',
+        'notification_channel.discord_user_id = user_guild.discord_user_id AND notification_channel.discord_guild_id = class_binding.discord_guild_id AND notification_channel.discord_channel_id = class_binding.notification_channel_id',
       )
       .leftJoin(
-        DiscordServerChannel,
+        DiscordGuildChannelCache,
         'voice_channel',
-        'voice_channel.discord_user_id = server_ownership.discord_user_id AND voice_channel.discord_server_id = class_binding.discord_server_id AND voice_channel.discord_channel_id = class_binding.attendance_voice_channel_id',
+        'voice_channel.discord_user_id = user_guild.discord_user_id AND voice_channel.discord_guild_id = class_binding.discord_guild_id AND voice_channel.discord_channel_id = class_binding.attendance_voice_channel_id',
       )
-      .select('server_ownership.id', 'id')
-      .addSelect('server_ownership.discord_server_id', 'discord_server_id')
-      .addSelect('server_ownership.name', 'name')
-      .addSelect('server_ownership.synced_at', 'synced_at')
+      .select('user_guild.id', 'id')
+      .addSelect('user_guild.discord_guild_id', 'discord_guild_id')
+      .addSelect('user_guild.name', 'name')
+      .addSelect('user_guild.synced_at', 'synced_at')
       .addSelect(`
         CASE
           WHEN class_binding.id IS NOT NULL THEN 'class'
           ELSE 'unbound'
         END
       `, 'binding_role')
-      .addSelect('class_binding.id', 'binding_server_id')
+      .addSelect('class_binding.id', 'binding_guild_id')
       .addSelect('class_binding.class_id', 'binding_class_id')
       .addSelect('class.name', 'binding_class_name')
       .addSelect('class_binding.notification_channel_id', 'binding_notification_channel_id')
@@ -74,14 +74,14 @@ export class TypeOrmMessagingReader {
       .addSelect('class_binding.attendance_voice_channel_id', 'binding_attendance_voice_channel_id')
       .addSelect('voice_channel.name', 'binding_attendance_voice_channel_name')
       .addSelect('voice_channel.id', 'binding_attendance_voice_channel_id_ref')
-      .where('server_ownership.discord_user_id = :discordUserId', { teacherId, discordUserId })
-      .orderBy('server_ownership.name', 'ASC')
+      .where('user_guild.discord_user_id = :discordUserId', { teacherId, discordUserId })
+      .orderBy('user_guild.name', 'ASC')
       .getRawMany<{
         id: string;
-        discord_server_id: string;
+        discord_guild_id: string;
         name: string;
         synced_at: string | Date;
-        binding_server_id: string | null;
+        binding_guild_id: string | null;
         binding_role: 'unbound' | 'class';
         binding_class_id: string | null;
         binding_class_name: string | null;
@@ -95,10 +95,10 @@ export class TypeOrmMessagingReader {
       .then((rows) => rows.map((row) => ({
         id: Number(row.id),
         teacher_id: teacherId,
-        discord_server_id: row.discord_server_id,
+        discord_guild_id: row.discord_guild_id,
         name: row.name,
         synced_at: new Date(row.synced_at),
-        binding_server_id: row.binding_server_id === null ? null : Number(row.binding_server_id),
+        binding_guild_id: row.binding_guild_id === null ? null : Number(row.binding_guild_id),
         binding_role: row.binding_role,
         binding_class_id: row.binding_class_id === null ? null : Number(row.binding_class_id),
         binding_class_name: row.binding_class_name,
@@ -111,16 +111,16 @@ export class TypeOrmMessagingReader {
       })));
   }
 
-  async listTeacherDiscordChannelsForServer(teacherId: number, discordServerId: string) {
+  async listTeacherDiscordChannelsForGuild(teacherId: number, discordGuildId: string) {
     const discordUserId = await this.getTeacherDiscordUserId(teacherId);
     if (!discordUserId) {
       return [];
     }
 
-    const channels = await AppDataSource.getRepository(DiscordServerChannel).find({
+    const channels = await AppDataSource.getRepository(DiscordGuildChannelCache).find({
       where: {
         discord_user_id: discordUserId,
-        discord_server_id: discordServerId,
+        discord_guild_id: discordGuildId,
       },
       order: {
         type: 'ASC',
@@ -147,7 +147,7 @@ export class TypeOrmMessagingReader {
       .select('COUNT(*)', 'count')
       .where('student.teacher_id = :teacherId', { teacherId })
       .andWhere('student.status = :status', { status: StudentStatus.Active })
-      .andWhere("student.discord_username IS NOT NULL AND LENGTH(TRIM(student.discord_username)) > 0")
+      .andWhere("student.discord_username IS NOT NULL AND LEN(TRIM(student.discord_username)) > 0")
       .getRawOne<{ count: string }>();
 
     return Number(raw?.count ?? 0);
@@ -160,7 +160,7 @@ export class TypeOrmMessagingReader {
       .where('student.teacher_id = :teacherId', { teacherId })
       .andWhere('student.status = :status', { status: StudentStatus.Active })
       .andWhere('student.discord_authorized_at IS NOT NULL')
-      .andWhere("student.discord_user_id IS NOT NULL AND LENGTH(TRIM(student.discord_user_id)) > 0")
+      .andWhere("student.discord_user_id IS NOT NULL AND LEN(TRIM(student.discord_user_id)) > 0")
       .getRawOne<{ count: string }>();
 
     return Number(raw?.count ?? 0);
@@ -173,43 +173,43 @@ export class TypeOrmMessagingReader {
     });
   }
 
-  async countConfiguredDiscordServersForTeacher(teacherId: number) {
-    const raw = await AppDataSource.getRepository(DiscordServer)
-      .createQueryBuilder('server')
-      .innerJoin(Class, 'class', 'class.id = server.class_id AND class.teacher_id = server.teacher_id')
+  async countConfiguredDiscordGuildsForTeacher(teacherId: number) {
+    const raw = await AppDataSource.getRepository(ClassDiscordBinding)
+      .createQueryBuilder('guild_binding')
+      .innerJoin(Class, 'class', 'class.id = guild_binding.class_id AND class.teacher_id = guild_binding.teacher_id')
       .select('COUNT(*)', 'count')
-      .where('server.teacher_id = :teacherId', { teacherId })
+      .where('guild_binding.teacher_id = :teacherId', { teacherId })
       .andWhere('class.status = :status', { status: ClassStatus.Active })
       .getRawOne<{ count: string }>();
 
     return Number(raw?.count ?? 0);
   }
 
-  async listActiveClassesMissingDiscordServerNamesForTeacher(teacherId: number) {
+  async listActiveClassesMissingDiscordGuildNamesForTeacher(teacherId: number) {
     const rows = await AppDataSource.getRepository(Class)
       .createQueryBuilder('class')
       .leftJoin(
-        DiscordServer,
-        'server',
-        'server.teacher_id = class.teacher_id AND server.class_id = class.id',
+        ClassDiscordBinding,
+        'guild_binding',
+        'guild_binding.teacher_id = class.teacher_id AND guild_binding.class_id = class.id',
       )
       .select('class.name', 'name')
       .where('class.teacher_id = :teacherId', { teacherId })
       .andWhere('class.status = :status', { status: ClassStatus.Active })
-      .andWhere('server.id IS NULL')
+      .andWhere('guild_binding.id IS NULL')
       .orderBy('class.name', 'ASC')
       .getRawMany<{ name: string }>();
 
     return rows.map((row) => row.name);
   }
 
-  async countDiscordServerOwnershipsForTeacher(teacherId: number) {
+  async countDiscordUserGuildsForTeacher(teacherId: number) {
     const discordUserId = await this.getTeacherDiscordUserId(teacherId);
     if (!discordUserId) {
       return 0;
     }
 
-    return AppDataSource.getRepository(DiscordServerOwnership).countBy({
+    return AppDataSource.getRepository(DiscordUserGuild).countBy({
       discord_user_id: discordUserId,
     });
   }

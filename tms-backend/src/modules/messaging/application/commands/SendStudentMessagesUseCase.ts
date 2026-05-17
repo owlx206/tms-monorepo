@@ -84,20 +84,20 @@ export class SendStudentMessagesUseCase {
         continue;
       }
 
-      const server = recipient.discord_server;
-      if (!server) {
+      const guild = recipient.discord_guild;
+      if (!guild) {
         deliveryResults.push({
           student_id: recipient.student_id,
           student_name: recipient.student_name,
           status: 'failed',
           sent_at: null,
-          error_detail: 'discord server is not configured for this class',
+          error_detail: 'discord guild is not configured for this class',
         });
         continue;
       }
 
       const resolvedRecipient = await this.discordRecipientResolver.resolve(
-        server,
+        guild,
         recipient.discord_username,
       );
       if (!resolvedRecipient.userId) {
@@ -112,7 +112,7 @@ export class SendStudentMessagesUseCase {
       }
 
       try {
-        const discord = await this.discordClientFactory.getClient(server.bot_token);
+        const discord = await this.discordClientFactory.getClient(guild.bot_token);
         await discord.sendDirectMessage({
           recipientUserId: resolvedRecipient.userId,
           content,

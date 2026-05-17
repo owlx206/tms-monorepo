@@ -9,7 +9,7 @@ const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
 function getCredentialSecret(): string {
-  return config.discord.credentialSecret ?? config.auth.jwtSecret ?? 'local-discord-credential-secret';
+  return config.security.credentialSecret ?? config.auth.jwtSecret ?? 'local-discord-credential-secret';
 }
 
 function getCredentialSecrets(): string[] {

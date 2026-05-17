@@ -107,44 +107,38 @@ export class TypeOrmAttendanceWriter {
     sessionId: number;
     studentId: number;
   }): Promise<boolean> {
-    const rows = await this.manager.query(`
-      INSERT INTO attendance (
-        teacher_id,
-        session_id,
-        student_id,
-        status,
-        source,
-        overridden_at,
-        notes
-      )
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4::attendance_status,
-        $5::attendance_source,
-        NULL,
-        NULL
-      )
-      ON CONFLICT (session_id, student_id) DO UPDATE
-      SET
-        status = EXCLUDED.status,
-        source = EXCLUDED.source,
-        overridden_at = NULL
-      WHERE attendance.source <> $6::attendance_source
-        AND attendance.status <> $7::attendance_status
-      RETURNING id
-    `, [
-      input.teacherId,
-      input.sessionId,
-      input.studentId,
-      AttendanceStatus.Present,
-      AttendanceSource.Bot,
-      AttendanceSource.Manual,
-      AttendanceStatus.AbsentExcused,
-    ]) as Array<{ id: number }>;
+    const repo = this.manager.getRepository(Attendance);
+    const existing = await repo.findOneBy({
+      teacher_id: input.teacherId,
+      session_id: input.sessionId,
+      student_id: input.studentId,
+    });
 
-    return rows.length > 0;
+    if (!existing) {
+      await repo.save(repo.create({
+        teacher_id: input.teacherId,
+        session_id: input.sessionId,
+        student_id: input.studentId,
+        status: AttendanceStatus.Present,
+        source: AttendanceSource.Bot,
+        overridden_at: null,
+        notes: null,
+      }));
+      return true;
+    }
+
+    if (
+      existing.source === AttendanceSource.Manual
+      || existing.status === AttendanceStatus.AbsentExcused
+    ) {
+      return false;
+    }
+
+    existing.status = AttendanceStatus.Present;
+    existing.source = AttendanceSource.Bot;
+    existing.overridden_at = null;
+    await repo.save(existing);
+    return true;
   }
 
   remove(records: Attendance[]): Promise<Attendance[]> {

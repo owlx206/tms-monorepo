@@ -1,8 +1,4 @@
-import { AggregateRoot } from '../../../../shared/domain/AggregateRoot.js';
 import { DomainError } from '../../../../shared/domain/DomainError.js';
-import { StudentReinstated } from '../events/StudentReinstated.js';
-import { StudentTransferred } from '../events/StudentTransferred.js';
-import { StudentWithdrawn } from '../events/StudentWithdrawn.js';
 import { CodeforcesHandle } from '../value-objects/CodeforcesHandle.js';
 import type { StudentId } from '../value-objects/StudentId.js';
 
@@ -42,9 +38,9 @@ type CreateStudentProps = {
   note: string | null;
 };
 
-export class Student extends AggregateRoot<StudentId | null> {
+export class Student {
   private constructor(
-    id: StudentId | null,
+    public readonly id: StudentId | null,
     private readonly teacherId: number,
     private fullName: string,
     private codeforcesHandle: CodeforcesHandle | null,
@@ -56,9 +52,7 @@ export class Student extends AggregateRoot<StudentId | null> {
     private pendingArchiveReason: EnrollmentPendingArchiveReason | null,
     private createdAt: Date | null,
     private archivedAt: Date | null,
-  ) {
-    super(id);
-  }
+  ) {}
 
   static create(props: CreateStudentProps): Student {
     const fullName = props.fullName.trim();
@@ -199,41 +193,6 @@ export class Student extends AggregateRoot<StudentId | null> {
     this.archivedAt = null;
   }
 
-  recordTransferred(toClassId: number, transferredAt: Date): void {
-    if (!this.id) {
-      return;
-    }
-
-    this.addDomainEvent(
-      new StudentTransferred(this.teacherId, this.id.value, toClassId, transferredAt),
-    );
-  }
-
-  recordWithdrawn(withdrawnAt: Date): void {
-    if (!this.id) {
-      return;
-    }
-
-    this.addDomainEvent(
-      new StudentWithdrawn(
-        this.teacherId,
-        this.id.value,
-        this.status,
-        this.pendingArchiveReason,
-        withdrawnAt,
-      ),
-    );
-  }
-
-  recordReinstated(classId: number, enrolledAt: Date): void {
-    if (!this.id) {
-      return;
-    }
-
-    this.addDomainEvent(
-      new StudentReinstated(this.teacherId, this.id.value, classId, enrolledAt),
-    );
-  }
 }
 
 function normalizeNullableText(value: string | null | undefined): string | null {

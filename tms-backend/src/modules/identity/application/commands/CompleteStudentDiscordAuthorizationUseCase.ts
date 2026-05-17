@@ -31,7 +31,7 @@ export class CompleteStudentDiscordAuthorizationUseCase {
 
     const credential = await this.discordBotCredentialStore.findDefault();
     if (!credential?.client_id || !credential.client_secret || !credential.bot_token) {
-      throw new AuthError('discord bot is not configured by sysadmin', 503);
+      throw new AuthError('discord is not available right now', 503);
     }
 
     const authState = verifyStudentDiscordAuthorizationState(input.state);
@@ -55,14 +55,14 @@ export class CompleteStudentDiscordAuthorizationUseCase {
       authorizedAt: new Date(),
     });
 
-    const classServer = await this.repository.getActiveDiscordServer(authState.teacher_id, authState.student_id);
-    if (!classServer) {
-      return 'authorized_no_class_server';
+    const classGuild = await this.repository.getActiveClassDiscordBinding(authState.teacher_id, authState.student_id);
+    if (!classGuild) {
+      return 'authorized_no_class_guild';
     }
 
     try {
       await new DiscordClient(credential.bot_token).addGuildMember({
-        guildId: classServer.discord_server_id,
+        guildId: classGuild.discord_guild_id,
         userId: discordUser.id,
         userAccessToken: tokenSet.accessToken,
       });

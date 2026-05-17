@@ -6,7 +6,7 @@ import { Teacher } from './teacher.entity.js';
 @Entity('classes')
 @ForeignKey(() => Teacher, ['teacher_id'], ['id'], {
   name: 'fk_classes_teacher_id',
-  onDelete: 'RESTRICT',
+  onDelete: 'NO ACTION',
 })
 @Index('idx_classes_teacher_id', ['teacher_id'])
 @Index('idx_classes_status', ['status'])
@@ -19,7 +19,7 @@ export class Class {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'int' })
   teacher_id!: number;
 
   @Column({ type: 'varchar', length: 255 })
@@ -29,16 +29,16 @@ export class Class {
   fee_per_session!: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: ClassStatus,
     enumName: 'class_status',
     default: ClassStatus.Active,
   })
   status!: ClassStatus;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ type: 'datetimeoffset', default: () => 'SYSDATETIMEOFFSET()' })
   created_at!: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'datetimeoffset', nullable: true })
   archived_at!: Date | null;
 }

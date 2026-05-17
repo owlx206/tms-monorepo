@@ -58,11 +58,11 @@ export type ClassScheduleSummary = {
   end_time: string;
 };
 
-export type ClassDiscordServerSummary = {
+export type ClassDiscordGuildSummary = {
   id: number;
   teacher_id: number;
   class_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
   name: string | null;
   attendance_voice_channel_id: string | null;
   notification_channel_id: string | null;
@@ -83,7 +83,7 @@ export type ClassDetailStudentSummary = {
 export type ClassDetails = {
   class: ClassSummary;
   schedules: ClassScheduleSummary[];
-  discord_server: ClassDiscordServerSummary | null;
+  discord_guild: ClassDiscordGuildSummary | null;
   active_students: ClassDetailStudentSummary[];
   topics: Array<{
     id: number;

@@ -1,7 +1,7 @@
 import type { EntityManager } from 'typeorm';
 
 import config from '../../../../../config.js';
-import { SysadminDiscordBotCredential } from '../../../../../entities/sysadmin-discord-bot-credential.entity.js';
+import { SysadminDiscordBotCredential } from '../../../../../entities/discord-bot-credential.entity.js';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import type { SysadminDiscordBotCredentialView } from '../../../application/dto/AdminDto.js';
 

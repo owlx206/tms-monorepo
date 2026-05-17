@@ -139,7 +139,7 @@ export function ClassDetail() {
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard icon={<CheckCircle2 className="h-5 w-5 text-zinc-400" />} label="Học phí/buổi" value={`${Number(details.class.fee_per_session).toLocaleString("vi-VN")} VNĐ`} />
         <SummaryCard icon={<Users className="h-5 w-5 text-zinc-400" />} label="Học sinh active" value={String(details.active_students.length)} />
-        <SummaryCard icon={<Server className="h-5 w-5 text-zinc-400" />} label="Discord server" value={details.discord_server?.name ?? "Chưa gắn"} />
+        <SummaryCard icon={<Server className="h-5 w-5 text-zinc-400" />} label="Discord guild" value={details.discord_guild?.name ?? "Chưa gắn"} />
         <SummaryCard icon={<BookOpen className="h-5 w-5 text-zinc-400" />} label="Chuyên đề" value={String(details.topics.length)} />
       </div>
 

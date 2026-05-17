@@ -27,13 +27,13 @@ import { listStudentBalances } from "../services/financeService";
 import {
   getDiscordBotInviteLink,
   getDiscordSetupStatus,
-  listDiscordChannels,
-  listDiscordServers,
+  listDiscordGuildChannels,
+  listDiscordGuilds,
   sendStudentMessages,
   sendChannelPost,
-  upsertDiscordServerByClass,
+  upsertDiscordGuildByClass,
   type BackendDiscordChannel,
-  type BackendDiscordServer,
+  type BackendClassDiscordBinding,
   type DiscordSetupStatus,
 } from "../services/messagingService";
 import { getStudentLearningProfile } from "../services/reportingService";
@@ -112,11 +112,11 @@ export function Messaging() {
   const navigate = useNavigate();
   const [showBindServerModal, setShowBindServerModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [selectedServer, setSelectedServer] = useState<BackendDiscordServer | null>(null);
+  const [selectedServer, setSelectedServer] = useState<BackendClassDiscordBinding | null>(null);
   const [selectedClass, setSelectedClass] = useState<ClassOption | null>(null);
   const [requestError, setRequestError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [servers, setServers] = useState<BackendDiscordServer[]>([]);
+  const [servers, setServers] = useState<BackendClassDiscordBinding[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [discordStatus, setDiscordStatus] = useState<DiscordSetupStatus | null>(null);
@@ -137,7 +137,7 @@ export function Messaging() {
         balances,
         sessions,
       ] = await Promise.all([
-        listDiscordServers(),
+        listDiscordGuilds(),
         getDiscordSetupStatus(),
         getDiscordBotInviteLink(),
         getMe(),
@@ -231,7 +231,7 @@ export function Messaging() {
     } else if (installStatus === "conflict") {
       setRequestError("Server Discord này đã được liên kết với giáo viên khác.");
     } else if (installStatus === "cancelled") {
-      setRequestError("Bạn đã hủy thao tác thêm bot vào Discord server.");
+      setRequestError("Bạn đã hủy thao tác thêm bot vào Discord guild.");
     }
 
     navigate("/messaging", { replace: true });
@@ -264,7 +264,7 @@ export function Messaging() {
     discordAuth: Boolean(teacherDiscordVerifiedAt),
     botConfigured: Boolean(botInviteLink),
     hasServers: servers.length > 0,
-    classServersSet: discordStatus ? discordStatus.metrics.classes_missing_server === 0 : classBoundServers.length > 0,
+    classServersSet: discordStatus ? discordStatus.metrics.classes_missing_guild === 0 : classBoundServers.length > 0,
     studentsAuthorizedDiscord: discordStatus ? discordStatus.metrics.students_missing_discord_authorization === 0 : students.every((student) => student.discord_user_id),
   };
 
@@ -298,7 +298,7 @@ export function Messaging() {
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <h1 className="mb-2 text-3xl font-semibold text-zinc-900">Discord</h1>
-          <p className="text-zinc-600">Cấu hình Discord server, bot và kênh thông báo cho lớp học</p>
+          <p className="text-zinc-600">Cấu hình Discord guild, bot và kênh thông báo cho lớp học</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -451,12 +451,12 @@ export function Messaging() {
           servers={servers}
           initialValues={selectedServer ? {
             class_id: selectedServer.binding.class_id ?? selectedClass?.id ?? 0,
-            discord_server_id: selectedServer.discord_server_id,
+            discord_guild_id: selectedServer.discord_guild_id,
             attendance_voice_channel_id: selectedServer.binding.attendance_voice_channel_cache_id ? String(selectedServer.binding.attendance_voice_channel_cache_id) : "",
             notification_channel_id: selectedServer.binding.notification_channel_cache_id ? String(selectedServer.binding.notification_channel_cache_id) : "",
           } : selectedClass ? {
             class_id: selectedClass.id,
-            discord_server_id: "",
+            discord_guild_id: "",
             attendance_voice_channel_id: "",
             notification_channel_id: "",
           } : undefined}
@@ -470,7 +470,7 @@ export function Messaging() {
             setSubmitting(true);
             setRequestError("");
             try {
-              await upsertDiscordServerByClass(payload.class_id, payload);
+              await upsertDiscordGuildByClass(payload.class_id, payload);
               setShowBindServerModal(false);
               setSelectedServer(null);
               setSelectedClass(null);
@@ -491,7 +491,7 @@ export function Messaging() {
           servers={servers}
           initialValues={{
             class_id: selectedServer.binding.class_id ?? 0,
-            discord_server_id: selectedServer.discord_server_id,
+            discord_guild_id: selectedServer.discord_guild_id,
             attendance_voice_channel_id: selectedServer.binding.attendance_voice_channel_cache_id ? String(selectedServer.binding.attendance_voice_channel_cache_id) : "",
             notification_channel_id: selectedServer.binding.notification_channel_cache_id ? String(selectedServer.binding.notification_channel_cache_id) : "",
           }}
@@ -504,7 +504,7 @@ export function Messaging() {
             setSubmitting(true);
             setRequestError("");
             try {
-              await upsertDiscordServerByClass(payload.class_id, payload);
+              await upsertDiscordGuildByClass(payload.class_id, payload);
               setShowConfigModal(false);
               setSelectedServer(null);
               await loadData();
@@ -541,7 +541,7 @@ function ServerCard({
   compact = false,
   onConfig,
 }: {
-  server: BackendDiscordServer;
+  server: BackendClassDiscordBinding;
   subtitle: string;
   compact?: boolean;
   onConfig: () => void;
@@ -561,7 +561,7 @@ function ServerCard({
             {server.name}
           </h3>
           <p className="mb-1 truncate text-xs text-zinc-500">{subtitle}</p>
-          <p className="mb-3 truncate font-mono text-xs text-zinc-500">ID: {server.discord_server_id}</p>
+          <p className="mb-3 truncate font-mono text-xs text-zinc-500">ID: {server.discord_guild_id}</p>
           <div className="mb-3 flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <Hash className="h-4 w-4 text-zinc-600" />
@@ -606,11 +606,11 @@ function SendMessageTab({
   onSubmit,
 }: {
   classes: ClassOption[];
-  servers: BackendDiscordServer[];
+  servers: BackendClassDiscordBinding[];
   students: StudentOption[];
   submitting: boolean;
   onSubmit: (payload:
-    | { type: "channel_post"; content: string; server_ids: number[] }
+    | { type: "channel_post"; content: string; guild_ids: number[] }
     | { type: "bulk_dm"; content: string; student_ids: number[] }
   ) => Promise<void>;
 }) {
@@ -690,7 +690,7 @@ function SendMessageTab({
         return;
       }
 
-      await onSubmit({ type: "channel_post", content: content.trim(), server_ids: selectedServers });
+      await onSubmit({ type: "channel_post", content: content.trim(), guild_ids: selectedServers });
       return;
     }
 
@@ -945,10 +945,10 @@ function ServerModal({
 }: {
   title: string;
   classes: ClassOption[];
-  servers: BackendDiscordServer[];
+  servers: BackendClassDiscordBinding[];
   initialValues?: {
     class_id: number;
-    discord_server_id: string;
+    discord_guild_id: string;
     attendance_voice_channel_id: string;
     notification_channel_id: string;
   };
@@ -956,13 +956,13 @@ function ServerModal({
   onClose: () => void;
   onSubmit: (payload: {
     class_id: number;
-    server_id: number;
+    guild_id: number;
     attendance_voice_channel_id?: string | null;
     notification_channel_id?: string | null;
   }) => Promise<void>;
 }) {
-  const initialServer = initialValues?.discord_server_id
-    ? servers.find((server) => server.discord_server_id === initialValues.discord_server_id)
+  const initialServer = initialValues?.discord_guild_id
+    ? servers.find((server) => server.discord_guild_id === initialValues.discord_guild_id)
     : undefined;
   const availableServers = useMemo(
     () => servers.filter((server) => {
@@ -988,7 +988,7 @@ function ServerModal({
     }
 
     let cancelled = false;
-    void listDiscordChannels(Number(serverId)).then((nextChannels) => {
+    void listDiscordGuildChannels(Number(serverId)).then((nextChannels) => {
       if (!cancelled) {
         setChannels(nextChannels);
         setLocalError("");
@@ -1023,7 +1023,7 @@ function ServerModal({
 
     await onSubmit({
       class_id: parsedClassId,
-      server_id: parsedServerId,
+      guild_id: parsedServerId,
       attendance_voice_channel_id: voiceChannelId.trim() || null,
       notification_channel_id: textChannelId.trim() || null,
     });
@@ -1049,7 +1049,7 @@ function ServerModal({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-zinc-700">Discord server</label>
+            <label className="mb-2 block text-sm text-zinc-700">Discord guild</label>
             <select
               value={serverId}
               onChange={(event) => setServerId(event.target.value)}

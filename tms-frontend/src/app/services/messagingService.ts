@@ -1,14 +1,14 @@
 import { apiRequest } from "./apiClient";
 
-export interface BackendDiscordServer {
+export interface BackendClassDiscordBinding {
   id: number;
   teacher_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
   name: string;
   synced_at: string;
   binding: {
     role: "unbound" | "class";
-    server_binding_id: number | null;
+    guild_binding_id: number | null;
     class_id: number | null;
     class_name: string | null;
     notification_channel_id: string | null;
@@ -20,11 +20,11 @@ export interface BackendDiscordServer {
   };
 }
 
-export interface BackendClassDiscordServerBinding {
+export interface BackendClassDiscordGuildBinding {
   id: number;
   teacher_id: number;
   class_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
   name: string | null;
   attendance_voice_channel_id: string | null;
   notification_channel_id: string | null;
@@ -33,7 +33,7 @@ export interface BackendClassDiscordServerBinding {
 export interface BackendDiscordChannel {
   id: number;
   teacher_id: number;
-  discord_server_id: string;
+  discord_guild_id: string;
   discord_channel_id: string;
   name: string;
   type: "text" | "voice";
@@ -59,17 +59,17 @@ export interface DiscordSetupStatus {
     students_with_discord_authorization: number;
     students_missing_discord_authorization: number;
     active_classes: number;
-    configured_class_servers: number;
-    classes_missing_server: number;
-    synced_servers: number;
+    configured_class_guilds: number;
+    classes_missing_guild: number;
+    synced_guilds: number;
   };
-  missing_class_server_names: string[];
+  missing_class_guild_names: string[];
   issues: DiscordSetupIssue[];
 }
 
-export async function listDiscordServers(): Promise<BackendDiscordServer[]> {
-  const data = await apiRequest<{ servers: BackendDiscordServer[] }>("/discord/servers");
-  return data.servers;
+export async function listDiscordGuilds(): Promise<BackendClassDiscordBinding[]> {
+  const data = await apiRequest<{ guilds: BackendClassDiscordBinding[] }>("/discord/guilds");
+  return data.guilds;
 }
 
 export async function getStudentDiscordAuthorizationUrl(studentId: number): Promise<string> {
@@ -79,8 +79,8 @@ export async function getStudentDiscordAuthorizationUrl(studentId: number): Prom
   return data.authorize_url;
 }
 
-export async function listDiscordChannels(serverId: number): Promise<BackendDiscordChannel[]> {
-  const data = await apiRequest<{ channels: BackendDiscordChannel[] }>(`/discord/servers/${serverId}/channels`);
+export async function listDiscordGuildChannels(guildId: number): Promise<BackendDiscordChannel[]> {
+  const data = await apiRequest<{ channels: BackendDiscordChannel[] }>(`/discord/guilds/${guildId}/channels`);
   return data.channels;
 }
 
@@ -93,24 +93,24 @@ export async function getDiscordSetupStatus(): Promise<DiscordSetupStatus> {
   return apiRequest<DiscordSetupStatus>("/discord/setup-status");
 }
 
-export async function upsertDiscordServerByClass(
+export async function upsertDiscordGuildByClass(
   classId: number,
   payload: {
-    server_id: number;
+    guild_id: number;
     attendance_voice_channel_id?: string | null;
     notification_channel_id?: string | null;
   },
-): Promise<BackendClassDiscordServerBinding> {
-  const data = await apiRequest<{ server: BackendClassDiscordServerBinding }>(`/classes/${classId}/discord-server/select`, {
+): Promise<BackendClassDiscordGuildBinding> {
+  const data = await apiRequest<{ binding: BackendClassDiscordGuildBinding }>(`/classes/${classId}/discord-guild/select`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
 
-  return data.server;
+  return data.binding;
 }
 
-export async function unbindDiscordServerByClass(classId: number): Promise<void> {
-  await apiRequest<{ server: null }>(`/classes/${classId}/discord-server`, {
+export async function unbindDiscordGuildByClass(classId: number): Promise<void> {
+  await apiRequest<{ binding: null }>(`/classes/${classId}/discord-guild`, {
     method: "DELETE",
   });
 }
@@ -137,14 +137,14 @@ export async function sendStudentMessages(payload: {
 
 export async function sendChannelPost(payload: {
   content: string;
-  server_ids: number[];
+  guild_ids: number[];
 }) {
   return apiRequest<{
     targets_total: number;
     sent: number;
     failed: number;
     failures: Array<{
-      server_id: number;
+      guild_id: number;
       error: string;
     }>;
   }>("/discord/messages/channel-post", {

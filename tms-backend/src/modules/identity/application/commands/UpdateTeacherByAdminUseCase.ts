@@ -43,21 +43,13 @@ export class UpdateTeacherByAdminUseCase {
       teacher.password_hash = await this.passwordHasher.hash(input.password);
     }
 
-    if (input.codeforces_handle !== undefined) {
-      teacher.codeforces_handle = input.codeforces_handle;
-    }
-
-    if (input.codeforces_api_key !== undefined) {
-      teacher.codeforces_api_key = input.codeforces_api_key;
-    }
-
-    if (input.codeforces_api_secret !== undefined) {
-      teacher.codeforces_api_secret = input.codeforces_api_secret;
-    }
-
     try {
       const saved = await this.teacherWriter.save(teacher);
-      return toAdminTeacher(saved);
+      const topicBotConfig = await this.teacherWriter.saveTopicBotConfig(saved.id, {
+        codeforces_api_key: input.codeforces_api_key,
+        codeforces_api_secret: input.codeforces_api_secret,
+      });
+      return toAdminTeacher(saved, topicBotConfig);
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new ServiceError('username already exists', 409);
