@@ -1,17 +1,7 @@
-type MessagingReader = {
-  listTeacherDiscordChannelsForGuild(teacherId: number, discordGuildId: string): Promise<Array<{
-    id: number;
-    teacher_id: number;
-    discord_guild_id: string;
-    discord_channel_id: string;
-    name: string;
-    type: 'text' | 'voice';
-    synced_at: Date;
-  }>>;
-};
+import type { TeacherDiscordChannelReader } from '../../contracts/types.js';
 
 export class ListTeacherDiscordChannelsUseCase {
-  constructor(private readonly messaging: MessagingReader) {}
+  constructor(private readonly messaging: TeacherDiscordChannelReader) {}
 
   execute(teacherId: number, discordGuildId: string) {
     return this.messaging.listTeacherDiscordChannelsForGuild(teacherId, discordGuildId);

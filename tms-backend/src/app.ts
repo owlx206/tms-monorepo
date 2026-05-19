@@ -2,17 +2,17 @@ import express from 'express';
 
 import config from './config.js';
 import { AppDataSource } from './infrastructure/database/data-source.js';
-import { attachDbContext } from './infrastructure/database/db-context.middleware.js';
 import { errorHandler, notFoundHandler } from './infrastructure/http/error-handler.middleware.js';
-import { appModules } from './modules/index.js';
-import { configurePassport } from './modules/identity/index.js';
+import { attachRequestContext } from './infrastructure/http/request-context.js';
+import { appModules } from './modules/app-modules.js';
+import { configurePassport } from './modules/identity/infrastructure/auth/configurePassport.js';
 
 export function createApp(): express.Express {
   const app = express();
   const passport = configurePassport();
 
   app.use(express.json());
-  app.use(attachDbContext);
+  app.use(attachRequestContext());
   app.use(passport.initialize());
 
   app.get(`${config.apiPrefix}/health`, (_req, res) => {

@@ -1,25 +1,26 @@
-import type { Enrollment } from '../../../../entities/enrollment.entity.js';
-import type { Student } from '../../../../entities/student.entity.js';
-import type { Topic } from '../../../../entities/topic.entity.js';
-import type { TopicProblem } from '../../../../entities/topic-problem.entity.js';
-import type { TopicStanding } from '../../../../entities/topic-standing.entity.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
-
-type TopicReader = {
-  findOwnedTopic(teacherId: number, topicId: number): Promise<Topic | null>;
-  listTopicProblems(teacherId: number, topicId: number): Promise<TopicProblem[]>;
-  listActiveEnrollmentsForClass(teacherId: number, classId: number): Promise<Enrollment[]>;
-  findStudentsByIds(teacherId: number, studentIds: number[]): Promise<Student[]>;
-  listTopicStandings(teacherId: number, topicId: number): Promise<TopicStanding[]>;
-};
+import type { Enrollment } from '../../../enrollment/infrastructure/persistence/typeorm/entities/enrollment.entity.js';
+import type { Student } from '../../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
+import type { Topic } from '../../infrastructure/persistence/typeorm/entities/topic.entity.js';
+import type { TopicProblem } from '../../infrastructure/persistence/typeorm/entities/topic-problem.entity.js';
+import type { TopicStanding } from '../../infrastructure/persistence/typeorm/entities/topic-standing.entity.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { TopicStandingMatrixReader } from '../../contracts/types.js';
 
 export class GetTopicStandingMatrixUseCase {
-  constructor(private readonly topics: TopicReader) {}
+  constructor(
+    private readonly topics: TopicStandingMatrixReader<
+      Topic,
+      TopicProblem,
+      Enrollment,
+      Student,
+      TopicStanding
+    >,
+  ) {}
 
   async execute(teacherId: number, topicId: number) {
     const topic = await this.topics.findOwnedTopic(teacherId, topicId);
     if (!topic) {
-      throw new ServiceError('topic not found', 404);
+      throw new HttpError('topic not found', 404);
     }
 
     const problems = await this.topics.listTopicProblems(teacherId, topicId);

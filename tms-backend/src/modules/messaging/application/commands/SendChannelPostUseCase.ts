@@ -1,7 +1,7 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { DiscordClientFactory } from '../../../../infrastructure/external/discord/discord-api.service.js';
-import type { ChannelPostInput } from '../dto/MessagingDto.js';
-import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
+import type { ChannelPostInput } from '../../contracts/types.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 function normalizeIdArray(values: number[] | undefined): number[] {
   if (!values) {
@@ -12,7 +12,7 @@ function normalizeIdArray(values: number[] | undefined): number[] {
 }
 
 function toFailureMessage(error: unknown, fallback: string): string {
-  if (error instanceof ServiceError) {
+  if (error instanceof HttpError) {
     return error.message;
   }
 
@@ -35,7 +35,7 @@ export class SendChannelPostUseCase {
     const guilds = await this.messagingWriter.findDiscordGuildsByIds(teacherId, guildIds);
 
     if (guilds.length !== guildIds.length) {
-      throw new ServiceError('some guilds are invalid', 404);
+      throw new HttpError('some guilds are invalid', 404);
     }
 
     const guildById = new Map(guilds.map((guild) => [guild.id, guild]));

@@ -1,17 +1,13 @@
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   AttendanceListFilters,
   AttendanceRecordSummary,
   SessionAttendanceSummary,
   UpsertSessionAttendanceInput,
-} from '../../application/dto/AttendanceDto.js';
-import {
-  getSessionId,
-  getStudentId,
-  getTeacherId,
-} from './request-context.js';
+} from '../../contracts/types.js';
 
 type AttendanceAction =
   | 'getSessionAttendance'
@@ -20,9 +16,14 @@ type AttendanceAction =
   | 'listAttendanceRecords';
 
 type AttendanceParams = {
-  sessionId?: number;
-  studentId?: number;
+  sessionId: number;
+  studentId: number;
 };
+type AttendanceContext = ParsedRequestContext<
+  UpsertSessionAttendanceInput,
+  AttendanceParams,
+  AttendanceListFilters
+> & { teacherId: number };
 
 type AttendanceDependencies = {
   attendance: {
@@ -50,7 +51,7 @@ export class AttendanceController implements Controller {
   ) {}
 
   async handle(
-    request: HttpRequest<UpsertSessionAttendanceInput, AttendanceParams, AttendanceListFilters>,
+    request: HttpRequest<UpsertSessionAttendanceInput, AttendanceParams, AttendanceListFilters, unknown, AttendanceContext>,
   ): Promise<HttpResponse> {
     switch (this.action) {
       case 'getSessionAttendance':
@@ -65,11 +66,11 @@ export class AttendanceController implements Controller {
   }
 
   private async getSessionAttendance(
-    request: HttpRequest<unknown, AttendanceParams>,
+    request: HttpRequest<unknown, AttendanceParams, unknown, unknown, AttendanceContext>,
   ): Promise<HttpResponse> {
     const data = await this.dependencies.attendance.getSessionAttendance(
-      getTeacherId(request),
-      getSessionId(request),
+      request.context.teacherId,
+      request.context.params.sessionId,
     );
 
     return {
@@ -79,11 +80,11 @@ export class AttendanceController implements Controller {
   }
 
   private async syncSessionAttendance(
-    request: HttpRequest<unknown, AttendanceParams>,
+    request: HttpRequest<unknown, AttendanceParams, unknown, unknown, AttendanceContext>,
   ): Promise<HttpResponse> {
     const result = await this.dependencies.commandHandlers.syncSessionAttendance({
-      teacherId: getTeacherId(request),
-      sessionId: getSessionId(request),
+      teacherId: request.context.teacherId,
+      sessionId: request.context.params.sessionId,
     });
 
     return {
@@ -93,12 +94,12 @@ export class AttendanceController implements Controller {
   }
 
   private async upsertSessionAttendance(
-    request: HttpRequest<UpsertSessionAttendanceInput, AttendanceParams>,
+    request: HttpRequest<UpsertSessionAttendanceInput, AttendanceParams, unknown, unknown, AttendanceContext>,
   ): Promise<HttpResponse> {
     const attendance = await this.dependencies.commandHandlers.upsertSessionAttendance({
-      teacherId: getTeacherId(request),
-      sessionId: getSessionId(request),
-      studentId: getStudentId(request),
+      teacherId: request.context.teacherId,
+      sessionId: request.context.params.sessionId,
+      studentId: request.context.params.studentId,
       attendance: request.body,
     });
 
@@ -109,10 +110,10 @@ export class AttendanceController implements Controller {
   }
 
   private async listAttendanceRecords(
-    request: HttpRequest<unknown, AttendanceParams, AttendanceListFilters>,
+    request: HttpRequest<unknown, AttendanceParams, AttendanceListFilters, unknown, AttendanceContext>,
   ): Promise<HttpResponse> {
     const attendance = await this.dependencies.attendance.listAttendanceRecords(
-      getTeacherId(request),
+      request.context.teacherId,
       request.query ?? {},
     );
 

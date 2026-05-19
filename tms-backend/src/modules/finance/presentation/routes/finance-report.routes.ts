@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../../entities/enums.js';
+import { TeacherRole } from '../../../identity/contracts/types.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
+import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
-import { requireRoles } from '../../../identity/index.js';
+import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
 import { FinanceReportController } from '../controllers/FinanceReportController.js';
 import { incomeReportQuerySchema } from './finance-report.schema.js';
 
@@ -13,6 +14,7 @@ export function createFinanceReportRouter(controller: FinanceReportController): 
 
   router.use(passport.authenticate('jwt', { session: false }));
   router.use(requireRoles([TeacherRole.Teacher]));
+  router.use(attachRequestContext());
 
   router.get(
     '/reporting/income',

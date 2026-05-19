@@ -2,8 +2,8 @@ import passport from 'passport';
 import { ExtractJwt, Strategy as JwtStrategy } from 'passport-jwt';
 
 import config from '../../../../config.js';
-import type { AuthTokenPayload } from '../../application/dto/AuthDto.js';
-import { TypeOrmTeacherWriter } from '../persistence/typeorm/TypeOrmTeacherWriter.js';
+import type { AuthTokenPayload } from '../../contracts/types.js';
+import { TypeOrmTeacherWriter } from '../persistence/typeorm/Writer.js';
 
 const teacherWriter = new TypeOrmTeacherWriter();
 

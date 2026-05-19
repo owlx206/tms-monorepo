@@ -1,7 +1,7 @@
-import { SysadminDiscordBotCredential } from '../../../entities/discord-bot-credential.entity.js';
+import { SysadminDiscordBotCredential } from '../infrastructure/persistence/typeorm/entities/sysadmin-discord-bot-credential.entity.js';
 import { AppDataSource } from '../../../infrastructure/database/data-source.js';
 import { DiscordClient } from '../../../infrastructure/external/discord/discord-api.service.js';
-import type { IntervalJob } from '../../../jobs/index.js';
+import type { IntervalJob } from '../../../infrastructure/jobs/index.js';
 
 export async function checkSysadminDiscordBotHealthOnce(): Promise<void> {
   if (!AppDataSource.isInitialized) {

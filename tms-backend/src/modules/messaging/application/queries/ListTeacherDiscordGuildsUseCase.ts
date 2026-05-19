@@ -1,25 +1,7 @@
-type MessagingReader = {
-  listTeacherDiscordGuilds(teacherId: number): Promise<Array<{
-    id: number;
-    teacher_id: number;
-    discord_guild_id: string;
-    name: string;
-    synced_at: Date;
-    binding_guild_id: number | null;
-    binding_role: 'unbound' | 'class';
-    binding_class_id: number | null;
-    binding_class_name: string | null;
-    binding_notification_channel_id: string | null;
-    binding_notification_channel_name: string | null;
-    binding_notification_channel_cache_id: number | null;
-    binding_attendance_voice_channel_id: string | null;
-    binding_attendance_voice_channel_name: string | null;
-    binding_attendance_voice_channel_cache_id: number | null;
-  }>>;
-};
+import type { TeacherDiscordGuildReader } from '../../contracts/types.js';
 
 export class ListTeacherDiscordGuildsUseCase {
-  constructor(private readonly messaging: MessagingReader) {}
+  constructor(private readonly messaging: TeacherDiscordGuildReader) {}
 
   execute(teacherId: number) {
     return this.messaging.listTeacherDiscordGuilds(teacherId).then((guilds) => guilds.map((guild) => ({

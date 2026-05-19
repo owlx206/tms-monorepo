@@ -1,6 +1,6 @@
-import { Teacher } from '../../../../entities/index.js';
-import type { TopicBotConfig } from '../../../../entities/topic-bot-config.entity.js';
-import type { AuthTeacher } from '../dto/AuthDto.js';
+import { Teacher } from '../../infrastructure/persistence/typeorm/entities/teacher.entity.js';
+import type { TopicBotConfig } from '../../../topic/infrastructure/persistence/typeorm/entities/topic-bot-config.entity.js';
+import type { AuthTeacher } from '../../contracts/types.js';
 
 export function toAuthTeacher(teacher: Teacher, topicBotConfig?: TopicBotConfig | null): AuthTeacher {
   return {

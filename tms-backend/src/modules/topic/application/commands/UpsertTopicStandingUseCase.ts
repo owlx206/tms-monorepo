@@ -1,6 +1,6 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
-import type { UpsertTopicStandingInput } from '../dto/TopicDto.js';
-import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTopicWriter.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { UpsertTopicStandingInput } from '../../contracts/types.js';
+import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class UpsertTopicStandingUseCase {
   constructor(private readonly topicWriter: TypeOrmTopicWriter) {}
@@ -8,12 +8,12 @@ export class UpsertTopicStandingUseCase {
   async execute(teacherId: number, topicId: number, input: UpsertTopicStandingInput) {
     const topic = await this.topicWriter.findOwnedTopic(teacherId, topicId);
     if (!topic) {
-      throw new ServiceError('topic not found', 404);
+      throw new HttpError('topic not found', 404);
     }
 
     const student = await this.topicWriter.findOwnedStudent(teacherId, input.student_id);
     if (!student) {
-      throw new ServiceError('student not found', 404);
+      throw new HttpError('student not found', 404);
     }
 
     const problem = await this.topicWriter.findOwnedTopicProblem(
@@ -22,7 +22,7 @@ export class UpsertTopicStandingUseCase {
       input.problem_id,
     );
     if (!problem) {
-      throw new ServiceError('topic problem not found', 404);
+      throw new HttpError('topic problem not found', 404);
     }
 
     const existing = await this.topicWriter.findTopicStanding(

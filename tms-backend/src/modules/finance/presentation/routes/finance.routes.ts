@@ -1,17 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../../entities/enums.js';
+import { TeacherRole } from '../../../identity/contracts/types.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
+import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
-import {
-  authorizeOwnedClasses,
-  authorizeOwnedFeeRecordParam,
-  authorizeOwnedStudentBody,
-  authorizeOwnedStudentQuery,
-  authorizeOwnedTransactionParam,
-  requireRoles,
-} from '../../../identity/index.js';
+import { authorizeOwnedClasses, authorizeOwnedFeeRecordParam, authorizeOwnedStudentBody, authorizeOwnedStudentQuery, authorizeOwnedTransactionParam } from '../../../identity/presentation/middlewares/ownership.js';
+import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
 import { FinanceController } from '../controllers/FinanceController.js';
 import {
   financeIdParamSchema,
@@ -40,6 +35,7 @@ export function createFinanceRouter(controllers: FinanceRouteControllers): Route
 
   router.use(passport.authenticate('jwt', { session: false }));
   router.use(requireRoles([TeacherRole.Teacher]));
+  router.use(attachRequestContext());
 
   router.get(
     '/finance/transactions',

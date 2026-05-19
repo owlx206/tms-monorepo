@@ -1,15 +1,15 @@
 import type { AppModule } from '../module.types.js';
-import { Attendance } from '../../entities/attendance.entity.js';
-import { ClassSchedule } from '../../entities/class-schedule.entity.js';
-import { Class } from '../../entities/class.entity.js';
-import { TypeOrmClassCommandHandlers } from './infrastructure/persistence/typeorm/TypeOrmClassCommandHandlers.js';
-import { TypeOrmAttendanceCommandHandlers } from './infrastructure/persistence/typeorm/TypeOrmAttendanceCommandHandlers.js';
-import { TypeOrmAttendanceReader } from './infrastructure/persistence/typeorm/TypeOrmAttendanceReader.js';
-import { TypeOrmClassReader } from './infrastructure/persistence/typeorm/TypeOrmClassReader.js';
-import { TypeOrmClassScheduleReader } from './infrastructure/persistence/typeorm/TypeOrmClassScheduleReader.js';
-import { TypeOrmSessionCommandHandlers } from './infrastructure/persistence/typeorm/TypeOrmSessionCommandHandlers.js';
-import { TypeOrmSessionReader } from './infrastructure/persistence/typeorm/TypeOrmSessionReader.js';
-import { Session } from '../../entities/session.entity.js';
+import { Attendance } from './infrastructure/persistence/typeorm/entities/attendance.entity.js';
+import { ClassSchedule } from './infrastructure/persistence/typeorm/entities/class-schedule.entity.js';
+import { Class } from './infrastructure/persistence/typeorm/entities/class.entity.js';
+import { TypeOrmClassCommandHandlers } from './infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmAttendanceCommandHandlers } from './infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmAttendanceReader } from './infrastructure/persistence/typeorm/Reader.js';
+import { TypeOrmClassReader } from './infrastructure/persistence/typeorm/Reader.js';
+import { TypeOrmClassScheduleReader } from './infrastructure/persistence/typeorm/Reader.js';
+import { TypeOrmSessionCommandHandlers } from './infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmSessionReader } from './infrastructure/persistence/typeorm/Reader.js';
+import { Session } from './infrastructure/persistence/typeorm/entities/session.entity.js';
 import { ClassController } from './presentation/controllers/ClassController.js';
 import { AttendanceController } from './presentation/controllers/AttendanceController.js';
 import { ClassScheduleController } from './presentation/controllers/ClassScheduleController.js';
@@ -23,10 +23,28 @@ import { AppDataSource } from '../../infrastructure/database/data-source.js';
 const classCommandHandlers = new TypeOrmClassCommandHandlers();
 const sessionCommandHandlers = new TypeOrmSessionCommandHandlers();
 const attendanceCommandHandlers = new TypeOrmAttendanceCommandHandlers();
-const classReader = new TypeOrmClassReader(AppDataSource.manager);
-const classScheduleReader = new TypeOrmClassScheduleReader(AppDataSource.manager);
-const sessionReader = new TypeOrmSessionReader(AppDataSource.manager);
-const attendanceReader = new TypeOrmAttendanceReader(AppDataSource.manager);
+const classReader = {
+  listClasses: (...args: Parameters<TypeOrmClassReader['listClasses']>) =>
+    new TypeOrmClassReader(AppDataSource.manager).listClasses(...args),
+  getClassById: (...args: Parameters<TypeOrmClassReader['getClassById']>) =>
+    new TypeOrmClassReader(AppDataSource.manager).getClassById(...args),
+  getClassDetails: (...args: Parameters<TypeOrmClassReader['getClassDetails']>) =>
+    new TypeOrmClassReader(AppDataSource.manager).getClassDetails(...args),
+};
+const classScheduleReader = {
+  listClassSchedules: (...args: Parameters<TypeOrmClassScheduleReader['listClassSchedules']>) =>
+    new TypeOrmClassScheduleReader(AppDataSource.manager).listClassSchedules(...args),
+};
+const sessionReader = {
+  listSessions: (...args: Parameters<TypeOrmSessionReader['listSessions']>) =>
+    new TypeOrmSessionReader(AppDataSource.manager).listSessions(...args),
+};
+const attendanceReader = {
+  getSessionAttendance: (...args: Parameters<TypeOrmAttendanceReader['getSessionAttendance']>) =>
+    new TypeOrmAttendanceReader(AppDataSource.manager).getSessionAttendance(...args),
+  listAttendanceRecords: (...args: Parameters<TypeOrmAttendanceReader['listAttendanceRecords']>) =>
+    new TypeOrmAttendanceReader(AppDataSource.manager).listAttendanceRecords(...args),
+};
 
 const classroomRouter = createClassroomRouter({
   listClasses: new ClassController('listClasses', {

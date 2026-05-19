@@ -4,7 +4,7 @@ import {
   booleanSchema,
   commaSeparatedPositiveIntegerArraySchema,
   dateTimeSchema,
-} from '../../../../shared/schemas/common.schemas.js';
+} from '../../../../shared/presentation/validation.js';
 
 export const incomeReportQuerySchema = z.object({
   from: dateTimeSchema.optional(),

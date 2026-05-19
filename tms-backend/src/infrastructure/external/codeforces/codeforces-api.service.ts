@@ -1,6 +1,6 @@
 import { createHash, randomInt } from 'crypto';
 
-import { ServiceError } from '../../../shared/errors/service.error.js';
+import { HttpError } from '../../../shared/errors/HttpError.js';
 
 type CodeforcesPrimitive = string | number | boolean;
 
@@ -214,23 +214,23 @@ export async function callCodeforcesApi<T>(
       method: 'GET',
     });
   } catch {
-    throw new ServiceError('failed to connect to Codeforces API', 502);
+    throw new HttpError('failed to connect to Codeforces API', 502);
   }
 
   if (!response.ok) {
-    throw new ServiceError('failed to sync metadata from Codeforces', 502);
+    throw new HttpError('failed to sync metadata from Codeforces', 502);
   }
 
   let payload: CodeforcesApiEnvelope<T>;
   try {
     payload = await response.json() as CodeforcesApiEnvelope<T>;
   } catch {
-    throw new ServiceError('invalid response from Codeforces API', 502);
+    throw new HttpError('invalid response from Codeforces API', 502);
   }
 
   if (payload.status !== 'OK' || payload.result === undefined) {
     const detail = parseCodeforcesError(payload);
-    throw new ServiceError(detail ? `Codeforces API error: ${detail}` : 'Codeforces API error', 400);
+    throw new HttpError(detail ? `Codeforces API error: ${detail}` : 'Codeforces API error', 400);
   }
 
   return payload.result;
@@ -256,7 +256,7 @@ export async function fetchCodeforcesGymMetadata(
   );
 
   if (!result.contest?.id || typeof result.contest.name !== 'string' || result.contest.name.trim().length === 0) {
-    throw new ServiceError('invalid Codeforces gym metadata', 502);
+    throw new HttpError('invalid Codeforces gym metadata', 502);
   }
 
   return {
@@ -292,7 +292,7 @@ export async function fetchCodeforcesGymStandings(
   );
 
   if (!result.contest?.id || typeof result.contest.name !== 'string' || result.contest.name.trim().length === 0) {
-    throw new ServiceError('invalid Codeforces gym standings', 502);
+    throw new HttpError('invalid Codeforces gym standings', 502);
   }
 
   return {

@@ -1,14 +1,12 @@
 import config from '../../../../config.js';
 import { DiscordClient } from '../../../../infrastructure/external/discord/discord-api.service.js';
-import { AuthError } from '../../../../shared/errors/auth.error.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
-import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { SysadminDiscordBotCredentialStore, TypeOrmStudentDiscordIdentityStore } from '../../infrastructure/persistence/typeorm/Writer.js';
 import {
   exchangeStudentDiscordCode,
   fetchStudentDiscordUser,
 } from '../../infrastructure/discord/DiscordStudentOAuth.js';
 import { verifyStudentDiscordAuthorizationState } from '../../infrastructure/discord/StudentDiscordAuthorizationState.js';
-import type { TypeOrmStudentDiscordIdentityStore } from '../../infrastructure/persistence/typeorm/TypeOrmStudentDiscordIdentityStore.js';
 
 export class CompleteStudentDiscordAuthorizationUseCase {
   constructor(
@@ -26,12 +24,12 @@ export class CompleteStudentDiscordAuthorizationUseCase {
     }
 
     if (!input.code || !input.state) {
-      throw new AuthError('student discord authorization callback is missing required parameters', 400);
+      throw new HttpError('student discord authorization callback is missing required parameters', 400);
     }
 
     const credential = await this.discordBotCredentialStore.findDefault();
     if (!credential?.client_id || !credential.client_secret || !credential.bot_token) {
-      throw new AuthError('discord is not available right now', 503);
+      throw new HttpError('discord is not available right now', 503);
     }
 
     const authState = verifyStudentDiscordAuthorizationState(input.state);
@@ -67,7 +65,7 @@ export class CompleteStudentDiscordAuthorizationUseCase {
         userAccessToken: tokenSet.accessToken,
       });
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (error instanceof HttpError) {
         return 'authorized_join_failed';
       }
       throw error;

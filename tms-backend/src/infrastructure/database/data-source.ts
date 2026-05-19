@@ -1,8 +1,9 @@
 import 'reflect-metadata';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { DataSource, type DataSourceOptions } from 'typeorm';
 
 import config from '../../config.js';
-import { appEntities } from '../../modules/entities.js';
 
 if (config.database.client !== 'mssql') {
   throw new Error(`Unsupported DB_CLIENT "${config.database.client}". This codebase is configured for Azure SQL Database with DB_CLIENT=mssql.`);
@@ -24,12 +25,13 @@ const driverOptions = {
     trustServerCertificate: config.database.trustServerCertificate,
   },
 };
+const rootDir = fileURLToPath(new URL('../../', import.meta.url));
 
 const dataSourceOptions: DataSourceOptions = {
   type: databaseType,
   ...connectionOptions,
   ...driverOptions,
-  entities: appEntities,
+  entities: [join(rootDir, 'modules/**/infrastructure/persistence/typeorm/entities/*.entity.{js,ts}')],
   dropSchema: false,
   synchronize: config.database.synchronize,
   logging: config.database.logging,

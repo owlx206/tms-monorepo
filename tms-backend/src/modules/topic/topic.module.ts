@@ -6,22 +6,20 @@ import { CreateTopicUseCase } from './application/commands/CreateTopicUseCase.js
 import { UpsertTopicStandingUseCase } from './application/commands/UpsertTopicStandingUseCase.js';
 import { GetTopicStandingMatrixUseCase } from './application/queries/GetTopicStandingMatrixUseCase.js';
 import { ListTopicsUseCase } from './application/queries/ListTopicsUseCase.js';
-import { Topic } from '../../entities/topic.entity.js';
-import { TopicBotConfig } from '../../entities/topic-bot-config.entity.js';
-import { TopicProblem } from '../../entities/topic-problem.entity.js';
-import { TopicStanding } from '../../entities/topic-standing.entity.js';
-import { TypeOrmTopicReader } from './infrastructure/persistence/typeorm/TypeOrmTopicReader.js';
-import { TypeOrmTopicWriter } from './infrastructure/persistence/typeorm/TypeOrmTopicWriter.js';
+import { Topic } from './infrastructure/persistence/typeorm/entities/topic.entity.js';
+import { TopicBotConfig } from './infrastructure/persistence/typeorm/entities/topic-bot-config.entity.js';
+import { TopicProblem } from './infrastructure/persistence/typeorm/entities/topic-problem.entity.js';
+import { TopicStanding } from './infrastructure/persistence/typeorm/entities/topic-standing.entity.js';
+import { TypeOrmTopicReader } from './infrastructure/persistence/typeorm/Reader.js';
+import { TypeOrmTopicWriter } from './infrastructure/persistence/typeorm/Writer.js';
 import { TopicController } from './presentation/controllers/TopicController.js';
 import { TopicStandingReportController } from './presentation/controllers/TopicStandingReportController.js';
 import { createTopicStandingReportRouter } from './presentation/routes/topic-standing-report.routes.js';
 import { createTopicRouter } from './presentation/routes/topic.routes.js';
-const topicReader = new TypeOrmTopicReader();
-const listTopicsUseCase = new ListTopicsUseCase(topicReader);
-const getTopicStandingMatrixUseCase = new GetTopicStandingMatrixUseCase(topicReader);
+const createTopicReader = () => new TypeOrmTopicReader(AppDataSource.manager);
 const topicControllerDependencies = {
   listTopics: (teacherId: number, filters: Parameters<ListTopicsUseCase['execute']>[1]) =>
-    listTopicsUseCase.execute(teacherId, filters),
+    new ListTopicsUseCase(createTopicReader()).execute(teacherId, filters),
   createTopic: (teacherId: number, input: Parameters<CreateTopicUseCase['execute']>[1]) =>
     AppDataSource.transaction((manager) =>
       new CreateTopicUseCase(new TypeOrmTopicWriter(manager)).execute(teacherId, input)),
@@ -55,7 +53,8 @@ const topicRouter = createTopicRouter({
 });
 const topicStandingReportRouter = createTopicStandingReportRouter(
   new TopicStandingReportController({
-    getTopicStandingMatrix: (teacherId, topicId) => getTopicStandingMatrixUseCase.execute(teacherId, topicId),
+    getTopicStandingMatrix: (teacherId, topicId) =>
+      new GetTopicStandingMatrixUseCase(createTopicReader()).execute(teacherId, topicId),
   }),
 );
 

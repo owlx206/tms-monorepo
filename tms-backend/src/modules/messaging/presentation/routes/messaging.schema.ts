@@ -5,7 +5,7 @@ import {
   optionalPositiveIntegerArraySchema,
   positiveIntegerSchema,
   requiredTrimmedStringSchema,
-} from '../../../../shared/schemas/common.schemas.js';
+} from '../../../../shared/presentation/validation.js';
 
 const nonEmptyPositiveIntegerArraySchema = z.array(positiveIntegerSchema)
   .min(1, 'at least one guild is required')

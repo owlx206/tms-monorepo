@@ -1,7 +1,7 @@
 import config from '../../../../config.js';
-import type { SysadminDiscordBotCredentialStore } from '../../../identity/index.js';
+import type { SysadminDiscordBotCredentialStore } from '../../../identity/infrastructure/persistence/typeorm/Writer.js';
 import { signDiscordInstallState } from '../../../identity/infrastructure/discord/DiscordInstallState.js';
-import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class GetBotInviteLinkUseCase {
   constructor(

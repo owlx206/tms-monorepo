@@ -1,7 +1,7 @@
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
-import { getTeacherId, getTopicId } from './request-context.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 
 type TopicStandingReportDependencies = {
   getTopicStandingMatrix(teacherId: number, topicId: number): Promise<unknown>;
@@ -10,10 +10,12 @@ type TopicStandingReportDependencies = {
 export class TopicStandingReportController implements Controller {
   constructor(private readonly dependencies: TopicStandingReportDependencies) {}
 
-  async handle(request: HttpRequest): Promise<HttpResponse> {
+  async handle(
+    request: HttpRequest<unknown, { topicId: number }, unknown, unknown, ParsedRequestContext<unknown, { topicId: number }> & { teacherId: number }>,
+  ): Promise<HttpResponse> {
     const matrix = await this.dependencies.getTopicStandingMatrix(
-      getTeacherId(request),
-      getTopicId(request),
+      request.context.teacherId,
+      request.context.params.topicId,
     );
 
     return {

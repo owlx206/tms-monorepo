@@ -2,19 +2,18 @@ import type { UseCase } from '../../../../shared/application/UseCase.js';
 import { DomainError } from '../../../../shared/domain/DomainError.js';
 import { Enrollment } from '../../domain/models/Enrollment.js';
 import { Student } from '../../domain/models/Student.js';
-import type { EnrollmentWriter } from '../../domain/writers/EnrollmentWriter.js';
-import type { StudentWriter } from '../../domain/writers/StudentWriter.js';
 import { CodeforcesHandle } from '../../domain/value-objects/CodeforcesHandle.js';
 import { StudentId } from '../../domain/value-objects/StudentId.js';
-import type { StudentSummary } from '../dto/StudentDto.js';
+import type { StudentSummary } from '../../contracts/types.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
-import type { TypeOrmClassroomAccess } from '../../infrastructure/persistence/typeorm/TypeOrmClassroomAccess.js';
-import type { CreateStudentCommand } from '../dto/CreateStudentCommand.js';
+import type { TypeOrmClassroomAccess } from '../../infrastructure/persistence/typeorm/Reader.js';
+import type { TypeOrmEnrollmentWriter, TypeOrmStudentWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { CreateStudentCommand } from '../../contracts/types.js';
 
 export class CreateStudentUseCase implements UseCase<CreateStudentCommand, StudentSummary> {
   constructor(
-    private readonly students: StudentWriter,
-    private readonly enrollments: EnrollmentWriter,
+    private readonly students: TypeOrmStudentWriter,
+    private readonly enrollments: TypeOrmEnrollmentWriter,
     private readonly classroom: TypeOrmClassroomAccess,
   ) {}
 

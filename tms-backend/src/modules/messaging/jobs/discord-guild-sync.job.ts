@@ -1,13 +1,11 @@
 import { AppDataSource } from '../../../infrastructure/database/data-source.js';
-import {
-  ClassDiscordBinding,
-  DiscordGuildChannelCache,
-  DiscordUserGuild,
-  SysadminDiscordBotCredential,
-  Teacher,
-} from '../../../entities/index.js';
 import { DiscordClient } from '../../../infrastructure/external/discord/discord-api.service.js';
-import type { IntervalJob } from '../../../jobs/index.js';
+import type { IntervalJob } from '../../../infrastructure/jobs/index.js';
+import { SysadminDiscordBotCredential } from '../../identity/infrastructure/persistence/typeorm/entities/sysadmin-discord-bot-credential.entity.js';
+import { Teacher } from '../../identity/infrastructure/persistence/typeorm/entities/teacher.entity.js';
+import { ClassDiscordBinding } from '../infrastructure/persistence/typeorm/entities/class-discord-binding.entity.js';
+import { DiscordGuildChannelCache } from '../infrastructure/persistence/typeorm/entities/discord-guild-channel-cache.entity.js';
+import { DiscordUserGuild } from '../infrastructure/persistence/typeorm/entities/discord-user-guild.entity.js';
 
 export async function syncDiscordGuildsOnce(): Promise<void> {
   if (!AppDataSource.isInitialized) {

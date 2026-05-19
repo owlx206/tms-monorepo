@@ -1,14 +1,14 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   SysadminDiscordBotCredentialInput,
   SysadminDiscordBotCredentialView,
   AdminTeacher,
   UpdateTeacherByAdminInput,
-} from '../../application/dto/AdminDto.js';
-import { getTeacher } from './request-context.js';
+} from '../../contracts/types.js';
 
 type AdminControllerAction =
   | 'listTeachers'
@@ -33,7 +33,9 @@ export class AdminController implements Controller {
     private readonly dependencies: AdminControllerDependencies,
   ) {}
 
-  async handle(request: HttpRequest): Promise<HttpResponse> {
+  async handle(
+    request: HttpRequest<unknown, { teacherId: number }, unknown, unknown, ParsedRequestContext<unknown, { teacherId: number }> & { teacherId: number }>,
+  ): Promise<HttpResponse> {
     try {
       switch (this.action) {
         case 'listTeachers':
@@ -46,7 +48,7 @@ export class AdminController implements Controller {
           return this.upsertDiscordBotCredential(request);
       }
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (error instanceof HttpError) {
         throw error;
       }
 
@@ -63,17 +65,12 @@ export class AdminController implements Controller {
     };
   }
 
-  private async updateTeacher(request: HttpRequest): Promise<HttpResponse> {
-    const actorTeacherId = getTeacher(request).id;
-    const teacherId = (request.params as { teacherId?: number }).teacherId;
-
-    if (typeof teacherId !== 'number') {
-      throw new ServiceError('teacherId is required', 400);
-    }
-
+  private async updateTeacher(
+    request: HttpRequest<unknown, { teacherId: number }, unknown, unknown, ParsedRequestContext<unknown, { teacherId: number }> & { teacherId: number }>,
+  ): Promise<HttpResponse> {
     const teacher = await this.dependencies.updateTeacher.execute(
-      actorTeacherId,
-      teacherId,
+      request.context.teacherId,
+      request.context.params.teacherId,
       request.body as UpdateTeacherByAdminInput,
     );
 

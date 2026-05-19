@@ -1,7 +1,7 @@
 import config from '../../../../config.js';
-import { AuthError } from '../../../../shared/errors/auth.error.js';
-import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
-import type { TypeOrmStudentDiscordIdentityStore } from '../../infrastructure/persistence/typeorm/TypeOrmStudentDiscordIdentityStore.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { TypeOrmStudentDiscordIdentityStore } from '../../infrastructure/persistence/typeorm/Writer.js';
 import { signStudentDiscordAuthorizationState } from '../../infrastructure/discord/StudentDiscordAuthorizationState.js';
 
 export class StartStudentDiscordAuthorizationUseCase {
@@ -13,11 +13,11 @@ export class StartStudentDiscordAuthorizationUseCase {
   async execute(teacherId: number, studentId: number): Promise<string> {
     const credential = await this.discordBotCredentialStore.findDefault();
     if (!credential?.client_id || !credential.client_secret) {
-      throw new AuthError('discord is not available right now', 503);
+      throw new HttpError('discord is not available right now', 503);
     }
 
     if (!await this.repository.studentExists(teacherId, studentId)) {
-      throw new AuthError('student not found', 404);
+      throw new HttpError('student not found', 404);
     }
 
     const search = new URLSearchParams({

@@ -1,11 +1,11 @@
-import { ClassStatus } from '../../../../entities/enums.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { ClassStatus } from '../../../classroom/contracts/types.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import {
   CodeforcesClient,
   extractGymIdFromLink,
 } from '../../../../infrastructure/external/codeforces/codeforces-api.service.js';
-import type { CreateTopicInput } from '../dto/TopicDto.js';
-import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTopicWriter.js';
+import type { CreateTopicInput } from '../../contracts/types.js';
+import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class CreateTopicUseCase {
   constructor(
@@ -15,21 +15,21 @@ export class CreateTopicUseCase {
   async execute(teacherId: number, input: CreateTopicInput) {
     const classEntity = await this.topicWriter.findClassById(input.class_id);
     if (!classEntity) {
-      throw new ServiceError('class not found', 404);
+      throw new HttpError('class not found', 404);
     }
 
     if (classEntity.status !== ClassStatus.Active) {
-      throw new ServiceError('class is archived', 409);
+      throw new HttpError('class is archived', 409);
     }
 
     const teacher = await this.topicWriter.findTeacherById(teacherId);
     if (!teacher) {
-      throw new ServiceError('teacher not found', 404);
+      throw new HttpError('teacher not found', 404);
     }
 
     const gymId = extractGymIdFromLink(input.gym_link);
     if (!gymId) {
-      throw new ServiceError('gym_link must contain a valid gym id', 400);
+      throw new HttpError('gym_link must contain a valid gym id', 400);
     }
 
     const codeforces = new CodeforcesClient(await this.topicWriter.resolveTopicBotCodeforcesCredentials(teacherId));

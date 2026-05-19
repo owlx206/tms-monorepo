@@ -1,15 +1,15 @@
 import type { AppModule } from '../module.types.js';
 import { AppDataSource } from '../../infrastructure/database/data-source.js';
-import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
-import { Enrollment } from '../../entities/enrollment.entity.js';
-import { Student } from '../../entities/student.entity.js';
-import { TypeOrmStudentDiscordMembershipService } from './infrastructure/persistence/typeorm/TypeOrmStudentDiscordMembershipService.js';
-import { TypeOrmStudentCommandHandlers } from './infrastructure/persistence/typeorm/TypeOrmStudentCommandHandlers.js';
-import { TypeOrmStudentReader } from './infrastructure/persistence/typeorm/TypeOrmStudentReader.js';
+import { TypeOrmSysadminDiscordBotCredentialStore } from '../identity/infrastructure/persistence/typeorm/Writer.js';
+import { Enrollment } from './infrastructure/persistence/typeorm/entities/enrollment.entity.js';
+import { Student } from './infrastructure/persistence/typeorm/entities/student.entity.js';
+import { TypeOrmStudentDiscordMembershipService } from './infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmStudentCommandHandlers } from './infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmStudentReader } from './infrastructure/persistence/typeorm/Reader.js';
 import { GetDashboardSummaryUseCase } from './application/queries/GetDashboardSummaryUseCase.js';
 import { GetStudentLearningProfileUseCase } from './application/queries/GetStudentLearningProfileUseCase.js';
-import { TypeOrmStudentReportReader } from './infrastructure/persistence/typeorm/TypeOrmStudentReportReader.js';
-import { TypeOrmFinanceReportReader } from './infrastructure/persistence/typeorm/TypeOrmFinanceReportReader.js';
+import { TypeOrmStudentReportReader } from './infrastructure/persistence/typeorm/Reader.js';
+import { TypeOrmFinanceReportReader } from './infrastructure/persistence/typeorm/Reader.js';
 import { StudentController } from './presentation/controllers/StudentController.js';
 import { StudentReportController } from './presentation/controllers/StudentReportController.js';
 import { createStudentReportRouter } from './presentation/routes/student-report.routes.js';
@@ -17,10 +17,15 @@ import { createStudentRouter } from './presentation/routes/enrollment.routes.js'
 
 const studentDiscordMembershipService = new TypeOrmStudentDiscordMembershipService(
   AppDataSource,
-  createSysadminDiscordBotCredentialStore(),
+  new TypeOrmSysadminDiscordBotCredentialStore(),
 );
 const studentCommandHandlers = new TypeOrmStudentCommandHandlers(AppDataSource, studentDiscordMembershipService);
-const studentReader = new TypeOrmStudentReader(AppDataSource.manager);
+const studentReader = {
+  listStudents: (...args: Parameters<TypeOrmStudentReader['listStudents']>) =>
+    new TypeOrmStudentReader(AppDataSource.manager).listStudents(...args),
+  getStudentById: (...args: Parameters<TypeOrmStudentReader['getStudentById']>) =>
+    new TypeOrmStudentReader(AppDataSource.manager).getStudentById(...args),
+};
 const studentControllerDependencies = {
   students: studentReader,
   createStudent: studentCommandHandlers.createStudent,

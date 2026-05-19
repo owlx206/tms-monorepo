@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import { TeacherRole } from '../../../../entities/enums.js';
+import { TeacherRole } from '../../contracts/types.js';
 import {
   booleanSchema,
   nullableOptionalTrimmedStringSchema,
   positiveIntegerSchema,
   requiredTrimmedStringSchema,
-} from '../../../../shared/schemas/common.schemas.js';
+} from '../../../../shared/presentation/validation.js';
 
 export const teacherIdParamSchema = z.object({
   teacherId: positiveIntegerSchema,

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { FeeRecordStatus, StudentStatus, TransactionType } from '../../../../entities/enums.js';
+import { FeeRecordStatus, TransactionType } from '../../contracts/types.js';
+import { StudentStatus } from '../../../enrollment/contracts/types.js';
 import {
   booleanSchema,
   commaSeparatedPositiveIntegerArraySchema,
@@ -9,7 +10,7 @@ import {
   paginationSchema,
   positiveIntegerSchema,
   requiredTrimmedStringSchema,
-} from '../../../../shared/schemas/common.schemas.js';
+} from '../../../../shared/presentation/validation.js';
 
 export const financeTransactionListQuerySchema = z.object({
   student_id: positiveIntegerSchema.optional(),

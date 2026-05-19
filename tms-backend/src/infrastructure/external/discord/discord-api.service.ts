@@ -1,6 +1,6 @@
 import { DiscordAPIError, HTTPError, REST } from 'discord.js';
 
-import { ServiceError } from '../../../shared/errors/service.error.js';
+import { HttpError } from '../../../shared/errors/HttpError.js';
 
 type DiscordApiErrorPayload = {
   message?: string;
@@ -167,7 +167,7 @@ function extractGuildPayload(payload: unknown): { id: string; name: string } | n
 function normalizeRequiredString(value: string, fieldName: string): string {
   const normalized = value.trim();
   if (!normalized) {
-    throw new ServiceError(`${fieldName} is required`, 400);
+    throw new HttpError(`${fieldName} is required`, 400);
   }
 
   return normalized;
@@ -298,10 +298,10 @@ async function discordApiRequest(
     }
 
     if (error instanceof Error) {
-      throw new ServiceError(error.message || 'failed to connect to Discord API', 502);
+      throw new HttpError(error.message || 'failed to connect to Discord API', 502);
     }
 
-    throw new ServiceError('failed to connect to Discord API', 502);
+    throw new HttpError('failed to connect to Discord API', 502);
   }
 }
 
@@ -344,12 +344,12 @@ export class DiscordClient {
     }
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot has no access to this invite', 400);
+      throw new HttpError('invalid bot_token or bot has no access to this invite', 400);
     }
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to resolve discord invite: ${detail}` : 'failed to resolve discord invite',
         502,
       );
@@ -367,12 +367,12 @@ export class DiscordClient {
     const response = await this.request('/users/@me/guilds');
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot cannot list guilds', 400);
+      throw new HttpError('invalid bot_token or bot cannot list guilds', 400);
     }
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to list Discord guilds: ${detail}` : 'failed to list Discord guilds',
         502,
       );
@@ -380,7 +380,7 @@ export class DiscordClient {
 
     const payload = await parseJsonSafe(response);
     if (!Array.isArray(payload)) {
-      throw new ServiceError('discord guild list response is invalid', 502);
+      throw new HttpError('discord guild list response is invalid', 502);
     }
 
     return payload
@@ -445,7 +445,7 @@ export class DiscordClient {
     }
 
     if (!isDiscordSnowflake(guildIdCandidate)) {
-      throw new ServiceError(
+      throw new HttpError(
         'discord_guild_id must be a valid Discord Guild ID or Discord guild URL',
         400,
       );
@@ -454,7 +454,7 @@ export class DiscordClient {
     const response = await this.request(`/guilds/${encodeURIComponent(guildIdCandidate)}`);
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot has no access to this guild', 400);
+      throw new HttpError('invalid bot_token or bot has no access to this guild', 400);
     }
 
     if (response.status === 404) {
@@ -475,13 +475,13 @@ export class DiscordClient {
             }
           }
         } catch (error) {
-          if (error instanceof ServiceError && error.statusCode !== 404) {
+          if (error instanceof HttpError && error.statusCode !== 404) {
             throw error;
           }
         }
       }
 
-      throw new ServiceError(
+      throw new HttpError(
         'discord guild not found or bot is not in this guild (hãy dùng đúng Guild ID và đảm bảo bot đã được mời vào guild)',
         404,
       );
@@ -489,7 +489,7 @@ export class DiscordClient {
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to sync discord guild metadata: ${detail}` : 'failed to sync discord guild metadata',
         502,
       );
@@ -497,7 +497,7 @@ export class DiscordClient {
 
     const payload = extractGuildPayload(await parseJsonSafe(response));
     if (!payload) {
-      throw new ServiceError('discord guild metadata is invalid', 502);
+      throw new HttpError('discord guild metadata is invalid', 502);
     }
 
     return payload;
@@ -508,16 +508,16 @@ export class DiscordClient {
     const response = await this.request(`/guilds/${encodeURIComponent(normalizedGuildId)}/channels`);
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot cannot list guild channels', 400);
+      throw new HttpError('invalid bot_token or bot cannot list guild channels', 400);
     }
 
     if (response.status === 404) {
-      throw new ServiceError('discord guild not found or bot is not in this guild', 404);
+      throw new HttpError('discord guild not found or bot is not in this guild', 404);
     }
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to list Discord guild channels: ${detail}` : 'failed to list Discord guild channels',
         502,
       );
@@ -525,7 +525,7 @@ export class DiscordClient {
 
     const payload = await parseJsonSafe(response);
     if (!Array.isArray(payload)) {
-      throw new ServiceError('discord guild channel list response is invalid', 502);
+      throw new HttpError('discord guild channel list response is invalid', 502);
     }
 
     return payload
@@ -558,16 +558,16 @@ export class DiscordClient {
     const response = await this.request(`/channels/${encodeURIComponent(normalizedChannelId)}`);
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot has no access to this channel', 400);
+      throw new HttpError('invalid bot_token or bot has no access to this channel', 400);
     }
 
     if (response.status === 404) {
-      throw new ServiceError('discord channel not found', 404);
+      throw new HttpError('discord channel not found', 404);
     }
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to fetch discord channel metadata: ${detail}` : 'failed to fetch discord channel metadata',
         502,
       );
@@ -575,7 +575,7 @@ export class DiscordClient {
 
     const payload = await parseJsonSafe(response) as DiscordChannelPayload | null;
     if (!payload || typeof payload.id !== 'string') {
-      throw new ServiceError('discord channel metadata is invalid', 502);
+      throw new HttpError('discord channel metadata is invalid', 502);
     }
 
     return {
@@ -592,7 +592,7 @@ export class DiscordClient {
   }): Promise<void> {
     const channel = await this.fetchChannelMetadata(input.channelId);
     if (channel.guild_id !== input.guildId) {
-      throw new ServiceError(`${input.fieldName} does not belong to discord_guild_id`, 400);
+      throw new HttpError(`${input.fieldName} does not belong to discord_guild_id`, 400);
     }
   }
 
@@ -605,7 +605,7 @@ export class DiscordClient {
     const normalizedQuery = input.query.trim();
 
     if (!normalizedQuery) {
-      throw new ServiceError('query is required', 400);
+      throw new HttpError('query is required', 400);
     }
 
     const requestedLimit = input.limit;
@@ -618,20 +618,20 @@ export class DiscordClient {
     );
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot has no access to search guild members', 400);
+      throw new HttpError('invalid bot_token or bot has no access to search guild members', 400);
     }
 
     if (response.status === 404) {
-      throw new ServiceError('discord guild not found or bot is not in this guild', 404);
+      throw new HttpError('discord guild not found or bot is not in this guild', 404);
     }
 
     if (response.status === 429) {
-      throw new ServiceError('discord rate limit exceeded, please retry later', 429);
+      throw new HttpError('discord rate limit exceeded, please retry later', 429);
     }
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to search Discord guild members: ${detail}` : 'failed to search Discord guild members',
         502,
       );
@@ -639,7 +639,7 @@ export class DiscordClient {
 
     const payload = await parseJsonSafe(response);
     if (!Array.isArray(payload)) {
-      throw new ServiceError('discord guild member search response is invalid', 502);
+      throw new HttpError('discord guild member search response is invalid', 502);
     }
 
     return payload
@@ -662,16 +662,16 @@ export class DiscordClient {
     }
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot has no access to fetch guild member', 400);
+      throw new HttpError('invalid bot_token or bot has no access to fetch guild member', 400);
     }
 
     if (response.status === 429) {
-      throw new ServiceError('discord rate limit exceeded, please retry later', 429);
+      throw new HttpError('discord rate limit exceeded, please retry later', 429);
     }
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to fetch Discord guild member: ${detail}` : 'failed to fetch Discord guild member',
         502,
       );
@@ -679,7 +679,7 @@ export class DiscordClient {
 
     const identity = this.toGuildMemberIdentity(await parseJsonSafe(response));
     if (!identity) {
-      throw new ServiceError('discord guild member response is invalid', 502);
+      throw new HttpError('discord guild member response is invalid', 502);
     }
 
     return identity;
@@ -694,11 +694,11 @@ export class DiscordClient {
   }> {
     const normalizedContent = input.content.trim();
     if (!normalizedContent) {
-      throw new ServiceError('content is required', 400);
+      throw new HttpError('content is required', 400);
     }
 
     if (normalizedContent.length > 2000) {
-      throw new ServiceError('content must be 2000 characters or less', 400);
+      throw new HttpError('content must be 2000 characters or less', 400);
     }
 
     const normalizedChannelId = normalizeRequiredString(input.channelId, 'channel_id');
@@ -713,20 +713,20 @@ export class DiscordClient {
     );
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot cannot send message to this channel', 400);
+      throw new HttpError('invalid bot_token or bot cannot send message to this channel', 400);
     }
 
     if (response.status === 404) {
-      throw new ServiceError('discord channel not found', 404);
+      throw new HttpError('discord channel not found', 404);
     }
 
     if (response.status === 429) {
-      throw new ServiceError('discord rate limit exceeded, please retry later', 429);
+      throw new HttpError('discord rate limit exceeded, please retry later', 429);
     }
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to send message to Discord channel: ${detail}` : 'failed to send message to Discord channel',
         502,
       );
@@ -734,7 +734,7 @@ export class DiscordClient {
 
     const payload = await parseJsonSafe(response) as DiscordMessagePayload | null;
     if (!payload || typeof payload.id !== 'string' || typeof payload.channel_id !== 'string') {
-      throw new ServiceError('discord message response is invalid', 502);
+      throw new HttpError('discord message response is invalid', 502);
     }
 
     return {
@@ -753,20 +753,20 @@ export class DiscordClient {
     });
 
     if (response.status === 401 || response.status === 403) {
-      throw new ServiceError('invalid bot_token or bot cannot start DM with this user', 400);
+      throw new HttpError('invalid bot_token or bot cannot start DM with this user', 400);
     }
 
     if (response.status === 404 || response.status === 400) {
-      throw new ServiceError('discord user not found or bot cannot open DM', 400);
+      throw new HttpError('discord user not found or bot cannot open DM', 400);
     }
 
     if (response.status === 429) {
-      throw new ServiceError('discord rate limit exceeded, please retry later', 429);
+      throw new HttpError('discord rate limit exceeded, please retry later', 429);
     }
 
     if (!response.ok) {
       const detail = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         detail ? `failed to create Discord DM channel: ${detail}` : 'failed to create Discord DM channel',
         502,
       );
@@ -774,7 +774,7 @@ export class DiscordClient {
 
     const payload = await parseJsonSafe(response) as DiscordChannelPayload | null;
     if (!payload || typeof payload.id !== 'string') {
-      throw new ServiceError('discord DM channel response is invalid', 502);
+      throw new HttpError('discord DM channel response is invalid', 502);
     }
 
     return payload.id;
@@ -818,7 +818,7 @@ export class DiscordClient {
     }
 
     const errorMessage = await getDiscordErrorMessage(response);
-    throw new ServiceError(
+    throw new HttpError(
       errorMessage ?? `failed to kick member (HTTP ${response.status})`,
       502,
     );
@@ -844,7 +844,7 @@ export class DiscordClient {
     }
 
     const errorMessage = await getDiscordErrorMessage(response);
-    throw new ServiceError(
+    throw new HttpError(
       errorMessage ?? `failed to add guild member (HTTP ${response.status})`,
       response.status === 401 || response.status === 403 ? 400 : 502,
     );
@@ -869,7 +869,7 @@ export class DiscordClient {
 
     if (!response.ok) {
       const errorMessage = await getDiscordErrorMessage(response);
-      throw new ServiceError(
+      throw new HttpError(
         errorMessage ?? `failed to create invite (HTTP ${response.status})`,
         502,
       );
@@ -877,7 +877,7 @@ export class DiscordClient {
 
     const payload = await parseJsonSafe(response) as { code?: string } | null;
     if (!payload?.code) {
-      throw new ServiceError('discord invite response is invalid', 502);
+      throw new HttpError('discord invite response is invalid', 502);
     }
 
     return {
@@ -928,7 +928,7 @@ export class DiscordClientFactory {
     const credential = await this.credentialSource.findDefault();
     const stored = credential?.bot_token?.trim();
     if (!stored) {
-      throw new ServiceError('discord is not available right now', 503);
+      throw new HttpError('discord is not available right now', 503);
     }
 
     return new DiscordClient(stored);

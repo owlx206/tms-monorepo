@@ -2,6 +2,7 @@ import { Router } from 'express';
 import passport from 'passport';
 
 import { validate } from '../../../../shared/middlewares/validate.js';
+import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
 import { authorizeOwnedStudentParam } from '../middlewares/ownership.js';
 import { AuthController } from '../controllers/AuthController.js';
@@ -25,10 +26,11 @@ export function createAuthRouter(controllers: AuthRouteControllers): Router {
   router.post('/login', validate({ body: loginBodySchema }), adaptExpressRoute(controllers.login));
   router.get('/discord/verification/callback', adaptExpressRoute(controllers.completeDiscordVerification));
   router.get('/discord/student/callback', adaptExpressRoute(controllers.completeStudentDiscordAuthorization));
-  router.get('/me', passport.authenticate('jwt', { session: false }), adaptExpressRoute(controllers.me));
+  router.get('/me', passport.authenticate('jwt', { session: false }), attachRequestContext(), adaptExpressRoute(controllers.me));
   router.get(
     '/students/:studentId/discord/authorization-url',
     passport.authenticate('jwt', { session: false }),
+    attachRequestContext(),
     validate({ params: studentIdParamSchema }),
     authorizeOwnedStudentParam(),
     adaptExpressRoute(controllers.startStudentDiscordAuthorization),
@@ -36,11 +38,13 @@ export function createAuthRouter(controllers: AuthRouteControllers): Router {
   router.get(
     '/me/discord/verification/start',
     passport.authenticate('jwt', { session: false }),
+    attachRequestContext(),
     adaptExpressRoute(controllers.startDiscordVerification),
   );
   router.patch(
     '/me',
     passport.authenticate('jwt', { session: false }),
+    attachRequestContext(),
     validate({ body: updateMeBodySchema }),
     adaptExpressRoute(controllers.updateMe),
   );

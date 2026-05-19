@@ -1,9 +1,9 @@
 import { QueryFailedError } from 'typeorm';
 
-import { TransactionType } from '../../../../entities/enums.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
-import { parseAmountToBigInt } from '../../../../shared/helpers/money.js';
-import type { TypeOrmTransactionWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTransactionWriter.js';
+import { TransactionType } from '../../contracts/types.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import { parseAmountToBigInt } from '../../domain/Money.js';
+import type { TypeOrmTransactionWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 function isRefundBalanceConstraintError(error: unknown): boolean {
   if (!(error instanceof QueryFailedError)) {
@@ -16,15 +16,15 @@ function isRefundBalanceConstraintError(error: unknown): boolean {
 
 function validateTransactionAmount(type: TransactionType, amount: bigint): void {
   if (amount === 0n) {
-    throw new ServiceError('amount must be non-zero', 400);
+    throw new HttpError('amount must be non-zero', 400);
   }
 
   if (type === TransactionType.Payment && amount <= 0n) {
-    throw new ServiceError('payment amount must be positive', 400);
+    throw new HttpError('payment amount must be positive', 400);
   }
 
   if (type === TransactionType.Refund && amount >= 0n) {
-    throw new ServiceError('refund amount must be negative', 400);
+    throw new HttpError('refund amount must be negative', 400);
   }
 }
 
@@ -42,7 +42,7 @@ export class CreateTransactionUseCase {
     const student = await this.transactionWriter.findOwnedStudent(input.teacherId, input.studentId);
 
     if (!student) {
-      throw new ServiceError('student not found', 404);
+      throw new HttpError('student not found', 404);
     }
 
     const amount = parseAmountToBigInt(input.amount);
@@ -53,7 +53,7 @@ export class CreateTransactionUseCase {
     const totalRefunds = totals.refunds + (input.type === TransactionType.Refund ? amount * -1n : 0n);
 
     if (totalRefunds > totalPayments) {
-      throw new ServiceError('Tổng số tiền hoàn trả không được lớn hơn tổng số tiền đã nhận', 400);
+      throw new HttpError('Tổng số tiền hoàn trả không được lớn hơn tổng số tiền đã nhận', 400);
     }
 
     const transaction = this.transactionWriter.create({
@@ -69,7 +69,7 @@ export class CreateTransactionUseCase {
       return await this.transactionWriter.save(transaction);
     } catch (error) {
       if (isRefundBalanceConstraintError(error)) {
-        throw new ServiceError('Tổng số tiền hoàn trả không được lớn hơn tổng số tiền đã nhận', 400);
+        throw new HttpError('Tổng số tiền hoàn trả không được lớn hơn tổng số tiền đã nhận', 400);
       }
 
       throw error;

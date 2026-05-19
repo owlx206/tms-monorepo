@@ -1,11 +1,10 @@
-import { AuthError } from '../../../../shared/errors/auth.error.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import { GetCurrentTeacherUseCase } from '../../application/queries/GetCurrentTeacherUseCase.js';
-import type { LoginInput, RegisterInput, UpdateTeacherInput } from '../../application/dto/AuthDto.js';
-import { getTeacher } from './request-context.js';
+import type { LoginInput, RegisterInput, UpdateTeacherInput } from '../../contracts/types.js';
 
 type AuthControllerAction =
   | 'register'
@@ -79,7 +78,9 @@ export class AuthController implements Controller {
     private readonly dependencies: AuthControllerDependencies,
   ) {}
 
-  async handle(request: HttpRequest): Promise<HttpResponse> {
+  async handle(
+    request: HttpRequest<unknown, { studentId: number }, unknown, unknown, ParsedRequestContext<unknown, { studentId: number }> & { teacherId: number }>,
+  ): Promise<HttpResponse> {
     try {
       switch (this.action) {
         case 'register':
@@ -100,7 +101,7 @@ export class AuthController implements Controller {
           return this.completeStudentDiscordAuthorization(request);
       }
     } catch (error) {
-      if (error instanceof AuthError || error instanceof ServiceError) {
+      if (error instanceof HttpError) {
         throw error;
       }
 
@@ -124,19 +125,18 @@ export class AuthController implements Controller {
     };
   }
 
-  private async me(request: HttpRequest): Promise<HttpResponse> {
+  private async me(request: HttpRequest<unknown, unknown, unknown, unknown, ParsedRequestContext & { teacherId: number }>): Promise<HttpResponse> {
     return {
       statusCode: 200,
       body: {
-        teacher: this.dependencies.getCurrentTeacher.execute(getTeacher(request)),
+        teacher: this.dependencies.getCurrentTeacher.execute(request.context.teacher!),
       },
     };
   }
 
-  private async updateMe(request: HttpRequest): Promise<HttpResponse> {
-    const teacher = getTeacher(request);
+  private async updateMe(request: HttpRequest<unknown, unknown, unknown, unknown, ParsedRequestContext & { teacherId: number }>): Promise<HttpResponse> {
     const updatedTeacher = await this.dependencies.updateMe.execute(
-      teacher.id,
+      request.context.teacherId,
       request.body as UpdateTeacherInput,
     );
 
@@ -146,9 +146,8 @@ export class AuthController implements Controller {
     };
   }
 
-  private async startDiscordVerification(request: HttpRequest): Promise<HttpResponse> {
-    const teacher = getTeacher(request);
-    const authorizeUrl = await this.dependencies.startDiscordVerification.execute(teacher.id);
+  private async startDiscordVerification(request: HttpRequest<unknown, unknown, unknown, unknown, ParsedRequestContext & { teacherId: number }>): Promise<HttpResponse> {
+    const authorizeUrl = await this.dependencies.startDiscordVerification.execute(request.context.teacherId);
 
     return {
       statusCode: 200,
@@ -172,14 +171,13 @@ export class AuthController implements Controller {
     };
   }
 
-  private async startStudentDiscordAuthorization(request: HttpRequest): Promise<HttpResponse> {
-    const teacher = getTeacher(request);
-    const studentId = (request.params as { studentId?: number }).studentId;
-    if (typeof studentId !== 'number') {
-      throw new ServiceError('studentId is required', 400);
-    }
-
-    const authorizeUrl = await this.dependencies.startStudentDiscordAuthorization.execute(teacher.id, studentId);
+  private async startStudentDiscordAuthorization(
+    request: HttpRequest<unknown, { studentId: number }, unknown, unknown, ParsedRequestContext<unknown, { studentId: number }> & { teacherId: number }>,
+  ): Promise<HttpResponse> {
+    const authorizeUrl = await this.dependencies.startStudentDiscordAuthorization.execute(
+      request.context.teacherId,
+      request.context.params.studentId,
+    );
 
     return {
       statusCode: 200,

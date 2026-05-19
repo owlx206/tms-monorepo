@@ -1,19 +1,18 @@
 import type { UseCase } from '../../../../shared/application/UseCase.js';
 import { DomainError } from '../../../../shared/domain/DomainError.js';
 import { Enrollment } from '../../domain/models/Enrollment.js';
-import type { EnrollmentWriter } from '../../domain/writers/EnrollmentWriter.js';
-import type { StudentWriter } from '../../domain/writers/StudentWriter.js';
 import { StudentId } from '../../domain/value-objects/StudentId.js';
-import type { StudentSummary } from '../dto/StudentDto.js';
+import type { StudentSummary } from '../../contracts/types.js';
 import { StudentSummaryMapper } from '../mappers/StudentSummaryMapper.js';
-import type { TypeOrmBalanceSnapshotReader } from '../../infrastructure/persistence/typeorm/TypeOrmBalanceSnapshotReader.js';
-import type { TypeOrmClassroomAccess } from '../../infrastructure/persistence/typeorm/TypeOrmClassroomAccess.js';
-import type { TransferStudentCommand } from '../dto/TransferStudentCommand.js';
+import type { TypeOrmBalanceSnapshotReader } from '../../infrastructure/persistence/typeorm/Reader.js';
+import type { TypeOrmClassroomAccess } from '../../infrastructure/persistence/typeorm/Reader.js';
+import type { TypeOrmEnrollmentWriter, TypeOrmStudentWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { TransferStudentCommand } from '../../contracts/types.js';
 
 export class TransferStudentUseCase implements UseCase<TransferStudentCommand, StudentSummary> {
   constructor(
-    private readonly students: StudentWriter,
-    private readonly enrollments: EnrollmentWriter,
+    private readonly students: TypeOrmStudentWriter,
+    private readonly enrollments: TypeOrmEnrollmentWriter,
     private readonly classroom: TypeOrmClassroomAccess,
     private readonly balanceSnapshots: TypeOrmBalanceSnapshotReader,
   ) {}

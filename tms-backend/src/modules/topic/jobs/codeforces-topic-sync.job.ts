@@ -1,14 +1,19 @@
 import { In, IsNull } from 'typeorm';
 
 import { AppDataSource } from '../../../infrastructure/database/data-source.js';
-import { Enrollment, Student, Topic, TopicBotConfig, TopicProblem, TopicStanding } from '../../../entities/index.js';
+import { Enrollment } from '../../enrollment/infrastructure/persistence/typeorm/entities/enrollment.entity.js';
+import { Student } from '../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
+import { TopicBotConfig } from '../infrastructure/persistence/typeorm/entities/topic-bot-config.entity.js';
+import { Topic } from '../infrastructure/persistence/typeorm/entities/topic.entity.js';
+import { TopicProblem } from '../infrastructure/persistence/typeorm/entities/topic-problem.entity.js';
+import { TopicStanding } from '../infrastructure/persistence/typeorm/entities/topic-standing.entity.js';
 import {
   CodeforcesClient,
   extractGymIdFromLink,
   resolveCodeforcesCredentials,
   type CodeforcesCredentials,
 } from '../../../infrastructure/external/codeforces/codeforces-api.service.js';
-import type { IntervalJob } from '../../../jobs/index.js';
+import type { IntervalJob } from '../../../infrastructure/jobs/index.js';
 
 type ContestListItem = {
   id?: number;

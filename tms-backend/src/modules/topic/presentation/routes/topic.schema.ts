@@ -5,7 +5,7 @@ import {
   optionalTrimmedStringSchema,
   positiveIntegerSchema,
   requiredTrimmedStringSchema,
-} from '../../../../shared/schemas/common.schemas.js';
+} from '../../../../shared/presentation/validation.js';
 
 const codeforcesGymLinkSchema = requiredTrimmedStringSchema.transform((value, ctx) => {
   let parsed: URL;

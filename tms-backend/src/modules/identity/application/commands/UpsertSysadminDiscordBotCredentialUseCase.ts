@@ -2,8 +2,8 @@ import config from '../../../../config.js';
 import type {
   SysadminDiscordBotCredentialInput,
   SysadminDiscordBotCredentialView,
-} from '../dto/AdminDto.js';
-import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
+} from '../../contracts/types.js';
+import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 function buildInviteLink(input: {
   clientId: string;

@@ -1,7 +1,7 @@
 import jwt, { type Secret, type SignOptions } from 'jsonwebtoken';
 
 import config from '../../../../config.js';
-import type { TeacherRole } from '../../../../entities/enums.js';
+import type { TeacherRole } from '../../contracts/types.js';
 
 export class JwtAccessTokenSigner {
   sign(input: { sub: number; username: string; role: TeacherRole }): string {

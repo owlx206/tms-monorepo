@@ -1,16 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../../entities/enums.js';
+import { TeacherRole } from '../../../identity/contracts/types.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
+import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
-import {
-  authorizeOwnedClassBody,
-  authorizeOwnedClassQuery,
-  authorizeOwnedStudentBody,
-  authorizeOwnedTopicParam,
-  requireRoles,
-} from '../../../identity/index.js';
+import { authorizeOwnedClassBody, authorizeOwnedClassQuery, authorizeOwnedStudentBody, authorizeOwnedTopicParam } from '../../../identity/presentation/middlewares/ownership.js';
+import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
 import { TopicController } from '../controllers/TopicController.js';
 import {
   addTopicProblemBodySchema,
@@ -33,6 +29,7 @@ export function createTopicRouter(controllers: TopicRouteControllers): Router {
 
   router.use(passport.authenticate('jwt', { session: false }));
   router.use(requireRoles([TeacherRole.Teacher]));
+  router.use(attachRequestContext());
 
   router.get(
     '/topics',

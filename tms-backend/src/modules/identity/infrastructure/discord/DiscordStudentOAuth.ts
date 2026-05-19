@@ -1,4 +1,4 @@
-import { AuthError } from '../../../../shared/errors/auth.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 
 type DiscordTokenPayload = {
   access_token?: string;
@@ -25,7 +25,7 @@ function toTokenSet(payload: DiscordTokenPayload): StudentDiscordTokenSet {
     || !payload.refresh_token
     || payload.token_type?.toLowerCase() !== 'bearer'
   ) {
-    throw new AuthError('invalid Discord OAuth token response', 502);
+    throw new HttpError('invalid Discord OAuth token response', 502);
   }
 
   const expiresInSeconds = Number.isInteger(payload.expires_in) && (payload.expires_in ?? 0) > 0
@@ -61,11 +61,11 @@ export async function exchangeStudentDiscordCode(input: {
       }),
     });
   } catch {
-    throw new AuthError('failed to connect to Discord OAuth API', 502);
+    throw new HttpError('failed to connect to Discord OAuth API', 502);
   }
 
   if (!response.ok) {
-    throw new AuthError('failed to complete student Discord authorization', 502);
+    throw new HttpError('failed to complete student Discord authorization', 502);
   }
 
   return toTokenSet(await response.json() as DiscordTokenPayload);
@@ -91,11 +91,11 @@ export async function refreshStudentDiscordToken(input: {
       }),
     });
   } catch {
-    throw new AuthError('failed to connect to Discord OAuth API', 502);
+    throw new HttpError('failed to connect to Discord OAuth API', 502);
   }
 
   if (!response.ok) {
-    throw new AuthError('failed to refresh student Discord authorization', 401);
+    throw new HttpError('failed to refresh student Discord authorization', 401);
   }
 
   return toTokenSet(await response.json() as DiscordTokenPayload);
@@ -113,16 +113,16 @@ export async function fetchStudentDiscordUser(accessToken: string): Promise<{
       },
     });
   } catch {
-    throw new AuthError('failed to fetch Discord user profile', 502);
+    throw new HttpError('failed to fetch Discord user profile', 502);
   }
 
   if (!response.ok) {
-    throw new AuthError('failed to fetch Discord user profile', 502);
+    throw new HttpError('failed to fetch Discord user profile', 502);
   }
 
   const payload = await response.json() as DiscordUserPayload;
   if (!payload.id || !payload.username) {
-    throw new AuthError('invalid Discord user profile response', 502);
+    throw new HttpError('invalid Discord user profile response', 502);
   }
 
   return {

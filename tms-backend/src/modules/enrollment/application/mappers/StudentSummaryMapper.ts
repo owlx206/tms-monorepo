@@ -1,22 +1,15 @@
-import type { EnrollmentSnapshot } from '../../domain/models/Enrollment.js';
 import type {
   EnrollmentPendingArchiveReason,
   EnrollmentStudentStatus,
-  StudentSnapshot,
-} from '../../domain/models/Student.js';
-import type { StudentBalanceSnapshot, StudentSummary } from '../dto/StudentDto.js';
+  StudentBalanceSnapshot,
+  StudentSummary,
+  StudentSummaryMappingInput,
+} from '../../contracts/types.js';
 
 const zeroBalanceSnapshot: StudentBalanceSnapshot = {
   transactions_total: '0',
   active_fee_total: '0',
   balance: '0',
-};
-
-type StudentSummaryMappingInput = {
-  student: StudentSnapshot;
-  enrollment?: EnrollmentSnapshot | null;
-  balance?: StudentBalanceSnapshot;
-  fallbackStudentId?: number;
 };
 
 export class StudentSummaryMapper {

@@ -4,7 +4,7 @@ import {
   nullableOptionalTrimmedStringSchema,
   positiveIntegerSchema,
   requiredTrimmedStringSchema,
-} from '../../../../shared/schemas/common.schemas.js';
+} from '../../../../shared/presentation/validation.js';
 
 export const studentIdParamSchema = z.object({
   studentId: positiveIntegerSchema,

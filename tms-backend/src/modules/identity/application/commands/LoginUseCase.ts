@@ -1,7 +1,7 @@
-import { AuthError } from '../../../../shared/errors/auth.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import { toAuthTeacher } from '../mappers/AuthMapper.js';
-import type { LoginInput } from '../dto/AuthDto.js';
-import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
+import type { LoginInput } from '../../contracts/types.js';
+import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 import type { JwtAccessTokenSigner } from '../../infrastructure/security/JwtAccessTokenSigner.js';
 import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
 
@@ -17,16 +17,16 @@ export class LoginUseCase {
     const teacher = await this.teacherWriter.findByUsername(input.username);
 
     if (!teacher) {
-      throw new AuthError('invalid username or password', 401);
+      throw new HttpError('invalid username or password', 401);
     }
 
     if (!teacher.is_active) {
-      throw new AuthError('account is inactive', 403);
+      throw new HttpError('account is inactive', 403);
     }
 
     const passwordMatches = await this.passwordHasher.compare(input.password, teacher.password_hash);
     if (!passwordMatches) {
-      throw new AuthError('invalid username or password', 401);
+      throw new HttpError('invalid username or password', 401);
     }
 
     return {

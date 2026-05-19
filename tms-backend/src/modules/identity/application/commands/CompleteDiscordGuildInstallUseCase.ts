@@ -1,10 +1,9 @@
 import config from '../../../../config.js';
 import { DiscordClient } from '../../../../infrastructure/external/discord/discord-api.service.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
-import { isDomainError } from '../../../../shared/errors/domain.error.js';
-import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
+import { HttpError, isHttpError } from '../../../../shared/errors/HttpError.js';
+import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/Writer.js';
 import { verifyDiscordInstallState } from '../../infrastructure/discord/DiscordInstallState.js';
-import type { TypeOrmDiscordUserGuildStore } from '../../infrastructure/persistence/typeorm/TypeOrmDiscordUserGuildStore.js';
+import type { TypeOrmDiscordUserGuildStore } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class CompleteDiscordGuildInstallUseCase {
   constructor(
@@ -28,7 +27,7 @@ export class CompleteDiscordGuildInstallUseCase {
 
     const credential = await this.discordBotCredentialStore.findDefault();
     if (!credential?.bot_token) {
-      throw new ServiceError('discord is not available right now', 503);
+      throw new HttpError('discord is not available right now', 503);
     }
 
     let discordUserId: string;
@@ -36,7 +35,7 @@ export class CompleteDiscordGuildInstallUseCase {
       const installState = verifyDiscordInstallState(input.state);
       discordUserId = installState.discord_user_id;
     } catch (error) {
-      if (isDomainError(error)) {
+      if (isHttpError(error)) {
         return `${config.frontendUrl}/messaging?discord_install=invalid_state`;
       }
 

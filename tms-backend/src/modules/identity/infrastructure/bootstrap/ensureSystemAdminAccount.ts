@@ -1,7 +1,7 @@
 import config from '../../../../config.js';
-import { TeacherRole } from '../../../../entities/enums.js';
+import { TeacherRole } from '../../contracts/types.js';
 import { BcryptPasswordHasher } from '../security/BcryptPasswordHasher.js';
-import { TypeOrmTeacherWriter } from '../persistence/typeorm/TypeOrmTeacherWriter.js';
+import { TypeOrmTeacherWriter } from '../persistence/typeorm/Writer.js';
 
 const teacherWriter = new TypeOrmTeacherWriter();
 const passwordHasher = new BcryptPasswordHasher();

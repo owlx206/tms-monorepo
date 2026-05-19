@@ -1,9 +1,9 @@
 import type { EntityManager } from 'typeorm';
 
-import type { FeeRecordStatus } from '../../../../entities/enums.js';
-import { FeeRecord } from '../../../../entities/tuition-fee.entity.js';
+import type { FeeRecordStatus } from '../../contracts/types.js';
+import { FeeRecord } from '../../infrastructure/persistence/typeorm/entities/fee-record.entity.js';
 import { AppDataSource } from '../../../../infrastructure/database/data-source.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 
 export class UpdateFeeRecordStatusUseCase {
   constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
@@ -20,7 +20,7 @@ export class UpdateFeeRecordStatusUseCase {
     });
 
     if (!feeRecord) {
-      throw new ServiceError('fee record not found', 404);
+      throw new HttpError('fee record not found', 404);
     }
 
     if (feeRecord.status === input.status) {

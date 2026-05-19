@@ -1,4 +1,4 @@
-import { ServiceError } from '../../../shared/errors/service.error.js';
+import { HttpError } from '../../../shared/errors/HttpError.js';
 import type {
   DiscordBotCredentialSource,
   DiscordGuildMemberIdentity,
@@ -117,7 +117,7 @@ function pickMemberByUsername(
 }
 
 function toFailureMessage(error: unknown, fallback: string): string {
-  if (error instanceof ServiceError) {
+  if (error instanceof HttpError) {
     return error.message;
   }
 

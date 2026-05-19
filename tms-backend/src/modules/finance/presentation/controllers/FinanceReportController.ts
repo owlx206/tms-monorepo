@@ -1,9 +1,9 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
-import type { IncomeReportFilters } from '../../application/dto/FinanceDto.js';
-import { getTeacherId } from './request-context.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
+import type { IncomeReportFilters } from '../../contracts/types.js';
 
 export class FinanceReportController implements Controller {
   constructor(
@@ -12,16 +12,18 @@ export class FinanceReportController implements Controller {
     },
   ) {}
 
-  async handle(request: HttpRequest<unknown, unknown, IncomeReportFilters>): Promise<HttpResponse> {
+  async handle(
+    request: HttpRequest<unknown, unknown, IncomeReportFilters, unknown, ParsedRequestContext<unknown, unknown, IncomeReportFilters> & { teacherId: number }>,
+  ): Promise<HttpResponse> {
     try {
-      const report = await this.incomeReportReader.getIncomeReport(getTeacherId(request), request.query ?? {});
+      const report = await this.incomeReportReader.getIncomeReport(request.context.teacherId, request.query ?? {});
 
       return {
         statusCode: 200,
         body: report,
       };
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (error instanceof HttpError) {
         throw error;
       }
 

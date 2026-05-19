@@ -1,17 +1,8 @@
-import { ClassStatus, SessionStatus } from '../../../../entities/enums.js';
-import { ClassServiceError } from '../../../../shared/errors/class.error.js';
-import type {
-  CreateManualSessionInput,
-  SessionSummary,
-} from '../dto/ClassDto.js';
-import { SessionMapper } from '../../infrastructure/persistence/typeorm/SessionMapper.js';
-import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/TypeOrmSessionWriter.js';
-
-type CreateManualSessionCommand = {
-  teacherId: number;
-  classId: number;
-  session: CreateManualSessionInput;
-};
+import { ClassStatus, SessionStatus } from '../../contracts/types.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { CreateManualSessionCommand, SessionSummary } from '../../contracts/types.js';
+import { SessionMapper } from '../../infrastructure/persistence/typeorm/Mapper.js';
+import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class CreateManualSessionUseCase {
   constructor(private readonly sessions: TypeOrmSessionWriter) {}
@@ -20,15 +11,15 @@ export class CreateManualSessionUseCase {
     const classEntity = await this.sessions.findClassById(command.teacherId, command.classId);
 
     if (!classEntity) {
-      throw new ClassServiceError('class not found', 404);
+      throw new HttpError('class not found', 404);
     }
 
     if (classEntity.status !== ClassStatus.Active) {
-      throw new ClassServiceError('class is archived', 409);
+      throw new HttpError('class is archived', 409);
     }
 
     if (command.session.scheduled_at.getTime() < Date.now()) {
-      throw new ClassServiceError('scheduled_at must be greater than or equal to current time', 400);
+      throw new HttpError('scheduled_at must be greater than or equal to current time', 400);
     }
 
     const duplicated = await this.sessions.findByTeacherClassAndScheduledAt(
@@ -38,7 +29,7 @@ export class CreateManualSessionUseCase {
     );
 
     if (duplicated) {
-      throw new ClassServiceError('session at this datetime already exists', 409);
+      throw new HttpError('session at this datetime already exists', 409);
     }
 
     const hasOverlap = await this.sessions.hasOverlappingSession(
@@ -48,7 +39,7 @@ export class CreateManualSessionUseCase {
     );
 
     if (hasOverlap) {
-      throw new ClassServiceError('Buổi học không được giao nhau với buổi học đã có', 409);
+      throw new HttpError('Buổi học không được giao nhau với buổi học đã có', 409);
     }
 
     const session = this.sessions.create({

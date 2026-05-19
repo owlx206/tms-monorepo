@@ -1,4 +1,4 @@
-import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class UnbindClassDiscordGuildUseCase {
   constructor(private readonly messagingWriter: TypeOrmMessagingWriter) {}

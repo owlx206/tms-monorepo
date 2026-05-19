@@ -1,6 +1,6 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
-import type { SelectClassDiscordGuildInput } from '../dto/MessagingDto.js';
-import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { SelectClassDiscordGuildInput } from '../../contracts/types.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class BindClassDiscordGuildUseCase {
   constructor(private readonly messagingWriter: TypeOrmMessagingWriter) {}
@@ -12,7 +12,7 @@ export class BindClassDiscordGuildUseCase {
     );
 
     if (!userGuild) {
-      throw new ServiceError('selected guild is invalid', 404);
+      throw new HttpError('selected guild is invalid', 404);
     }
 
     const notificationChannel = input.notification_channel_id
@@ -23,19 +23,19 @@ export class BindClassDiscordGuildUseCase {
       : null;
 
     if (notificationChannel && notificationChannel.discord_guild_id !== userGuild.discord_guild_id) {
-      throw new ServiceError('notification channel does not belong to selected guild', 400);
+      throw new HttpError('notification channel does not belong to selected guild', 400);
     }
 
     if (notificationChannel && notificationChannel.type !== 'text') {
-      throw new ServiceError('notification channel must be a text channel', 400);
+      throw new HttpError('notification channel must be a text channel', 400);
     }
 
     if (voiceChannel && voiceChannel.discord_guild_id !== userGuild.discord_guild_id) {
-      throw new ServiceError('voice channel does not belong to selected guild', 400);
+      throw new HttpError('voice channel does not belong to selected guild', 400);
     }
 
     if (voiceChannel && voiceChannel.type !== 'voice') {
-      throw new ServiceError('voice channel must be a voice channel', 400);
+      throw new HttpError('voice channel must be a voice channel', 400);
     }
 
     const existing = await this.messagingWriter.findDiscordGuildByClass(teacherId, classId);
@@ -45,12 +45,12 @@ export class BindClassDiscordGuildUseCase {
     );
 
     if (existingByGuild && existingByGuild.class_id !== classId) {
-      throw new ServiceError('selected guild is already bound to another class', 409);
+      throw new HttpError('selected guild is already bound to another class', 409);
     }
 
     if (existing) {
       if (existing.discord_guild_id !== userGuild.discord_guild_id) {
-        throw new ServiceError('current class already has another guild binding', 409);
+        throw new HttpError('current class already has another guild binding', 409);
       }
 
       existing.discord_guild_id = userGuild.discord_guild_id;

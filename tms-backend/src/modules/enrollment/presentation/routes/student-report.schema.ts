@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { positiveIntegerSchema } from '../../../../shared/schemas/common.schemas.js';
+import { positiveIntegerSchema } from '../../../../shared/presentation/validation.js';
 
 export const studentIdParamSchema = z.object({
   studentId: positiveIntegerSchema,

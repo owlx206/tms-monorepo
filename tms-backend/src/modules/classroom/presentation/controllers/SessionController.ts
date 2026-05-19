@@ -1,17 +1,13 @@
-import { ClassServiceError } from '../../../../shared/errors/class.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   CreateManualSessionInput,
   SessionListFilters,
   SessionSummary,
-} from '../../application/dto/ClassDto.js';
-import {
-  getClassId,
-  getSessionId,
-  getTeacherId,
-} from './request-context.js';
+} from '../../contracts/types.js';
 
 type SessionDependencies = {
   sessions: {
@@ -37,8 +33,11 @@ type SessionAction =
   | 'cancelSession';
 
 type SessionParams = {
-  classId?: number;
-  sessionId?: number;
+  classId: number;
+  sessionId: number;
+};
+type SessionContext = ParsedRequestContext<CreateManualSessionInput, SessionParams, SessionListFilters> & {
+  teacherId: number;
 };
 
 export class SessionController implements Controller {
@@ -48,7 +47,7 @@ export class SessionController implements Controller {
   ) {}
 
   async handle(
-    request: HttpRequest<CreateManualSessionInput, SessionParams, SessionListFilters>,
+    request: HttpRequest<CreateManualSessionInput, SessionParams, SessionListFilters, unknown, SessionContext>,
   ): Promise<HttpResponse> {
     try {
       switch (this.action) {
@@ -62,7 +61,7 @@ export class SessionController implements Controller {
           return this.cancelSession(request);
       }
     } catch (error) {
-      if (error instanceof ClassServiceError) {
+      if (error instanceof HttpError) {
         throw error;
       }
 
@@ -71,10 +70,10 @@ export class SessionController implements Controller {
   }
 
   private async listSessions(
-    request: HttpRequest<unknown, SessionParams, SessionListFilters>,
+    request: HttpRequest<unknown, SessionParams, SessionListFilters, unknown, SessionContext>,
   ): Promise<HttpResponse> {
     const sessions = await this.dependencies.sessions.listSessions(
-      getTeacherId(request),
+      request.context.teacherId,
       request.query ?? {},
     );
 
@@ -85,18 +84,18 @@ export class SessionController implements Controller {
   }
 
   private async listClassSessions(
-    request: HttpRequest<unknown, SessionParams, SessionListFilters>,
+    request: HttpRequest<unknown, SessionParams, SessionListFilters, unknown, SessionContext>,
   ): Promise<HttpResponse> {
     const { status, from, to } = request.query ?? {};
     const sessions = await this.dependencies.sessions.listSessions(
-      getTeacherId(request),
+      request.context.teacherId,
       {
         status,
         from,
         to,
-        class_id: getClassId(request),
+        class_id: request.context.params.classId,
       },
-    );
+    );``
 
     return {
       statusCode: 200,
@@ -105,11 +104,11 @@ export class SessionController implements Controller {
   }
 
   private async createManualSession(
-    request: HttpRequest<CreateManualSessionInput, SessionParams>,
+    request: HttpRequest<CreateManualSessionInput, SessionParams, unknown, unknown, SessionContext>,
   ): Promise<HttpResponse> {
     const session = await this.dependencies.commandHandlers.createManualSession({
-      teacherId: getTeacherId(request),
-      classId: getClassId(request),
+      teacherId: request.context.teacherId,
+      classId: request.context.params.classId,
       session: request.body,
     });
 
@@ -120,11 +119,11 @@ export class SessionController implements Controller {
   }
 
   private async cancelSession(
-    request: HttpRequest<unknown, SessionParams>,
+    request: HttpRequest<unknown, SessionParams, unknown, unknown, SessionContext>,
   ): Promise<HttpResponse> {
     const session = await this.dependencies.commandHandlers.cancelSession({
-      teacherId: getTeacherId(request),
-      sessionId: getSessionId(request),
+      teacherId: request.context.teacherId,
+      sessionId: request.context.params.sessionId,
     });
 
     return {

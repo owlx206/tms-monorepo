@@ -1,13 +1,13 @@
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   AddTopicProblemInput,
   CreateTopicInput,
   TopicListQuery,
   UpsertTopicStandingInput,
-} from '../../application/dto/TopicDto.js';
-import { getTeacherId, getTopicId } from './request-context.js';
+} from '../../contracts/types.js';
 
 type TopicControllerAction =
   | 'listTopics'
@@ -30,8 +30,14 @@ type TopicControllerDependencies = {
 
 type TopicHttpRequest = HttpRequest<
   CreateTopicInput | AddTopicProblemInput | UpsertTopicStandingInput,
-  { topicId?: number },
-  TopicListQuery
+  { topicId: number },
+  TopicListQuery,
+  unknown,
+  ParsedRequestContext<
+    CreateTopicInput | AddTopicProblemInput | UpsertTopicStandingInput,
+    { topicId: number },
+    TopicListQuery
+  > & { teacherId: number }
 >;
 
 export class TopicController implements Controller {
@@ -57,7 +63,7 @@ export class TopicController implements Controller {
 
   private async listTopics(request: TopicHttpRequest): Promise<HttpResponse> {
     const topics = await this.dependencies.listTopics(
-      getTeacherId(request),
+      request.context.teacherId,
       (request.query ?? {}) as TopicListQuery,
     );
 
@@ -66,7 +72,7 @@ export class TopicController implements Controller {
 
   private async createTopic(request: TopicHttpRequest): Promise<HttpResponse> {
     const topic = await this.dependencies.createTopic(
-      getTeacherId(request),
+      request.context.teacherId,
       request.body as CreateTopicInput,
     );
 
@@ -74,15 +80,15 @@ export class TopicController implements Controller {
   }
 
   private async closeTopic(request: TopicHttpRequest): Promise<HttpResponse> {
-    const topic = await this.dependencies.closeTopic(getTeacherId(request), getTopicId(request));
+    const topic = await this.dependencies.closeTopic(request.context.teacherId, request.context.params.topicId);
 
     return { statusCode: 200, body: { topic } };
   }
 
   private async addTopicProblem(request: TopicHttpRequest): Promise<HttpResponse> {
     const problem = await this.dependencies.addTopicProblem(
-      getTeacherId(request),
-      getTopicId(request),
+      request.context.teacherId,
+      request.context.params.topicId,
       request.body as AddTopicProblemInput,
     );
 
@@ -91,8 +97,8 @@ export class TopicController implements Controller {
 
   private async upsertTopicStanding(request: TopicHttpRequest): Promise<HttpResponse> {
     const standing = await this.dependencies.upsertTopicStanding(
-      getTeacherId(request),
-      getTopicId(request),
+      request.context.teacherId,
+      request.context.params.topicId,
       request.body as UpsertTopicStandingInput,
     );
 

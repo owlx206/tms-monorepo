@@ -1,15 +1,17 @@
 import config from './config.js';
 import { AppDataSource, initializeDatabase } from './infrastructure/database/data-source.js';
-import { createApp } from './app.js';
-import { createJobRunner } from './jobs/index.js';
-import { createSysadminDiscordBotHealthJob, ensureSystemAdminAccount } from './modules/identity/index.js';
-import { createDiscordGuildSyncJob } from './modules/messaging/index.js';
-import { createSessionStatusSyncJob, createVoiceAttendanceSyncJob } from './modules/classroom/index.js';
-import { createCodeforcesTopicSyncJob } from './modules/topic/index.js';
+import { createJobRunner } from './infrastructure/jobs/index.js';
+import { ensureSystemAdminAccount } from './modules/identity/infrastructure/bootstrap/ensureSystemAdminAccount.js';
+import { createSysadminDiscordBotHealthJob } from './modules/identity/jobs/sysadmin-discord-bot-health.job.js';
+import { createDiscordGuildSyncJob } from './modules/messaging/jobs/discord-guild-sync.job.js';
+import { createSessionStatusSyncJob } from './modules/classroom/jobs/session-status-sync.job.js';
+import { createVoiceAttendanceSyncJob } from './modules/classroom/jobs/voice-attendance-sync.job.js';
+import { createCodeforcesTopicSyncJob } from './modules/topic/jobs/codeforces-topic-sync.job.js';
 
 export async function main(): Promise<void> {
   await initializeDatabase();
   await ensureSystemAdminAccount();
+  const { createApp } = await import('./app.js');
 
   const jobRunner = createJobRunner([
     createDiscordGuildSyncJob({
@@ -68,9 +70,3 @@ export async function main(): Promise<void> {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 }
-
-main().catch((error: unknown) => {
-  console.error('Failed to initialize backend server');
-  console.error(error);
-  process.exit(1);
-});

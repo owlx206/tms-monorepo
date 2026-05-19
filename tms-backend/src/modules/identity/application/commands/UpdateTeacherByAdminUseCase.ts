@@ -1,10 +1,10 @@
-import { TeacherRole } from '../../../../entities/enums.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { TeacherRole } from '../../contracts/types.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import { isUniqueViolation } from '../mappers/AuthMapper.js';
 import { toAdminTeacher } from '../mappers/AdminMapper.js';
-import type { UpdateTeacherByAdminInput } from '../dto/AdminDto.js';
+import type { UpdateTeacherByAdminInput } from '../../contracts/types.js';
 import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
-import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
+import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class UpdateTeacherByAdminUseCase {
   constructor(
@@ -16,12 +16,12 @@ export class UpdateTeacherByAdminUseCase {
     const teacher = await this.teacherWriter.findById(teacherId);
 
     if (!teacher) {
-      throw new ServiceError('teacher not found', 404);
+      throw new HttpError('teacher not found', 404);
     }
 
     if (input.role !== undefined) {
       if (actorTeacherId === teacher.id && input.role !== TeacherRole.SysAdmin) {
-        throw new ServiceError('cannot remove sysadmin role from current account', 409);
+        throw new HttpError('cannot remove sysadmin role from current account', 409);
       }
 
       teacher.role = input.role;
@@ -29,7 +29,7 @@ export class UpdateTeacherByAdminUseCase {
 
     if (input.is_active !== undefined) {
       if (actorTeacherId === teacher.id && !input.is_active) {
-        throw new ServiceError('cannot deactivate current account', 409);
+        throw new HttpError('cannot deactivate current account', 409);
       }
 
       teacher.is_active = input.is_active;
@@ -52,7 +52,7 @@ export class UpdateTeacherByAdminUseCase {
       return toAdminTeacher(saved, topicBotConfig);
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new ServiceError('username already exists', 409);
+        throw new HttpError('username already exists', 409);
       }
 
       throw error;

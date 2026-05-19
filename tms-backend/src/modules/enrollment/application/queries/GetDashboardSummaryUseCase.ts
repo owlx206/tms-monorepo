@@ -1,11 +1,7 @@
-import { parseAmountToBigInt } from '../../../../shared/helpers/money.js';
-import { EnrollmentStudentStatus } from '../../domain/models/Student.js';
-import type { TypeOrmFinanceReportReader } from '../../infrastructure/persistence/typeorm/TypeOrmFinanceReportReader.js';
-
-type DashboardReader = {
-  countActiveStudents(teacherId: number): Promise<number>;
-  countActiveClasses(teacherId: number): Promise<number>;
-};
+import { parseAmountToBigInt } from '../../../finance/domain/Money.js';
+import { EnrollmentStudentStatus } from '../../contracts/types.js';
+import type { DashboardReader } from '../../contracts/types.js';
+import type { TypeOrmFinanceReportReader } from '../../infrastructure/persistence/typeorm/Reader.js';
 
 export class GetDashboardSummaryUseCase {
   constructor(

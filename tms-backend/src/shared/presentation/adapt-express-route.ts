@@ -1,6 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
-import { isDomainError } from '../errors/domain.error.js';
+import { isHttpError } from '../errors/HttpError.js';
 import type { Controller } from './Controller.js';
 import type { HttpRequest } from './HttpRequest.js';
 
@@ -44,7 +44,7 @@ export function adaptExpressRoute(
 
       res.status(response.statusCode).json(response.body);
     } catch (error) {
-      if (isDomainError(error)) {
+      if (isHttpError(error)) {
         res.status(error.statusCode).json({ error: error.message });
         return;
       }
@@ -56,12 +56,19 @@ export function adaptExpressRoute(
 
 function buildDefaultRequest(req: Request, res: Response): HttpRequest {
   const validated = res.locals.validated as ValidatedRequestData | undefined;
+  const context = {
+    ...(req.context ?? res.locals.context),
+    ...('body' in (validated ?? {}) ? { body: validated?.body } : {}),
+    ...('params' in (validated ?? {}) ? { params: validated?.params } : {}),
+    ...('query' in (validated ?? {}) ? { query: validated?.query } : {}),
+  };
 
   return {
     body: validated?.body ?? req.body,
     params: validated?.params ?? req.params,
     query: validated?.query ?? req.query,
     user: req.user,
+    context,
     headers: req.headers,
   };
 }

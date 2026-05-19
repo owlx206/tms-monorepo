@@ -1,4 +1,4 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 
 type DiscordInstallStatePayload = {
   discord_user_id: string;
@@ -11,7 +11,7 @@ export function signDiscordInstallState(payload: DiscordInstallStatePayload): st
 export function verifyDiscordInstallState(state: string): DiscordInstallStatePayload {
   const discordUserId = state.trim();
   if (!/^\d{15,25}$/.test(discordUserId)) {
-    throw new ServiceError('invalid discord install state', 400);
+    throw new HttpError('invalid discord install state', 400);
   }
 
   return {

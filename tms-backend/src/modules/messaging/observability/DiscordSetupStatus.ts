@@ -1,5 +1,5 @@
-import type { SysadminDiscordBotCredentialStore } from '../../identity/index.js';
-import type { DiscordSetupIssue } from '../application/dto/MessagingDto.js';
+import type { SysadminDiscordBotCredentialStore } from '../../identity/infrastructure/persistence/typeorm/Writer.js';
+import type { DiscordSetupIssue } from '../contracts/types.js';
 import { GetBotInviteLinkUseCase } from '../application/queries/GetBotInviteLinkUseCase.js';
 
 type MessagingReader = {

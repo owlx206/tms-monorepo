@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../../entities/enums.js';
+import { TeacherRole } from '../../../identity/contracts/types.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
-import { authorizeOwnedClassParam, requireRoles } from '../../../identity/index.js';
+import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
+import { authorizeOwnedClassParam } from '../../../identity/presentation/middlewares/ownership.js';
+import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
 import {
   classIdParamSchema,
   classListQuerySchema,
@@ -27,6 +29,7 @@ export function createClassroomRouter(controllers: ClassroomRouteControllers): R
 
   router.use(passport.authenticate('jwt', { session: false }));
   router.use(requireRoles([TeacherRole.Teacher]));
+  router.use(attachRequestContext());
 
   router.get('/classes', validate({ query: classListQuerySchema }), adaptExpressRoute(controllers.listClasses));
   router.post('/classes', validate({ body: createClassBodySchema }), adaptExpressRoute(controllers.createClass));

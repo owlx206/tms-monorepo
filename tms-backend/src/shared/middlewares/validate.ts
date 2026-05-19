@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { z, type ZodType } from 'zod';
 
-import { ServiceError } from '../errors/service.error.js';
+import { HttpError } from '../errors/HttpError.js';
 
 type RequestValidationSchemas = {
   body?: ZodType;
@@ -46,7 +46,7 @@ export function validate(schemas: RequestValidationSchemas): RequestHandler {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        next(new ServiceError(formatZodError(error), 400));
+        next(new HttpError(formatZodError(error), 400));
         return;
       }
 

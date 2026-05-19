@@ -1,6 +1,6 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
-import type { AddTopicProblemInput } from '../dto/TopicDto.js';
-import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTopicWriter.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { AddTopicProblemInput } from '../../contracts/types.js';
+import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class AddTopicProblemUseCase {
   constructor(private readonly topicWriter: TypeOrmTopicWriter) {}
@@ -8,7 +8,7 @@ export class AddTopicProblemUseCase {
   async execute(teacherId: number, topicId: number, input: AddTopicProblemInput) {
     const topic = await this.topicWriter.findOwnedTopic(teacherId, topicId);
     if (!topic) {
-      throw new ServiceError('topic not found', 404);
+      throw new HttpError('topic not found', 404);
     }
 
     const existing = await this.topicWriter.findTopicProblemByIndex(topicId, input.problem_index);

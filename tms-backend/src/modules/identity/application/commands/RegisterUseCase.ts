@@ -1,10 +1,10 @@
-import { TeacherRole } from '../../../../entities/enums.js';
-import { AuthError } from '../../../../shared/errors/auth.error.js';
+import { TeacherRole } from '../../contracts/types.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import { toAuthTeacher, isUniqueViolation } from '../mappers/AuthMapper.js';
 import type { JwtAccessTokenSigner } from '../../infrastructure/security/JwtAccessTokenSigner.js';
 import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
-import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
-import type { RegisterInput } from '../dto/AuthDto.js';
+import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { RegisterInput } from '../../contracts/types.js';
 
 export class RegisterUseCase {
   constructor(
@@ -44,7 +44,7 @@ export class RegisterUseCase {
       };
     } catch (error) {
       if (isUniqueViolation(error)) {
-        throw new AuthError('username already exists', 409);
+        throw new HttpError('username already exists', 409);
       }
 
       throw error;

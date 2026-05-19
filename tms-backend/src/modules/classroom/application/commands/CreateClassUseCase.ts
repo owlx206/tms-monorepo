@@ -1,22 +1,15 @@
 import type { EntityManager } from 'typeorm';
 
-import { Class } from '../../../../entities/class.entity.js';
-import { ClassServiceError } from '../../../../shared/errors/class.error.js';
-import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/TypeOrmClassScheduleService.js';
-import type { ClassSummary, ClassSummaryWithSchedules, CreateClassInput } from '../dto/ClassDto.js';
-
-type CreateClassCommand = {
-  teacherId: number;
-  name: string;
-  feePerSession: string;
-  schedules: CreateClassInput['schedules'];
-};
+import { Class } from '../../infrastructure/persistence/typeorm/entities/class.entity.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { ClassSummary, ClassSummaryWithSchedules, CreateClassCommand } from '../../contracts/types.js';
 
 function normalizeClassName(name: string): string {
   const normalized = name.trim();
 
   if (!normalized) {
-    throw new ClassServiceError('class name is required', 400);
+    throw new HttpError('class name is required', 400);
   }
 
   return normalized;
@@ -26,7 +19,7 @@ function normalizeFeePerSession(feePerSession: string): string {
   const normalized = feePerSession.trim();
 
   if (!/^\d+$/.test(normalized)) {
-    throw new ClassServiceError('fee_per_session must be a non-negative integer string', 400);
+    throw new HttpError('fee_per_session must be a non-negative integer string', 400);
   }
 
   return normalized;
@@ -40,7 +33,7 @@ export class CreateClassUseCase {
 
   async execute(command: CreateClassCommand): Promise<ClassSummaryWithSchedules> {
     if (command.schedules.length === 0) {
-      throw new ClassServiceError('class must have at least one schedule', 400);
+      throw new HttpError('class must have at least one schedule', 400);
     }
 
     const classRepository = this.manager.getRepository(Class);

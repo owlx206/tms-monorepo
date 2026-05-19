@@ -1,9 +1,9 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
-import { isDomainError } from '../../shared/errors/domain.error.js';
+import { isHttpError } from '../../shared/errors/HttpError.js';
 
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
-  if (isDomainError(error)) {
+  if (isHttpError(error)) {
     res.status(error.statusCode).json({ error: error.message, code: error.code });
     return;
   }

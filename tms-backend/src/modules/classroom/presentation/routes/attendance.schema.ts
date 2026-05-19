@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { AttendanceStatus } from '../../../../entities/index.js';
-import { positiveIntegerSchema } from '../../../../shared/schemas/common.schemas.js';
+import { AttendanceStatus } from '../../contracts/types.js';
+import { positiveIntegerSchema } from '../../../../shared/presentation/validation.js';
 
 export const sessionIdParamSchema = z.object({
   sessionId: positiveIntegerSchema,

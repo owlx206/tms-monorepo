@@ -1,13 +1,13 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   StudentMessageInput,
   ChannelPostInput,
   SelectClassDiscordGuildInput,
-} from '../../application/dto/MessagingDto.js';
-import { getClassId, getTeacherId } from './request-context.js';
+} from '../../contracts/types.js';
 
 type MessagingControllerAction =
   | 'listDiscordGuilds'
@@ -43,8 +43,14 @@ type MessagingControllerDependencies = {
 
 type MessagingHttpRequest = HttpRequest<
   SelectClassDiscordGuildInput | StudentMessageInput | ChannelPostInput,
-  { classId?: number; guildId?: number; studentId?: number },
-  { code?: string; state?: string; guild_id?: string; error?: string }
+  { classId: number; guildId: number; studentId: number },
+  { code?: string; state?: string; guild_id?: string; error?: string },
+  unknown,
+  ParsedRequestContext<
+    SelectClassDiscordGuildInput | StudentMessageInput | ChannelPostInput,
+    { classId: number; guildId: number; studentId: number },
+    { code?: string; state?: string; guild_id?: string; error?: string }
+  > & { teacherId: number }
 >;
 
 export class MessagingController implements Controller {
@@ -76,7 +82,7 @@ export class MessagingController implements Controller {
           return this.sendChannelPost(request);
       }
     } catch (error) {
-      if (error instanceof ServiceError) {
+      if (error instanceof HttpError) {
         throw error;
       }
 
@@ -85,7 +91,7 @@ export class MessagingController implements Controller {
   }
 
   private async listDiscordGuilds(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const guilds = await this.dependencies.listDiscordGuilds(getTeacherId(request));
+    const guilds = await this.dependencies.listDiscordGuilds(request.context.teacherId);
 
     return {
       statusCode: 200,
@@ -94,13 +100,10 @@ export class MessagingController implements Controller {
   }
 
   private async listDiscordGuildChannels(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const guildId = (request.params as { guildId?: number }).guildId;
-
-    if (typeof guildId !== 'number') {
-      throw new ServiceError('guildId is required', 400);
-    }
-
-    const channels = await this.dependencies.listDiscordGuildChannels(getTeacherId(request), guildId);
+    const channels = await this.dependencies.listDiscordGuildChannels(
+      request.context.teacherId,
+      request.context.params.guildId,
+    );
 
     return {
       statusCode: 200,
@@ -130,7 +133,7 @@ export class MessagingController implements Controller {
   }
 
   private async getBotInviteLink(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const inviteLink = await this.dependencies.getBotInviteLink(getTeacherId(request));
+    const inviteLink = await this.dependencies.getBotInviteLink(request.context.teacherId);
 
     return {
       statusCode: 200,
@@ -139,7 +142,7 @@ export class MessagingController implements Controller {
   }
 
   private async getSetupStatus(request: MessagingHttpRequest): Promise<HttpResponse> {
-    const status = await this.dependencies.getSetupStatus(getTeacherId(request));
+    const status = await this.dependencies.getSetupStatus(request.context.teacherId);
 
     return {
       statusCode: 200,
@@ -148,11 +151,11 @@ export class MessagingController implements Controller {
   }
 
   private async upsertClassDiscordBinding(request: MessagingHttpRequest): Promise<HttpResponse> {
-      const binding = await this.dependencies.upsertDiscordGuildByClass(
-        getTeacherId(request),
-        getClassId(request),
-        request.body as SelectClassDiscordGuildInput,
-      );
+    const binding = await this.dependencies.upsertDiscordGuildByClass(
+      request.context.teacherId,
+      request.context.params.classId,
+      request.body as SelectClassDiscordGuildInput,
+    );
 
     return {
       statusCode: 200,
@@ -162,8 +165,8 @@ export class MessagingController implements Controller {
 
   private async unbindClassDiscordBinding(request: MessagingHttpRequest): Promise<HttpResponse> {
     await this.dependencies.unbindDiscordGuildByClass(
-      getTeacherId(request),
-      getClassId(request),
+      request.context.teacherId,
+      request.context.params.classId,
     );
 
     return {
@@ -174,7 +177,7 @@ export class MessagingController implements Controller {
 
   private async sendStudentMessages(request: MessagingHttpRequest): Promise<HttpResponse> {
     const result = await this.dependencies.sendStudentMessages(
-      getTeacherId(request),
+      request.context.teacherId,
       request.body as StudentMessageInput,
     );
 
@@ -186,7 +189,7 @@ export class MessagingController implements Controller {
 
   private async sendChannelPost(request: MessagingHttpRequest): Promise<HttpResponse> {
     const result = await this.dependencies.sendChannelPost(
-      getTeacherId(request),
+      request.context.teacherId,
       request.body as ChannelPostInput,
     );
 

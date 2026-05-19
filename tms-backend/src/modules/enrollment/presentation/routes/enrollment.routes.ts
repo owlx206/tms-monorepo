@@ -1,15 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../../entities/enums.js';
+import { TeacherRole } from '../../../identity/contracts/types.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
-import {
-  authorizeOwnedClassBody,
-  authorizeOwnedClassQuery,
-  authorizeOwnedStudentParam,
-  requireRoles,
-} from '../../../identity/index.js';
+import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
+import { authorizeOwnedClassBody, authorizeOwnedClassQuery, authorizeOwnedStudentParam } from '../../../identity/presentation/middlewares/ownership.js';
+import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
 import {
   archivePendingStudentBodySchema,
   createStudentBodySchema,
@@ -39,6 +36,7 @@ export function createStudentRouter(controllers: StudentRouteControllers): Route
 
   studentRouter.use(passport.authenticate('jwt', { session: false }));
   studentRouter.use(requireRoles([TeacherRole.Teacher]));
+  studentRouter.use(attachRequestContext());
 
   studentRouter.get('/students', validate({ query: studentListQuerySchema }), authorizeOwnedClassQuery(), adaptExpressRoute(controllers.listStudents));
 

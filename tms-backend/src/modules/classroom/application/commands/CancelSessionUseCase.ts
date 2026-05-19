@@ -1,15 +1,9 @@
-import { ClassServiceError } from '../../../../shared/errors/class.error.js';
-import type { SessionSummary } from '../dto/ClassDto.js';
-import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
-import { SessionMapper } from '../../infrastructure/persistence/typeorm/SessionMapper.js';
-import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/TypeOrmSessionWriter.js';
-import type { TypeOrmAttendanceWriter } from '../../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
-
-type CancelSessionCommand = {
-  teacherId: number;
-  sessionId: number;
-  cancelledAt: Date;
-};
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { CancelSessionCommand, SessionSummary } from '../../contracts/types.js';
+import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/Writer.js';
+import { SessionMapper } from '../../infrastructure/persistence/typeorm/Mapper.js';
+import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { TypeOrmAttendanceWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class CancelSessionUseCase {
   constructor(
@@ -22,7 +16,7 @@ export class CancelSessionUseCase {
     const session = await this.sessions.findById(command.teacherId, command.sessionId);
 
     if (!session) {
-      throw new ClassServiceError('session not found', 404);
+      throw new HttpError('session not found', 404);
     }
 
     if (session.isCancelled()) {

@@ -1,5 +1,5 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
-import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTopicWriter.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { TypeOrmTopicWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class CloseTopicUseCase {
   constructor(private readonly topicWriter: TypeOrmTopicWriter) {}
@@ -7,7 +7,7 @@ export class CloseTopicUseCase {
   async execute(teacherId: number, topicId: number) {
     const topic = await this.topicWriter.findOwnedTopic(teacherId, topicId);
     if (!topic) {
-      throw new ServiceError('topic not found', 404);
+      throw new HttpError('topic not found', 404);
     }
 
     topic.closed_at = new Date();

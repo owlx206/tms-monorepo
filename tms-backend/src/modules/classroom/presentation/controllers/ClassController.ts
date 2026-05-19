@@ -1,7 +1,8 @@
-import { ClassServiceError } from '../../../../shared/errors/class.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   ClassListFilters,
   ClassDetails,
@@ -9,8 +10,7 @@ import type {
   ClassSummaryWithSchedules,
   CreateClassInput,
   UpdateClassInput,
-} from '../../application/dto/ClassDto.js';
-import { getClassId, getTeacherId } from './request-context.js';
+} from '../../contracts/types.js';
 
 type ClassroomControllerDependencies = {
   classes: {
@@ -52,7 +52,19 @@ type ClassroomControllerAction =
   | 'updateClass'
   | 'archiveClass';
 
-type ClassroomHttpRequest = HttpRequest<CreateClassInput | UpdateClassInput, { classId?: number }, ClassListFilters>;
+type ClassroomContext = ParsedRequestContext<
+  CreateClassInput | UpdateClassInput,
+  { classId: number },
+  ClassListFilters
+> & { teacherId: number };
+
+type ClassroomHttpRequest = HttpRequest<
+  CreateClassInput | UpdateClassInput,
+  { classId: number },
+  ClassListFilters,
+  unknown,
+  ClassroomContext
+>;
 
 export class ClassController implements Controller {
   constructor(
@@ -77,7 +89,7 @@ export class ClassController implements Controller {
           return this.archiveClass(request);
       }
     } catch (error) {
-      if (error instanceof ClassServiceError) {
+      if (error instanceof HttpError) {
         throw error;
       }
 
@@ -87,7 +99,7 @@ export class ClassController implements Controller {
 
   private async listClasses(request: ClassroomHttpRequest): Promise<HttpResponse> {
     const classes = await this.dependencies.classes.listClasses(
-      getTeacherId(request),
+      request.context.teacherId,
       request.query ?? {},
     );
 
@@ -99,12 +111,12 @@ export class ClassController implements Controller {
 
   private async getClassById(request: ClassroomHttpRequest): Promise<HttpResponse> {
     const classEntity = await this.dependencies.classes.getClassById(
-      getTeacherId(request),
-      getClassId(request),
+      request.context.teacherId,
+      request.context.params.classId,
     );
 
     if (!classEntity) {
-      throw new ClassServiceError('class not found', 404);
+      throw new HttpError('class not found', 404);
     }
 
     return {
@@ -115,12 +127,12 @@ export class ClassController implements Controller {
 
   private async getClassDetails(request: ClassroomHttpRequest): Promise<HttpResponse> {
     const details = await this.dependencies.classes.getClassDetails(
-      getTeacherId(request),
-      getClassId(request),
+      request.context.teacherId,
+      request.context.params.classId,
     );
 
     if (!details) {
-      throw new ClassServiceError('class not found', 404);
+      throw new HttpError('class not found', 404);
     }
 
     return {
@@ -132,7 +144,7 @@ export class ClassController implements Controller {
   private async createClass(request: ClassroomHttpRequest): Promise<HttpResponse> {
     const input = request.body as CreateClassInput;
     const classEntity = await this.dependencies.createClass.createClass({
-      teacherId: getTeacherId(request),
+      teacherId: request.context.teacherId,
       name: input.name,
       feePerSession: input.fee_per_session,
       schedules: input.schedules,
@@ -147,8 +159,8 @@ export class ClassController implements Controller {
   private async updateClass(request: ClassroomHttpRequest): Promise<HttpResponse> {
     const input = request.body as UpdateClassInput;
     const classEntity = await this.dependencies.updateClass.updateClass({
-      teacherId: getTeacherId(request),
-      classId: getClassId(request),
+      teacherId: request.context.teacherId,
+      classId: request.context.params.classId,
       name: input.name,
       feePerSession: input.fee_per_session,
       schedules: input.schedules,
@@ -162,8 +174,8 @@ export class ClassController implements Controller {
 
   private async archiveClass(request: ClassroomHttpRequest): Promise<HttpResponse> {
     const classEntity = await this.dependencies.archiveClass.archiveClass({
-      teacherId: getTeacherId(request),
-      classId: getClassId(request),
+      teacherId: request.context.teacherId,
+      classId: request.context.params.classId,
       archivedAt: new Date(),
     });
 

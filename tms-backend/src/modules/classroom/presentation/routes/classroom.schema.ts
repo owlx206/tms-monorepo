@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import { ClassStatus, SessionStatus } from '../../../../entities/index.js';
+import { ClassStatus, SessionStatus } from '../../contracts/types.js';
 import {
   booleanSchema,
   dateTimeSchema,
   positiveIntegerSchema,
   requiredTrimmedStringSchema,
-} from '../../../../shared/schemas/common.schemas.js';
+} from '../../../../shared/presentation/validation.js';
 
 const dateOnlyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
 const timePattern = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;

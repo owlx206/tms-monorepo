@@ -1,17 +1,10 @@
 import { DomainError } from '../../../../shared/domain/DomainError.js';
+import {
+  EnrollmentPendingArchiveReason,
+  EnrollmentStudentStatus,
+} from '../../contracts/types.js';
 import { CodeforcesHandle } from '../value-objects/CodeforcesHandle.js';
 import type { StudentId } from '../value-objects/StudentId.js';
-
-export enum EnrollmentStudentStatus {
-  Active = 'active',
-  PendingArchive = 'pending_archive',
-  Archived = 'archived',
-}
-
-export enum EnrollmentPendingArchiveReason {
-  NeedsCollection = 'needs_collection',
-  NeedsRefund = 'needs_refund',
-}
 
 export type StudentSnapshot = {
   id: number | null;

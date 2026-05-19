@@ -1,24 +1,16 @@
 import type { EntityManager } from 'typeorm';
 
-import { Class } from '../../../../entities/class.entity.js';
-import { ClassStatus } from '../../../../entities/enums.js';
-import { ClassServiceError } from '../../../../shared/errors/class.error.js';
-import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/TypeOrmClassScheduleService.js';
-import type { ClassSummary, ClassSummaryWithSchedules, UpdateClassInput } from '../dto/ClassDto.js';
-
-type UpdateClassCommand = {
-  teacherId: number;
-  classId: number;
-  name?: string;
-  feePerSession?: string;
-  schedules?: UpdateClassInput['schedules'];
-};
+import { Class } from '../../infrastructure/persistence/typeorm/entities/class.entity.js';
+import { ClassStatus } from '../../contracts/types.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { ClassSummary, ClassSummaryWithSchedules, UpdateClassCommand } from '../../contracts/types.js';
 
 function normalizeClassName(name: string): string {
   const normalized = name.trim();
 
   if (!normalized) {
-    throw new ClassServiceError('class name is required', 400);
+    throw new HttpError('class name is required', 400);
   }
 
   return normalized;
@@ -28,7 +20,7 @@ function normalizeFeePerSession(feePerSession: string): string {
   const normalized = feePerSession.trim();
 
   if (!/^\d+$/.test(normalized)) {
-    throw new ClassServiceError('fee_per_session must be a non-negative integer string', 400);
+    throw new HttpError('fee_per_session must be a non-negative integer string', 400);
   }
 
   return normalized;
@@ -48,11 +40,11 @@ export class UpdateClassUseCase {
     });
 
     if (!classEntity) {
-      throw new ClassServiceError('class not found', 404);
+      throw new HttpError('class not found', 404);
     }
 
     if (classEntity.status !== ClassStatus.Active) {
-      throw new ClassServiceError('class is archived', 409);
+      throw new HttpError('class is archived', 409);
     }
 
     if (command.name !== undefined) {

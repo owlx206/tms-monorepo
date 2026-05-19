@@ -11,4 +11,3 @@ export interface AppModule {
   entities: EntityTarget<unknown>[];
   routes: ModuleRoute[];
 }
-

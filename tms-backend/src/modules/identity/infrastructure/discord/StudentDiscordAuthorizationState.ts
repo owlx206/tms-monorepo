@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 import config from '../../../../config.js';
-import { AuthError } from '../../../../shared/errors/auth.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 
 type StudentDiscordAuthorizationStatePayload = {
   teacher_id: number;
@@ -33,7 +33,7 @@ export function verifyStudentDiscordAuthorizationState(state: string): StudentDi
       || typeof decoded.teacher_id !== 'number'
       || typeof decoded.student_id !== 'number'
     ) {
-      throw new AuthError('invalid student discord authorization state', 400);
+      throw new HttpError('invalid student discord authorization state', 400);
     }
 
     return {
@@ -41,6 +41,6 @@ export function verifyStudentDiscordAuthorizationState(state: string): StudentDi
       student_id: decoded.student_id,
     };
   } catch {
-    throw new AuthError('invalid or expired student discord authorization state', 400);
+    throw new HttpError('invalid or expired student discord authorization state', 400);
   }
 }

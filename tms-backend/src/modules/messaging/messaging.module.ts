@@ -1,5 +1,5 @@
 import type { AppModule } from '../module.types.js';
-import { createSysadminDiscordBotCredentialStore } from '../identity/index.js';
+import { TypeOrmSysadminDiscordBotCredentialStore } from '../identity/infrastructure/persistence/typeorm/Writer.js';
 import { BindClassDiscordGuildUseCase } from './application/commands/BindClassDiscordGuildUseCase.js';
 import { UnbindClassDiscordGuildUseCase } from './application/commands/UnbindClassDiscordGuildUseCase.js';
 import { CompleteDiscordGuildInstallUseCase } from '../identity/application/commands/CompleteDiscordGuildInstallUseCase.js';
@@ -9,18 +9,18 @@ import { GetBotInviteLinkUseCase } from './application/queries/GetBotInviteLinkU
 import { DiscordSetupStatus } from './observability/DiscordSetupStatus.js';
 import { ListTeacherDiscordChannelsUseCase } from './application/queries/ListTeacherDiscordChannelsUseCase.js';
 import { ListTeacherDiscordGuildsUseCase } from './application/queries/ListTeacherDiscordGuildsUseCase.js';
-import { TypeOrmDiscordUserGuildStore } from '../identity/infrastructure/persistence/typeorm/TypeOrmDiscordUserGuildStore.js';
+import { TypeOrmDiscordUserGuildStore } from '../identity/infrastructure/persistence/typeorm/Writer.js';
 import { DiscordClientFactory } from '../../infrastructure/external/discord/discord-api.service.js';
 import { DiscordRecipientResolver } from '../../infrastructure/external/discord/discord-recipient-resolver.js';
-import { ClassDiscordBinding } from '../../entities/class-guild.entity.js';
-import { DiscordGuildChannelCache } from '../../entities/discord-channel.entity.js';
-import { DiscordUserGuild } from '../../entities/discord-guild.entity.js';
-import { TypeOrmMessagingReader } from './infrastructure/persistence/typeorm/TypeOrmMessagingReader.js';
-import { TypeOrmMessagingWriter } from './infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
+import { ClassDiscordBinding } from './infrastructure/persistence/typeorm/entities/class-discord-binding.entity.js';
+import { DiscordGuildChannelCache } from './infrastructure/persistence/typeorm/entities/discord-guild-channel-cache.entity.js';
+import { DiscordUserGuild } from './infrastructure/persistence/typeorm/entities/discord-user-guild.entity.js';
+import { TypeOrmMessagingReader } from './infrastructure/persistence/typeorm/Reader.js';
+import { TypeOrmMessagingWriter } from './infrastructure/persistence/typeorm/Writer.js';
 import { MessagingController } from './presentation/controllers/MessagingController.js';
 import { createMessagingRouter } from './presentation/routes/messaging.routes.js';
 
-const discordBotCredentialStore = createSysadminDiscordBotCredentialStore();
+const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore();
 const discordUserGuildStore = new TypeOrmDiscordUserGuildStore();
 const messagingReader = new TypeOrmMessagingReader();
 const messagingWriter = new TypeOrmMessagingWriter();

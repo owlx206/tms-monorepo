@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 
-import { Teacher, TeacherRole } from '../../../../entities/index.js';
+import { TeacherRole } from '../../contracts/types.js';
+import { Teacher } from '../../infrastructure/persistence/typeorm/entities/teacher.entity.js';
 
 export function requireRoles(allowedRoles: TeacherRole[]): RequestHandler {
   return (req, res, next) => {

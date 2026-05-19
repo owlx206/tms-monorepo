@@ -1,14 +1,14 @@
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   ClassScheduleSummary,
-} from '../../application/dto/ClassDto.js';
-import { getClassId, getTeacherId } from './request-context.js';
-import { ClassServiceError } from '../../../../shared/errors/class.error.js';
+} from '../../contracts/types.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 
 type ScheduleParams = {
-  classId?: number;
+  classId: number;
 };
 
 type ScheduleDependencies = {
@@ -18,6 +18,7 @@ type ScheduleDependencies = {
 };
 
 type ScheduleAction = 'listClassSchedules';
+type ScheduleContext = ParsedRequestContext<unknown, ScheduleParams> & { teacherId: number };
 
 export class ClassScheduleController implements Controller {
   constructor(
@@ -34,7 +35,7 @@ export class ClassScheduleController implements Controller {
           return this.listClassSchedules(request);
       }
     } catch (error) {
-      if (error instanceof ClassServiceError) {
+      if (error instanceof HttpError) {
         throw error;
       }
 
@@ -46,8 +47,8 @@ export class ClassScheduleController implements Controller {
     request: HttpRequest<unknown, ScheduleParams>,
   ): Promise<HttpResponse> {
     const schedules = await this.dependencies.classSchedules.listClassSchedules(
-      getTeacherId(request),
-      getClassId(request),
+      (request.context as ScheduleContext).teacherId,
+      (request.context as ScheduleContext).params.classId,
     );
 
     return {

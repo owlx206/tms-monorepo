@@ -1,8 +1,9 @@
 import { DomainError } from '../../../../shared/domain/DomainError.js';
-import { StudentServiceError } from '../../../../shared/errors/student.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   ArchivePendingStudentInput,
   CreateStudentInput,
@@ -12,8 +13,7 @@ import type {
   TransferStudentInput,
   UpdateStudentInput,
   WithdrawStudentInput,
-} from '../../application/dto/StudentDto.js';
-import { getStudentId, getTeacherId } from './request-context.js';
+} from '../../contracts/types.js';
 
 type StudentControllerDependencies = {
   students: {
@@ -97,8 +97,10 @@ type StudentHttpRequest = HttpRequest<
   | WithdrawStudentInput
   | ReinstateStudentInput
   | ArchivePendingStudentInput,
-  { studentId?: number },
-  StudentListFilters
+  { studentId: number },
+  StudentListFilters,
+  unknown,
+  ParsedRequestContext<unknown, { studentId: number }, StudentListFilters> & { teacherId: number }
 >;
 
 export class StudentController implements Controller {
@@ -134,7 +136,7 @@ export class StudentController implements Controller {
 
   private async listStudents(request: StudentHttpRequest): Promise<HttpResponse> {
     const students = await this.dependencies.students.listStudents(
-      getTeacherId(request),
+      request.context.teacherId,
       request.query ?? {},
     );
 
@@ -146,8 +148,8 @@ export class StudentController implements Controller {
 
   private async getStudentById(request: StudentHttpRequest): Promise<HttpResponse> {
     const student = await this.dependencies.students.getStudentById(
-      getTeacherId(request),
-      getStudentId(request),
+      request.context.teacherId,
+      request.context.params.studentId,
     );
 
     return {
@@ -159,7 +161,7 @@ export class StudentController implements Controller {
   private async createStudent(request: StudentHttpRequest): Promise<HttpResponse> {
     const input = request.body as CreateStudentInput;
     const student = await this.dependencies.createStudent.execute({
-      teacherId: getTeacherId(request),
+      teacherId: request.context.teacherId,
       fullName: input.full_name,
       classId: input.class_id,
       codeforcesHandle: input.codeforces_handle,
@@ -177,8 +179,8 @@ export class StudentController implements Controller {
   private async updateStudent(request: StudentHttpRequest): Promise<HttpResponse> {
     const input = request.body as UpdateStudentInput;
     const student = await this.dependencies.updateStudent.execute({
-      teacherId: getTeacherId(request),
-      studentId: getStudentId(request),
+      teacherId: request.context.teacherId,
+      studentId: request.context.params.studentId,
       fullName: input.full_name,
       codeforcesHandle: input.codeforces_handle,
       phone: input.phone,
@@ -193,8 +195,8 @@ export class StudentController implements Controller {
 
   private async inviteStudentToCurrentClass(request: StudentHttpRequest): Promise<HttpResponse> {
     const result = await this.dependencies.inviteStudentToCurrentClass.execute({
-      teacherId: getTeacherId(request),
-      studentId: getStudentId(request),
+      teacherId: request.context.teacherId,
+      studentId: request.context.params.studentId,
     });
 
     return {
@@ -205,8 +207,8 @@ export class StudentController implements Controller {
 
   private async transferStudent(request: StudentHttpRequest): Promise<HttpResponse> {
     const input = request.body as TransferStudentInput;
-    const teacherId = getTeacherId(request);
-    const studentId = getStudentId(request);
+    const teacherId = request.context.teacherId;
+    const studentId = request.context.params.studentId;
     const student = await this.dependencies.transferStudent.execute({
       teacherId,
       studentId,
@@ -222,8 +224,8 @@ export class StudentController implements Controller {
 
   private async withdrawStudent(request: StudentHttpRequest): Promise<HttpResponse> {
     const input = request.body as WithdrawStudentInput;
-    const teacherId = getTeacherId(request);
-    const studentId = getStudentId(request);
+    const teacherId = request.context.teacherId;
+    const studentId = request.context.params.studentId;
     const student = await this.dependencies.withdrawStudent.execute({
       teacherId,
       studentId,
@@ -239,8 +241,8 @@ export class StudentController implements Controller {
   private async reinstateStudent(request: StudentHttpRequest): Promise<HttpResponse> {
     const input = request.body as ReinstateStudentInput;
     const student = await this.dependencies.reinstateStudent.execute({
-      teacherId: getTeacherId(request),
-      studentId: getStudentId(request),
+      teacherId: request.context.teacherId,
+      studentId: request.context.params.studentId,
       classId: input.class_id,
       enrolledAt: input.enrolled_at,
     });
@@ -254,8 +256,8 @@ export class StudentController implements Controller {
   private async archivePendingStudent(request: StudentHttpRequest): Promise<HttpResponse> {
     const input = request.body as ArchivePendingStudentInput;
     const student = await this.dependencies.archivePendingStudent.execute({
-      teacherId: getTeacherId(request),
-      studentId: getStudentId(request),
+      teacherId: request.context.teacherId,
+      studentId: request.context.params.studentId,
       archivedAt: input.archived_at,
     });
 
@@ -270,7 +272,7 @@ export class StudentController implements Controller {
       return await work();
     } catch (error) {
       if (error instanceof DomainError) {
-        throw new StudentServiceError(error.message, mapDomainErrorStatus(error.code));
+        throw new HttpError(error.message, mapDomainErrorStatus(error.code));
       }
 
       throw error;

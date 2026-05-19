@@ -1,7 +1,7 @@
 import config from '../../../../config.js';
-import { AuthError } from '../../../../shared/errors/auth.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import { signDiscordVerificationState } from '../../infrastructure/auth/DiscordVerificationState.js';
-import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
+import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class StartTeacherDiscordVerificationUseCase {
   constructor(private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore) {}
@@ -9,7 +9,7 @@ export class StartTeacherDiscordVerificationUseCase {
   async execute(teacherId: number): Promise<string> {
     const credential = await this.discordBotCredentialStore.findDefault();
     if (!credential?.client_id || !credential.client_secret) {
-      throw new AuthError('discord is not available right now', 503);
+      throw new HttpError('discord is not available right now', 503);
     }
 
     const search = new URLSearchParams({

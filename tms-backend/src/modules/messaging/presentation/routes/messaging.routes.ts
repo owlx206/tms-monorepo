@@ -1,14 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../../entities/enums.js';
+import { TeacherRole } from '../../../identity/contracts/types.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
+import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
-import {
-  authorizeOwnedClassBody,
-  authorizeOwnedClassParam,
-  requireRoles,
-} from '../../../identity/index.js';
+import { authorizeOwnedClassBody, authorizeOwnedClassParam } from '../../../identity/presentation/middlewares/ownership.js';
+import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
 import { MessagingController } from '../controllers/MessagingController.js';
 import {
   studentMessageBodySchema,
@@ -40,6 +38,7 @@ export function createMessagingRouter(controllers: MessagingRouteControllers): R
   const teacherAuth = [
     passport.authenticate('jwt', { session: false }),
     requireRoles([TeacherRole.Teacher]),
+    attachRequestContext(),
   ];
 
   router.get('/discord/bot-invite-link', ...teacherAuth, adaptExpressRoute(controllers.getBotInviteLink));

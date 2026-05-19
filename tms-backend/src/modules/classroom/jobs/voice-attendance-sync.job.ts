@@ -1,22 +1,18 @@
 import { Client, GatewayIntentBits, type VoiceState } from 'discord.js';
 
 import { AppDataSource } from '../../../infrastructure/database/data-source.js';
-import {
-  Class,
-  ClassSchedule,
-  ClassStatus,
-  ClassDiscordBinding,
-  Enrollment,
-  Session,
-  SessionStatus,
-  Student,
-  SysadminDiscordBotCredential,
-} from '../../../entities/index.js';
-import type { IntervalJob } from '../../../jobs/index.js';
-import { ClassServiceError } from '../../../shared/errors/class.error.js';
-import { ServiceError } from '../../../shared/errors/service.error.js';
-import { TypeOrmAttendanceWriter } from '../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
-import { TypeOrmSessionFinanceService } from '../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
+import { ClassStatus, SessionStatus } from '../contracts/types.js';
+import type { IntervalJob } from '../../../infrastructure/jobs/index.js';
+import { HttpError } from '../../../shared/errors/HttpError.js';
+import { Enrollment } from '../../enrollment/infrastructure/persistence/typeorm/entities/enrollment.entity.js';
+import { Student } from '../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
+import { SysadminDiscordBotCredential } from '../../identity/infrastructure/persistence/typeorm/entities/sysadmin-discord-bot-credential.entity.js';
+import { ClassDiscordBinding } from '../../messaging/infrastructure/persistence/typeorm/entities/class-discord-binding.entity.js';
+import { TypeOrmAttendanceWriter } from '../infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmSessionFinanceService } from '../infrastructure/persistence/typeorm/Writer.js';
+import { ClassSchedule } from '../infrastructure/persistence/typeorm/entities/class-schedule.entity.js';
+import { Class } from '../infrastructure/persistence/typeorm/entities/class.entity.js';
+import { Session } from '../infrastructure/persistence/typeorm/entities/session.entity.js';
 
 type OpenVoiceAttendanceSession = {
   teacher_id: number;
@@ -255,7 +251,7 @@ function waitForClientReady(state: VoiceAttendanceClientState, timeoutMs: number
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       cleanup();
-      reject(new ServiceError('discord bot connection timed out', 504));
+      reject(new HttpError('discord bot connection timed out', 504));
     }, timeoutMs);
 
     const handleReady = () => {
@@ -331,19 +327,19 @@ async function upsertBotSessionAttendance(input: {
   const session = await input.attendanceWriter.findSessionById(input.teacherId, input.sessionId);
 
   if (!session) {
-    throw new ClassServiceError('session not found', 404);
+    throw new HttpError('session not found', 404);
   }
 
   const classEntity = await input.attendanceWriter.findClassById(input.teacherId, session.class_id);
 
   if (!classEntity) {
-    throw new ClassServiceError('class not found', 404);
+    throw new HttpError('class not found', 404);
   }
 
   const student = await input.attendanceWriter.findStudentById(input.teacherId, input.studentId);
 
   if (!student) {
-    throw new ClassServiceError('student not found', 404);
+    throw new HttpError('student not found', 404);
   }
 
   const enrollment = await input.attendanceWriter.findEnrollmentAtSessionTime(
@@ -354,11 +350,11 @@ async function upsertBotSessionAttendance(input: {
   );
 
   if (!enrollment) {
-    throw new ClassServiceError('student is not enrolled in class at this session', 409);
+    throw new HttpError('student is not enrolled in class at this session', 409);
   }
 
   if (session.isCancelled()) {
-    throw new ClassServiceError('cannot update attendance for a cancelled session', 409);
+    throw new HttpError('cannot update attendance for a cancelled session', 409);
   }
 
   const markedPresent = await input.attendanceWriter.markBotPresentIfNotManual({
@@ -479,20 +475,20 @@ async function getVoiceAttendanceSessionForTeacher(
     }>();
 
   if (!row) {
-    throw new ServiceError('session not found or discord guild is not configured for this class', 404);
+    throw new HttpError('session not found or discord guild is not configured for this class', 404);
   }
 
   if (row.session_status === SessionStatus.Cancelled) {
-    throw new ServiceError('cannot sync attendance for a cancelled session', 409);
+    throw new HttpError('cannot sync attendance for a cancelled session', 409);
   }
 
   const botToken = row.bot_token?.trim() || defaultBotToken;
   if (!botToken) {
-    throw new ServiceError('bot_token is missing for this class guild', 400);
+    throw new HttpError('bot_token is missing for this class guild', 400);
   }
 
   if (!row.attendance_voice_channel_id) {
-    throw new ServiceError('attendance_voice_channel_id is missing for this class guild', 400);
+    throw new HttpError('attendance_voice_channel_id is missing for this class guild', 400);
   }
 
   return {

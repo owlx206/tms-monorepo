@@ -1,18 +1,12 @@
 import config from '../../../../config.js';
-import { AuthError } from '../../../../shared/errors/auth.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type {
+  CompleteTeacherDiscordVerificationInput,
+  DiscordTokenPayload,
+  DiscordUserPayload,
+} from '../../contracts/types.js';
 import { verifyDiscordVerificationState } from '../../infrastructure/auth/DiscordVerificationState.js';
-import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/SysadminDiscordBotCredentialStore.js';
-import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/TypeOrmTeacherWriter.js';
-
-type DiscordTokenPayload = {
-  access_token?: string;
-  token_type?: string;
-};
-
-type DiscordUserPayload = {
-  id?: string;
-  username?: string;
-};
+import type { SysadminDiscordBotCredentialStore, TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 async function exchangeDiscordCode(input: {
   code: string;
@@ -36,16 +30,16 @@ async function exchangeDiscordCode(input: {
       }),
     });
   } catch {
-    throw new AuthError('failed to connect to Discord OAuth API', 502);
+    throw new HttpError('failed to connect to Discord OAuth API', 502);
   }
 
   if (!response.ok) {
-    throw new AuthError('failed to complete Discord verification', 502);
+    throw new HttpError('failed to complete Discord verification', 502);
   }
 
   const payload = await response.json() as DiscordTokenPayload;
   if (!payload.access_token || payload.token_type?.toLowerCase() !== 'bearer') {
-    throw new AuthError('invalid Discord OAuth token response', 502);
+    throw new HttpError('invalid Discord OAuth token response', 502);
   }
 
   return payload.access_token;
@@ -60,16 +54,16 @@ async function fetchDiscordUser(accessToken: string): Promise<{ id: string; user
       },
     });
   } catch {
-    throw new AuthError('failed to fetch Discord user profile', 502);
+    throw new HttpError('failed to fetch Discord user profile', 502);
   }
 
   if (!response.ok) {
-    throw new AuthError('failed to fetch Discord user profile', 502);
+    throw new HttpError('failed to fetch Discord user profile', 502);
   }
 
   const payload = await response.json() as DiscordUserPayload;
   if (!payload.id || !payload.username) {
-    throw new AuthError('invalid Discord user profile response', 502);
+    throw new HttpError('invalid Discord user profile response', 502);
   }
 
   return {
@@ -84,28 +78,24 @@ export class CompleteTeacherDiscordVerificationUseCase {
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
 
-  async execute(input: {
-    code?: string;
-    state?: string;
-    error?: string;
-  }): Promise<string> {
+  async execute(input: CompleteTeacherDiscordVerificationInput): Promise<string> {
     if (input.error) {
       return `${config.frontendUrl}/messaging?discord_verification=cancelled`;
     }
 
     if (!input.code || !input.state) {
-      throw new AuthError('discord verification callback is missing required parameters', 400);
+      throw new HttpError('discord verification callback is missing required parameters', 400);
     }
 
     const credential = await this.discordBotCredentialStore.findDefault();
     if (!credential?.client_id || !credential.client_secret) {
-      throw new AuthError('discord is not available right now', 503);
+      throw new HttpError('discord is not available right now', 503);
     }
 
     const verificationState = verifyDiscordVerificationState(input.state);
     const teacher = await this.teacherWriter.findById(verificationState.teacher_id);
     if (!teacher) {
-      throw new AuthError('teacher not found', 404);
+      throw new HttpError('teacher not found', 404);
     }
 
     const accessToken = await exchangeDiscordCode({

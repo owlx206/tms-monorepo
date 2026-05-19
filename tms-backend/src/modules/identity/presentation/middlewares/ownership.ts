@@ -1,8 +1,14 @@
 import type { RequestHandler } from 'express';
 import { In, type EntityManager } from 'typeorm';
 
-import { Class, FeeRecord, Session, Student, Teacher, Topic, Transaction } from '../../../../entities/index.js';
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { Class } from '../../../classroom/infrastructure/persistence/typeorm/entities/class.entity.js';
+import { Session } from '../../../classroom/infrastructure/persistence/typeorm/entities/session.entity.js';
+import { Student } from '../../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
+import { FeeRecord } from '../../../finance/infrastructure/persistence/typeorm/entities/fee-record.entity.js';
+import { Transaction } from '../../../finance/infrastructure/persistence/typeorm/entities/transaction.entity.js';
+import { Teacher } from '../../infrastructure/persistence/typeorm/entities/teacher.entity.js';
+import { Topic } from '../../../topic/infrastructure/persistence/typeorm/entities/topic.entity.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 
 type ValidatedScope = 'body' | 'params' | 'query';
 type ValidatedRequestData = Partial<Record<ValidatedScope, unknown>>;
@@ -11,7 +17,7 @@ type OwnershipIdSelector = (value: unknown) => number | number[] | null | undefi
 function getTeacherId(req: Parameters<RequestHandler>[0]): number {
   const teacher = req.user as Teacher | undefined;
   if (!teacher) {
-    throw new ServiceError('unauthorized', 401);
+    throw new HttpError('unauthorized', 401);
   }
 
   return teacher.id;
@@ -23,7 +29,7 @@ function getValidatedScope(res: Parameters<RequestHandler>[1], scope: ValidatedS
 }
 
 function getManager(req: Parameters<RequestHandler>[0]): EntityManager {
-  return req.dbContext.manager;
+  return req.context.db.manager;
 }
 
 function normalizeIds(value: number | number[] | null | undefined): number[] {
@@ -55,7 +61,7 @@ export function authorizeOwnedClasses(
       });
 
       if (ownedCount !== classIds.length) {
-        throw new ServiceError('class not found', 404);
+        throw new HttpError('class not found', 404);
       }
 
       next();
@@ -99,7 +105,7 @@ function authorizeOwnedEntity(
       });
 
       if (ownedCount !== ids.length) {
-        throw new ServiceError(`${resourceName} not found`, 404);
+        throw new HttpError(`${resourceName} not found`, 404);
       }
 
       next();

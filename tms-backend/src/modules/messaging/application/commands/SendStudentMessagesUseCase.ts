@@ -1,8 +1,8 @@
-import { ServiceError } from '../../../../shared/errors/service.error.js';
+import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { DiscordClientFactory } from '../../../../infrastructure/external/discord/discord-api.service.js';
 import type { DiscordRecipientResolver } from '../../../../infrastructure/external/discord/discord-recipient-resolver.js';
-import type { StudentMessageInput } from '../dto/MessagingDto.js';
-import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/TypeOrmMessagingWriter.js';
+import type { DeliveryStatus, StudentMessageInput } from '../../contracts/types.js';
+import type { TypeOrmMessagingWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 function normalizeIdArray(values: number[] | undefined): number[] {
   if (!values) {
@@ -13,7 +13,7 @@ function normalizeIdArray(values: number[] | undefined): number[] {
 }
 
 function toFailureMessage(error: unknown, fallback: string): string {
-  if (error instanceof ServiceError) {
+  if (error instanceof HttpError) {
     return error.message;
   }
 
@@ -41,7 +41,7 @@ export class SendStudentMessagesUseCase {
       );
 
       if (recipients.length === 0) {
-        throw new ServiceError('at least one recipient is required', 400);
+        throw new HttpError('at least one recipient is required', 400);
       }
 
       return this.deliverStudentMessages(teacherId, content, recipients);
@@ -53,7 +53,7 @@ export class SendStudentMessagesUseCase {
       studentIds,
     );
     if (recipients.length !== studentIds.length) {
-      throw new ServiceError('some students are invalid', 404);
+      throw new HttpError('some students are invalid', 404);
     }
 
     return this.deliverStudentMessages(teacherId, content, recipients);
@@ -151,4 +151,3 @@ export class SendStudentMessagesUseCase {
     };
   }
 }
-type DeliveryStatus = 'sent' | 'failed';

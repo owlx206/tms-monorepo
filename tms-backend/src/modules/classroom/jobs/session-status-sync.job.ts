@@ -1,12 +1,13 @@
 import { In } from 'typeorm';
 
-import { Class, Session } from '../../../entities/index.js';
-import { AttendanceSource, AttendanceStatus, ClassStatus, SessionStatus } from '../../../entities/enums.js';
+import { AttendanceSource, AttendanceStatus, ClassStatus, SessionStatus } from '../contracts/types.js';
 import { AppDataSource } from '../../../infrastructure/database/data-source.js';
-import type { IntervalJob } from '../../../jobs/index.js';
-import { ClassServiceError } from '../../../shared/errors/class.error.js';
-import { TypeOrmAttendanceWriter } from '../infrastructure/persistence/typeorm/TypeOrmAttendanceWriter.js';
-import { TypeOrmSessionFinanceService } from '../infrastructure/persistence/typeorm/TypeOrmSessionFinanceService.js';
+import type { IntervalJob } from '../../../infrastructure/jobs/index.js';
+import { HttpError } from '../../../shared/errors/HttpError.js';
+import { Class } from '../infrastructure/persistence/typeorm/entities/class.entity.js';
+import { Session } from '../infrastructure/persistence/typeorm/entities/session.entity.js';
+import { TypeOrmAttendanceWriter } from '../infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmSessionFinanceService } from '../infrastructure/persistence/typeorm/Writer.js';
 
 type UpdatedSessionRow = {
   id: number;
@@ -40,7 +41,7 @@ async function materializeSessionAttendance(input: {
   const session = await input.attendanceWriter.findSessionById(input.teacherId, input.sessionId);
 
   if (!session) {
-    throw new ClassServiceError('session not found', 404);
+    throw new HttpError('session not found', 404);
   }
 
   if (session.isCancelled()) {
@@ -53,7 +54,7 @@ async function materializeSessionAttendance(input: {
   const classEntity = await input.attendanceWriter.findClassById(input.teacherId, session.class_id);
 
   if (!classEntity) {
-    throw new ClassServiceError('class not found', 404);
+    throw new HttpError('class not found', 404);
   }
 
   const enrollments = await input.attendanceWriter.findEnrollmentsAtSessionTime(
