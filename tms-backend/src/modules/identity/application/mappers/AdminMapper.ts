@@ -1,15 +1,17 @@
-import { Teacher } from '../../infrastructure/persistence/typeorm/entities/teacher.entity.js';
-import type { TopicBotConfig } from '../../../topic/infrastructure/persistence/typeorm/entities/topic-bot-config.entity.js';
+import { Teacher } from '../../../../infrastructure/database/entities/teacher.entity.js';
+import type { TeacherCodeforcesCredential } from '../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
 import type { AdminTeacher } from '../../contracts/types.js';
+import { roleForTeacher } from './AuthMapper.js';
 
-export function toAdminTeacher(teacher: Teacher, topicBotConfig?: TopicBotConfig | null): AdminTeacher {
+export function toAdminTeacher(teacher: Teacher, codeforcesCredential?: TeacherCodeforcesCredential | null): AdminTeacher {
   return {
     id: teacher.id,
     username: teacher.username,
-    role: teacher.role,
+    role: roleForTeacher(teacher),
     is_active: teacher.is_active,
-    has_codeforces_api_key: Boolean(topicBotConfig?.codeforces_api_key),
-    has_codeforces_api_secret: Boolean(topicBotConfig?.codeforces_api_secret),
+    codeforces_handle: codeforcesCredential?.codeforces_handle ?? null,
+    has_codeforces_api_key: Boolean(codeforcesCredential?.codeforces_api_key),
+    has_codeforces_api_secret: Boolean(codeforcesCredential?.codeforces_api_secret),
     created_at: teacher.created_at,
   };
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { FeeRecordStatus, TransactionType } from '../../contracts/types.js';
-import { StudentStatus } from '../../../enrollment/contracts/types.js';
+import { StudentStatus } from '../../../student/contracts/types.js';
 import {
   booleanSchema,
   commaSeparatedPositiveIntegerArraySchema,

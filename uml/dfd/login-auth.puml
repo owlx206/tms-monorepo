@@ -1,0 +1,20 @@
+@startuml
+left to right direction
+actor "User" as U
+rectangle "Auth API" as P1
+rectangle "LoginUseCase" as P2
+database "teachers" as D1
+rectangle "Password Hasher" as P3
+rectangle "JWT Signer" as P4
+U --> P1 : username/password or bearer token
+P1 --> P2 : login command
+P2 --> D1 : load teacher by username
+D1 --> P2 : password hash/status/role
+P2 --> P3 : compare password
+P3 --> P2 : match result
+P2 --> P4 : teacher claims
+P4 --> P2 : access token
+P1 --> D1 : load current teacher for /me
+P2 --> P1 : auth response/error
+P1 --> U : token/profile or error
+@enduml

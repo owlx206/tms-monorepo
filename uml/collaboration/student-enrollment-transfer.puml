@@ -1,0 +1,22 @@
+@startuml
+object Teacher
+object StudentController
+object TransferStudentUseCase
+object StudentWriter
+object EnrollmentWriter
+object ClassroomReaderFunctions
+object StudentDiscordMembershipService
+object BalanceSnapshotReader
+object Database <<database>>
+Teacher --> StudentController : 1: transfer request
+StudentController --> TransferStudentUseCase : 2: execute
+TransferStudentUseCase --> StudentWriter : 3: require active student
+StudentWriter --> Database : 4: SELECT student
+TransferStudentUseCase --> ClassroomReaderFunctions : 5: ensure active class
+TransferStudentUseCase --> EnrollmentWriter : 6: load active enrollment
+TransferStudentUseCase --> EnrollmentWriter : 7: close old enrollment
+TransferStudentUseCase --> EnrollmentWriter : 8: create new enrollment
+TransferStudentUseCase --> StudentDiscordMembershipService : 9: join current class guild if possible
+TransferStudentUseCase --> BalanceSnapshotReader : 10: load balance
+TransferStudentUseCase --> StudentController : 11: summary
+@enduml

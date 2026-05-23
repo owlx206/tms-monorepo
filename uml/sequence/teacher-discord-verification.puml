@@ -1,0 +1,31 @@
+@startuml
+actor Teacher
+participant "AuthController" as C
+participant "LinkTeacherDiscordUseCase" as U
+database "sysadmin_discord_bot_credentials/teachers" as DB
+participant "Discord OAuth2" as OAuth
+Teacher -> C : GET authorize URL
+C -> U : buildAuthorizeUrl(teacherId)
+U -> DB : load default Discord credential
+U --> C : Discord authorize URL with signed state
+C --> Teacher : redirect URL
+Teacher -> OAuth : authorize identify scope
+OAuth -> C : callback(code,state)
+C -> U : handleCallback(code,state)
+U -> U : verify signed state
+U -> DB : SELECT teacher
+U -> OAuth : exchange code
+OAuth --> U : access token
+U -> OAuth : fetch current user
+OAuth --> U : discord user
+U -> DB : UPDATE teacher discord identity
+U --> C : frontend success URL
+C --> Teacher : redirect
+
+alt user cancels authorization
+  OAuth -> C : callback(error)
+  C -> U : handleCallback(error)
+  U --> C : /settings?discord_verification=cancelled
+  C --> Teacher : redirect
+end
+@enduml

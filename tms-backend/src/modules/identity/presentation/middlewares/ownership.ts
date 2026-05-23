@@ -1,13 +1,10 @@
 import type { RequestHandler } from 'express';
-import { In, type EntityManager } from 'typeorm';
+import { type EntityManager } from 'typeorm';
 
-import { Class } from '../../../classroom/infrastructure/persistence/typeorm/entities/class.entity.js';
-import { Session } from '../../../classroom/infrastructure/persistence/typeorm/entities/session.entity.js';
-import { Student } from '../../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
-import { FeeRecord } from '../../../finance/infrastructure/persistence/typeorm/entities/fee-record.entity.js';
-import { Transaction } from '../../../finance/infrastructure/persistence/typeorm/entities/transaction.entity.js';
-import { Teacher } from '../../infrastructure/persistence/typeorm/entities/teacher.entity.js';
-import { Topic } from '../../../topic/infrastructure/persistence/typeorm/entities/topic.entity.js';
+import { TypeOrmClassReader } from '../../../classroom/infrastructure/persistence/typeorm/Reader.js';
+import { TypeOrmStudentReader } from '../../../student/infrastructure/persistence/typeorm/Reader.js';
+import { TypeOrmTransactionReader } from '../../../finance/infrastructure/persistence/typeorm/Reader.js';
+import { Teacher } from '../../../../infrastructure/database/entities/teacher.entity.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 
 type ValidatedScope = 'body' | 'params' | 'query';
@@ -55,10 +52,7 @@ export function authorizeOwnedClasses(
         return;
       }
 
-      const ownedCount = await getManager(req).getRepository(Class).countBy({
-        id: In(classIds),
-        teacher_id: teacherId,
-      });
+      const ownedCount = await new TypeOrmClassReader(getManager(req)).countOwnedClasses(teacherId, classIds);
 
       if (ownedCount !== classIds.length) {
         throw new HttpError('class not found', 404);
@@ -83,11 +77,11 @@ export function authorizeOwnedClassQuery(fieldName = 'class_id'): RequestHandler
   return authorizeOwnedClasses('query', (query) => (query as Record<string, unknown> | undefined)?.[fieldName] as number | undefined);
 }
 
-function authorizeOwnedEntity(
-  entity: typeof Class | typeof FeeRecord | typeof Session | typeof Student | typeof Topic | typeof Transaction,
+function authorizeOwnedResource(
   resourceName: string,
   scope: ValidatedScope,
   selector: OwnershipIdSelector,
+  counter: (manager: EntityManager, teacherId: number, ids: number[]) => Promise<number>,
 ): RequestHandler {
   return async (req, res, next) => {
     try {
@@ -99,10 +93,7 @@ function authorizeOwnedEntity(
         return;
       }
 
-      const ownedCount = await getManager(req).getRepository(entity).countBy({
-        id: In(ids),
-        teacher_id: teacherId,
-      });
+      const ownedCount = await counter(getManager(req), teacherId, ids);
 
       if (ownedCount !== ids.length) {
         throw new HttpError(`${resourceName} not found`, 404);
@@ -116,29 +107,73 @@ function authorizeOwnedEntity(
 }
 
 export function authorizeOwnedStudentParam(fieldName = 'studentId'): RequestHandler {
-  return authorizeOwnedEntity(Student, 'student', 'params', (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined);
+  return authorizeOwnedResource(
+    'student',
+    'params',
+    (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined,
+    (manager, teacherId, ids) => new TypeOrmStudentReader(manager).countOwnedStudents(teacherId, ids),
+  );
 }
 
 export function authorizeOwnedStudentBody(fieldName: string): RequestHandler {
-  return authorizeOwnedEntity(Student, 'student', 'body', (body) => (body as Record<string, unknown> | undefined)?.[fieldName] as number | number[] | undefined);
+  return authorizeOwnedResource(
+    'student',
+    'body',
+    (body) => (body as Record<string, unknown> | undefined)?.[fieldName] as number | number[] | undefined,
+    (manager, teacherId, ids) => new TypeOrmStudentReader(manager).countOwnedStudents(teacherId, ids),
+  );
 }
 
 export function authorizeOwnedStudentQuery(fieldName = 'student_id'): RequestHandler {
-  return authorizeOwnedEntity(Student, 'student', 'query', (query) => (query as Record<string, unknown> | undefined)?.[fieldName] as number | undefined);
+  return authorizeOwnedResource(
+    'student',
+    'query',
+    (query) => (query as Record<string, unknown> | undefined)?.[fieldName] as number | undefined,
+    (manager, teacherId, ids) => new TypeOrmStudentReader(manager).countOwnedStudents(teacherId, ids),
+  );
 }
 
 export function authorizeOwnedSessionParam(fieldName = 'sessionId'): RequestHandler {
-  return authorizeOwnedEntity(Session, 'session', 'params', (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined);
+  return authorizeOwnedResource(
+    'session',
+    'params',
+    (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined,
+    (manager, teacherId, ids) => new TypeOrmClassReader(manager).countOwnedSessions(teacherId, ids),
+  );
 }
 
 export function authorizeOwnedTopicParam(fieldName = 'topicId'): RequestHandler {
-  return authorizeOwnedEntity(Topic, 'topic', 'params', (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined);
+  return authorizeOwnedResource(
+    'topic',
+    'params',
+    (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined,
+    (manager, teacherId, ids) => new TypeOrmClassReader(manager).countOwnedGyms(teacherId, ids),
+  );
+}
+
+export function authorizeOwnedGymParam(fieldName = 'gymId'): RequestHandler {
+  return authorizeOwnedResource(
+    'gym',
+    'params',
+    (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined,
+    (manager, teacherId, ids) => new TypeOrmClassReader(manager).countOwnedGyms(teacherId, ids),
+  );
 }
 
 export function authorizeOwnedTransactionParam(fieldName = 'transactionId'): RequestHandler {
-  return authorizeOwnedEntity(Transaction, 'transaction', 'params', (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined);
+  return authorizeOwnedResource(
+    'transaction',
+    'params',
+    (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined,
+    (manager, teacherId, ids) => new TypeOrmTransactionReader(manager).countOwnedTransactions(teacherId, ids),
+  );
 }
 
 export function authorizeOwnedFeeRecordParam(fieldName = 'feeRecordId'): RequestHandler {
-  return authorizeOwnedEntity(FeeRecord, 'fee record', 'params', (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined);
+  return authorizeOwnedResource(
+    'fee record',
+    'params',
+    (params) => (params as Record<string, unknown> | undefined)?.[fieldName] as number | undefined,
+    (manager, teacherId, ids) => new TypeOrmTransactionReader(manager).countOwnedFeeRecords(teacherId, ids),
+  );
 }

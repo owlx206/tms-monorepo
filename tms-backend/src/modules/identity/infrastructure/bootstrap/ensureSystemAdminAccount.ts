@@ -1,6 +1,5 @@
 import config from '../../../../config.js';
-import { TeacherRole } from '../../contracts/types.js';
-import { BcryptPasswordHasher } from '../security/BcryptPasswordHasher.js';
+import { BcryptPasswordHasher } from '../security.js';
 import { TypeOrmTeacherWriter } from '../persistence/typeorm/Writer.js';
 
 const teacherWriter = new TypeOrmTeacherWriter();
@@ -17,7 +16,6 @@ export async function ensureSystemAdminAccount(): Promise<void> {
     sysAdmin = teacherWriter.create({
       username: sysAdminUsername,
       password_hash: passwordHash,
-      role: TeacherRole.SysAdmin,
       is_active: true,
     });
 
@@ -26,11 +24,6 @@ export async function ensureSystemAdminAccount(): Promise<void> {
   }
 
   let hasChanges = false;
-
-  if (sysAdmin.role !== TeacherRole.SysAdmin) {
-    sysAdmin.role = TeacherRole.SysAdmin;
-    hasChanges = true;
-  }
 
   if (!sysAdmin.is_active) {
     sysAdmin.is_active = true;

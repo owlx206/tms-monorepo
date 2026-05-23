@@ -1,10 +1,14 @@
-import config from '../../../../../config.js';
 import { type EntityManager, In } from 'typeorm';
-import { SysadminDiscordBotCredential } from './entities/sysadmin-discord-bot-credential.entity.js';
+import { SysadminDiscordBotCredential } from '../../../../../infrastructure/database/entities/sysadmin-discord-bot-credential.entity.js';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
-import { type AdminTeacher, type SysadminDiscordBotCredentialView } from '../../../contracts/types.js';
-import { Teacher } from './entities/teacher.entity.js';
-import { TopicBotConfig } from '../../../../topic/infrastructure/persistence/typeorm/entities/topic-bot-config.entity.js';
+import {
+  type AdminTeacher,
+  type SysadminDiscordBotCredentialView,
+} from '../../../contracts/types.js';
+import { Teacher } from '../../../../../infrastructure/database/entities/teacher.entity.js';
+import { TeacherCodeforcesCredential } from '../../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
+import { discordApiUrl } from '../../auth/discord-oauth.js';
+import { roleForTeacher } from '../../../application/mappers/AuthMapper.js';
 
 // TypeOrmSysadminDiscordBotCredentialReader.ts
 function buildInviteLink(input: {
@@ -46,7 +50,7 @@ export class TypeOrmSysadminDiscordBotCredentialReader {
         permissions: credential.permissions,
         scopes: credential.scopes,
       }),
-      verification_redirect_uri: `${config.backendPublicUrl}${config.apiPrefix}/discord/verification/callback`,
+      verification_redirect_uri: discordApiUrl('/discord/verification/callback'),
       has_bot_token: Boolean(credential.bot_token),
       bot_health_status: credential.bot_health_status,
       bot_health_message: credential.bot_health_message,
@@ -67,22 +71,23 @@ export class TypeOrmTeacherReader {
         created_at: 'DESC',
       },
     });
-    const topicBotConfigs = teachers.length > 0
-      ? await this.manager.getRepository(TopicBotConfig).findBy({
+    const codeforcesCredentials = teachers.length > 0
+      ? await this.manager.getRepository(TeacherCodeforcesCredential).findBy({
         teacher_id: In(teachers.map((teacher) => teacher.id)),
       })
       : [];
-    const topicBotConfigByTeacherId = new Map(
-      topicBotConfigs.map((config) => [config.teacher_id, config]),
+    const codeforcesCredentialByTeacherId = new Map(
+      codeforcesCredentials.map((config) => [config.teacher_id, config]),
     );
 
     return teachers.map((teacher) => ({
       id: teacher.id,
       username: teacher.username,
-      role: teacher.role,
+      role: roleForTeacher(teacher),
       is_active: teacher.is_active,
-      has_codeforces_api_key: Boolean(topicBotConfigByTeacherId.get(teacher.id)?.codeforces_api_key),
-      has_codeforces_api_secret: Boolean(topicBotConfigByTeacherId.get(teacher.id)?.codeforces_api_secret),
+      codeforces_handle: codeforcesCredentialByTeacherId.get(teacher.id)?.codeforces_handle ?? null,
+      has_codeforces_api_key: Boolean(codeforcesCredentialByTeacherId.get(teacher.id)?.codeforces_api_key),
+      has_codeforces_api_secret: Boolean(codeforcesCredentialByTeacherId.get(teacher.id)?.codeforces_api_secret),
       created_at: teacher.created_at,
     }));
   }

@@ -1,9 +1,8 @@
-import { TeacherRole } from '../../contracts/types.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 import { isUniqueViolation } from '../mappers/AuthMapper.js';
 import { toAdminTeacher } from '../mappers/AdminMapper.js';
 import type { UpdateTeacherByAdminInput } from '../../contracts/types.js';
-import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
+import type { BcryptPasswordHasher } from '../../infrastructure/security.js';
 import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class UpdateTeacherByAdminUseCase {
@@ -17,14 +16,6 @@ export class UpdateTeacherByAdminUseCase {
 
     if (!teacher) {
       throw new HttpError('teacher not found', 404);
-    }
-
-    if (input.role !== undefined) {
-      if (actorTeacherId === teacher.id && input.role !== TeacherRole.SysAdmin) {
-        throw new HttpError('cannot remove sysadmin role from current account', 409);
-      }
-
-      teacher.role = input.role;
     }
 
     if (input.is_active !== undefined) {
@@ -45,11 +36,12 @@ export class UpdateTeacherByAdminUseCase {
 
     try {
       const saved = await this.teacherWriter.save(teacher);
-      const topicBotConfig = await this.teacherWriter.saveTopicBotConfig(saved.id, {
+      const codeforcesCredential = await this.teacherWriter.saveTeacherCodeforcesCredential(saved.id, {
+        codeforces_handle: input.codeforces_handle,
         codeforces_api_key: input.codeforces_api_key,
         codeforces_api_secret: input.codeforces_api_secret,
       });
-      return toAdminTeacher(saved, topicBotConfig);
+      return toAdminTeacher(saved, codeforcesCredential);
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new HttpError('username already exists', 409);

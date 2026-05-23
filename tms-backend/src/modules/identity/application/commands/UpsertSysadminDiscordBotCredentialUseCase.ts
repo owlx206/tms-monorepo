@@ -1,8 +1,8 @@
-import config from '../../../../config.js';
 import type {
   SysadminDiscordBotCredentialInput,
   SysadminDiscordBotCredentialView,
 } from '../../contracts/types.js';
+import { discordApiUrl } from '../../infrastructure/auth/discord-oauth.js';
 import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 function buildInviteLink(input: {
@@ -54,7 +54,7 @@ export class UpsertSysadminDiscordBotCredentialUseCase {
         permissions: saved.permissions,
         scopes: saved.scopes,
       }),
-      verification_redirect_uri: `${config.backendPublicUrl}${config.apiPrefix}/discord/verification/callback`,
+      verification_redirect_uri: discordApiUrl('/discord/verification/callback'),
       has_bot_token: true,
       bot_health_status: saved.bot_health_status,
       bot_health_message: saved.bot_health_message,

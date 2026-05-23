@@ -5,9 +5,9 @@ import { UpdateTransactionUseCase } from './application/commands/UpdateTransacti
 import { TypeOrmIncomeReportReader } from './infrastructure/persistence/typeorm/Reader.js';
 import { TypeOrmTransactionReader } from './infrastructure/persistence/typeorm/Reader.js';
 import { TypeOrmTransactionWriter } from './infrastructure/persistence/typeorm/Writer.js';
-import { FeeRecord } from './infrastructure/persistence/typeorm/entities/fee-record.entity.js';
-import { TransactionAuditLog } from './infrastructure/persistence/typeorm/entities/transaction-audit-log.entity.js';
-import { Transaction } from './infrastructure/persistence/typeorm/entities/transaction.entity.js';
+import { FeeRecord } from '../../infrastructure/database/entities/fee-record.entity.js';
+import { TransactionAuditLog } from '../../infrastructure/database/entities/transaction-audit-log.entity.js';
+import { Transaction } from '../../infrastructure/database/entities/transaction.entity.js';
 import { FinanceController } from './presentation/controllers/FinanceController.js';
 import { FinanceReportController } from './presentation/controllers/FinanceReportController.js';
 import { createFinanceReportRouter } from './presentation/routes/finance-report.routes.js';
@@ -38,7 +38,7 @@ const financeControllerDependencies = {
   },
   updateFeeRecordStatus: {
     execute: (...args: Parameters<UpdateFeeRecordStatusUseCase['execute']>) =>
-      new UpdateFeeRecordStatusUseCase(AppDataSource.manager).execute(...args),
+      new UpdateFeeRecordStatusUseCase(createTransactionWriter()).execute(...args),
   },
 };
 

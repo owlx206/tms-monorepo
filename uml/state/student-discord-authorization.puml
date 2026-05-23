@@ -1,0 +1,15 @@
+@startuml
+[*] --> NotAuthorized
+NotAuthorized --> AuthorizeUrlBuilt : teacher sends link
+AuthorizeUrlBuilt --> OAuthRedirected : student authorizes identify/guilds.join
+OAuthRedirected --> Cancelled : user cancels Discord OAuth
+OAuthRedirected --> CallbackReceived : code/state
+CallbackReceived --> Rejected : missing code/state or invalid state
+CallbackReceived --> TokenExchanged : exchange code
+TokenExchanged --> UserFetched : fetch Discord user
+UserFetched --> AuthorizationStored : save identity and token
+AuthorizationStored --> PopupClosed : postMessage success
+Cancelled --> PopupClosed : postMessage cancelled
+Rejected --> [*]
+PopupClosed --> [*]
+@enduml

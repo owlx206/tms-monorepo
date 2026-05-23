@@ -37,7 +37,6 @@ export async function updateTeacherByAdmin(
   payload: {
     username?: string;
     password?: string;
-    role?: TeacherRole;
     is_active?: boolean;
     codeforces_handle?: string | null;
     codeforces_api_key?: string | null;

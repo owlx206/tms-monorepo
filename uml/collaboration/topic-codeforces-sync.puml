@@ -1,0 +1,21 @@
+@startuml
+object SyncRunner
+object CodeforcesGymSyncWorker
+object TypeOrmGymReader
+object CodeforcesGym
+object CodeforcesClientSingleton
+object TypeOrmGymWriter
+object ClassGyms <<database>>
+object GymProblems <<database>>
+object GymStandings <<database>>
+SyncRunner --> CodeforcesGymSyncWorker : 1: run loop
+CodeforcesGymSyncWorker --> TypeOrmGymReader : 2: load bound gyms and credentials
+TypeOrmGymReader --> ClassGyms : 3: SELECT
+CodeforcesGymSyncWorker --> CodeforcesGym : 4: list owned gyms
+CodeforcesGym --> CodeforcesClientSingleton : 5: rate limited contest.list
+CodeforcesGymSyncWorker --> TypeOrmGymWriter : 6: sync catalog
+TypeOrmGymWriter --> ClassGyms : 7: UPSERT
+CodeforcesGymSyncWorker --> CodeforcesGym : 8: get standing snapshot
+TypeOrmGymWriter --> GymProblems : 9: UPSERT problems
+TypeOrmGymWriter --> GymStandings : 10: UPSERT rows
+@enduml

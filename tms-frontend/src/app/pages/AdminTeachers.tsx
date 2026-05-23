@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Clock3, KeyRound, Settings, Shield, TriangleAlert, UserCheck, UserX } from "lucide-react";
+import { CheckCircle2, Clock3, KeyRound, Settings, TriangleAlert, UserCheck, UserX } from "lucide-react";
 
 import { ApiError } from "../services/apiClient";
 import {
@@ -110,7 +110,8 @@ export function AdminTeachers() {
       setTeachers(teacherList);
       setAccount(me);
       setStoredTeacher(me);
-      setDiscordBotCredential(await getSysadminDiscordBotCredential());
+      const credential = await getSysadminDiscordBotCredential();
+      setDiscordBotCredential(credential);
     } catch (error) {
       setRequestError(toErrorMessage(error));
     } finally {
@@ -125,9 +126,8 @@ export function AdminTeachers() {
   const stats = useMemo(() => {
     const total = teachers.length;
     const active = teachers.filter((teacher) => teacher.is_active).length;
-    const sysadmin = teachers.filter((teacher) => teacher.role === "sysadmin").length;
 
-    return { total, active, sysadmin };
+    return { total, active };
   }, [teachers]);
 
   const handleToggleActive = async (teacher: BackendAdminTeacher) => {
@@ -137,22 +137,6 @@ export function AdminTeachers() {
     try {
       await updateTeacherByAdmin(teacher.id, {
         is_active: !teacher.is_active,
-      });
-      await loadData();
-    } catch (error) {
-      setRequestError(toErrorMessage(error));
-    } finally {
-      setUpdatingTeacherId(null);
-    }
-  };
-
-  const handleToggleRole = async (teacher: BackendAdminTeacher) => {
-    setUpdatingTeacherId(teacher.id);
-    setRequestError("");
-
-    try {
-      await updateTeacherByAdmin(teacher.id, {
-        role: teacher.role === "sysadmin" ? "teacher" : "sysadmin",
       });
       await loadData();
     } catch (error) {
@@ -245,7 +229,7 @@ export function AdminTeachers() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
           <p className="text-sm text-zinc-600 mb-2">Tổng tài khoản</p>
           <p className="text-3xl font-semibold text-zinc-900">{loading ? "..." : stats.total}</p>
@@ -253,10 +237,6 @@ export function AdminTeachers() {
         <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
           <p className="text-sm text-zinc-600 mb-2">Đang hoạt động</p>
           <p className="text-3xl font-semibold text-zinc-900">{loading ? "..." : stats.active}</p>
-        </div>
-        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
-          <p className="text-sm text-zinc-600 mb-2">System admin</p>
-          <p className="text-3xl font-semibold text-zinc-900">{loading ? "..." : stats.sysadmin}</p>
         </div>
       </div>
 
@@ -333,14 +313,6 @@ export function AdminTeachers() {
 
                   <div className="flex flex-wrap gap-2">
                     <button
-                      disabled={isRowLoading || (isCurrentUser && teacher.role === "sysadmin")}
-                      onClick={() => void handleToggleRole(teacher)}
-                      className="px-3 py-2 rounded-lg bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors text-sm disabled:opacity-50"
-                    >
-                      <Shield className="w-4 h-4 inline mr-2" />
-                      {teacher.role === "sysadmin" ? "Hạ quyền Teacher" : "Cấp quyền Sysadmin"}
-                    </button>
-                    <button
                       disabled={isRowLoading || (isCurrentUser && teacher.is_active)}
                       onClick={() => void handleToggleActive(teacher)}
                       className="px-3 py-2 rounded-lg bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors text-sm disabled:opacity-50"
@@ -405,6 +377,7 @@ export function AdminTeachers() {
           onSubmit={handleSaveDiscordBotCredential}
         />
       )}
+
     </div>
   );
 }
@@ -468,7 +441,7 @@ function DiscordBotCredentialModal({
         <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
           <p className="font-medium text-zinc-900">OAuth redirect URI cần add trong Discord Developer Portal</p>
           <p className="mt-1 break-all">
-            {credential?.verification_redirect_uri ?? "http://localhost:4000/api/discord/verification/callback"}
+            {credential?.verification_redirect_uri ?? "http://saas.owlab.uk/api/discord/verification/callback"}
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -698,7 +671,7 @@ function AccountSettingsModal({
           </div>
 
           <div>
-            <label className="block text-sm text-zinc-700 mb-2">Codeforces Handle</label>
+            <label className="block text-sm text-zinc-700 mb-2">Codeforces owner handle</label>
             <input
               type="text"
               value={codeforcesHandle}

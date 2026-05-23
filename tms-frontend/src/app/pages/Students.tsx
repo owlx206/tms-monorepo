@@ -26,7 +26,7 @@ import {
   updateStudent as updateStudentById,
   type BackendStudentSummary,
 } from "../services/studentService";
-import { getStudentDiscordAuthorizationUrl, sendStudentMessages } from "../services/messagingService";
+import { getStudentDiscordAuthorizationUrl, sendStudentMessages } from "../services/discordService";
 
 type StudentView = {
   id: number;
@@ -57,6 +57,34 @@ function toErrorMessage(error: unknown): string {
   }
 
   return "Đã có lỗi xảy ra";
+}
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to the textarea fallback for HTTP/non-secure contexts.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
 }
 
 function parseAmount(value: string): number {
@@ -129,27 +157,47 @@ export function Students() {
   }, []);
 
   useEffect(() => {
+    const handleStudentDiscordAuthorizationStatus = (status: string): void => {
+      if (status === "success") {
+        setRequestNotice("Học sinh đã authorize Discord.");
+        void loadData();
+        return;
+      }
+
+      if (status === "cancelled") {
+        setRequestError("Học sinh đã hủy authorize Discord.");
+        return;
+      }
+
+      setRequestError("Không xử lý được kết quả authorize Discord của học sinh.");
+    };
+
     const status = new URLSearchParams(location.search).get("discord_student");
-    if (!status) {
-      return;
+    if (status) {
+      handleStudentDiscordAuthorizationStatus(status);
     }
 
-    if (status === "success") {
-      setRequestNotice("Học sinh đã authorize Discord và đã được add vào server lớp.");
-      return;
-    }
+    const allowedMessageOrigins = new Set([
+      window.location.origin,
+      new URL(import.meta.env.VITE_API_URL ?? window.location.origin, window.location.origin).origin,
+    ]);
 
-    if (status === "authorized_no_class_server") {
-      setRequestNotice("Học sinh đã authorize Discord. Lớp hiện tại chưa cấu hình server Discord.");
-      return;
-    }
+    const handleMessage = (event: MessageEvent): void => {
+      if (!allowedMessageOrigins.has(event.origin)) {
+        return;
+      }
 
-    if (status === "cancelled") {
-      setRequestError("Học sinh đã hủy authorize Discord.");
-      return;
-    }
+      if (!event.data || event.data.type !== "student-discord-authorization") {
+        return;
+      }
 
-    setRequestError("Học sinh đã authorize Discord nhưng chưa add được vào server lớp. Kiểm tra quyền bot rồi sync lại.");
+      handleStudentDiscordAuthorizationStatus(String(event.data.status || ""));
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
   }, [location.search]);
 
   const filteredStudents = useMemo(
@@ -306,10 +354,10 @@ export function Students() {
 
     try {
       const url = await getStudentDiscordAuthorizationUrl(student.id);
-      try {
-        await navigator.clipboard.writeText(url);
+      const copied = await copyTextToClipboard(url);
+      if (copied) {
         setRequestNotice(`Đã copy link authorize Discord cho ${student.name}`);
-      } catch {
+      } else {
         setRequestNotice(`Link authorize Discord cho ${student.name}: ${url}`);
       }
     } catch (error) {

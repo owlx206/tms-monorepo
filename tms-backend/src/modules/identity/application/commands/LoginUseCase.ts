@@ -2,8 +2,8 @@ import { HttpError } from '../../../../shared/errors/HttpError.js';
 import { toAuthTeacher } from '../mappers/AuthMapper.js';
 import type { LoginInput } from '../../contracts/types.js';
 import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
-import type { JwtAccessTokenSigner } from '../../infrastructure/security/JwtAccessTokenSigner.js';
-import type { BcryptPasswordHasher } from '../../infrastructure/security/BcryptPasswordHasher.js';
+import type { JwtAccessTokenSigner } from '../../infrastructure/security.js';
+import type { BcryptPasswordHasher } from '../../infrastructure/security.js';
 
 export class LoginUseCase {
   constructor(
@@ -29,15 +29,16 @@ export class LoginUseCase {
       throw new HttpError('invalid username or password', 401);
     }
 
+    const codeforcesCredential = await this.teacherWriter.findTeacherCodeforcesCredential(teacher.id);
+
     return {
       accessToken: this.accessTokenSigner.sign({
         sub: teacher.id,
         username: teacher.username,
-        role: teacher.role,
       }),
       tokenType: 'Bearer' as const,
       expiresIn: this.tokenExpiresIn,
-      teacher: toAuthTeacher(teacher),
+      teacher: toAuthTeacher(teacher, codeforcesCredential),
     };
   }
 }

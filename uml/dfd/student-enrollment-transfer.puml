@@ -1,0 +1,27 @@
+@startuml
+left to right direction
+actor "Teacher" as T
+rectangle "Student API" as P1
+rectangle "Student Use Cases" as P2
+rectangle "Student Discord Membership Service" as P3
+database "students" as D1
+database "classes" as D2
+database "enrollments" as D3
+database "fee_records + transactions" as D4
+database "student_discord_credentials + class_discord_bindings" as D5
+T --> P1 : student/enrollment command
+P1 --> P2 : validated request
+P2 --> D1 : load/save student
+P2 --> D2 : ensure active class
+P2 --> D3 : close active enrollment
+P2 --> D3 : create next enrollment
+P2 --> P3 : join current class guild if possible
+P3 --> D5 : load token and class guild
+P2 --> D4 : load balance snapshot
+D1 --> P2 : student
+D2 --> P2 : class status
+D3 --> P2 : enrollment state
+D4 --> P2 : balance totals
+P2 --> P1 : student summary
+P1 --> T : response
+@enduml

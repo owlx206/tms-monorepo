@@ -1,12 +1,15 @@
-import { SysadminDiscordBotCredential } from './entities/sysadmin-discord-bot-credential.entity.js';
+import { In } from 'typeorm';
+
+import { SysadminDiscordBotCredential } from '../../../../../infrastructure/database/entities/sysadmin-discord-bot-credential.entity.js';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
-import { DiscordGuildChannelCache } from '../../../../messaging/infrastructure/persistence/typeorm/entities/discord-guild-channel-cache.entity.js';
-import { DiscordUserGuild } from '../../../../messaging/infrastructure/persistence/typeorm/entities/discord-user-guild.entity.js';
-import { ClassDiscordBinding } from '../../../../messaging/infrastructure/persistence/typeorm/entities/class-discord-binding.entity.js';
-import { Enrollment } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/enrollment.entity.js';
-import { Student } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
-import { Teacher } from './entities/teacher.entity.js';
-import { TopicBotConfig } from '../../../../topic/infrastructure/persistence/typeorm/entities/topic-bot-config.entity.js';
+import { DiscordGuildChannelCache } from '../../../../../infrastructure/external/discord/cache/entities/discord-guild-channel-cache.entity.js';
+import { DiscordUserGuild } from '../../../../../infrastructure/external/discord/cache/entities/discord-user-guild.entity.js';
+import { ClassDiscordBinding } from '../../../../../infrastructure/database/entities/discord/class-discord-binding.entity.js';
+import { Enrollment } from '../../../../../infrastructure/database/entities/enrollment.entity.js';
+import { Student } from '../../../../../infrastructure/database/entities/student.entity.js';
+import { Teacher } from '../../../../../infrastructure/database/entities/teacher.entity.js';
+import { TeacherCodeforcesCredential } from '../../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
+import { StudentDiscordCredential } from '../../../../../infrastructure/database/entities/student-discord-credential.entity.js';
 
 // SysadminDiscordBotCredentialStore.ts
 export type SysadminDiscordBotCredentialRecord = {
@@ -31,56 +34,83 @@ export interface SysadminDiscordBotCredentialStore {
   }): Promise<SysadminDiscordBotCredential>;
 }
 
-// TypeOrmDiscordUserGuildStore.ts
-export class TypeOrmDiscordUserGuildStore {
-  findAnyByDiscordGuildId(discordGuildId: string): Promise<DiscordUserGuild | null> {
-    return AppDataSource.getRepository(DiscordUserGuild).findOneBy({
-      discord_guild_id: discordGuildId,
-    });
+export function findDefaultSysadminDiscordBotCredential(): Promise<SysadminDiscordBotCredential | null> {
+  return AppDataSource.getRepository(SysadminDiscordBotCredential).findOneBy({
+    singleton_key: 'default',
+  });
+}
+
+export async function updateDefaultSysadminDiscordBotHealth(input: {
+  status: 'unknown' | 'healthy' | 'unhealthy';
+  message: string;
+  checkedAt: Date;
+}): Promise<void> {
+  await AppDataSource.getRepository(SysadminDiscordBotCredential).update(
+    { singleton_key: 'default' },
+    {
+      bot_health_status: input.status,
+      bot_health_message: input.message,
+      bot_health_checked_at: input.checkedAt,
+    },
+  );
+}
+
+export async function listTeacherIdsWithDiscordUserId(): Promise<number[]> {
+  const teachers = await AppDataSource.getRepository(Teacher)
+    .createQueryBuilder('teacher')
+    .select('teacher.id', 'id')
+    .where('teacher.discord_user_id IS NOT NULL')
+    .andWhere("LEN(TRIM(teacher.discord_user_id)) > 0")
+    .getRawMany<{ id: number }>();
+
+  return teachers.map((teacher) => Number(teacher.id));
+}
+
+export async function listTeacherIdsForCodeforcesSync(): Promise<number[]> {
+  const teachers = await AppDataSource.getRepository(Teacher).find({
+    select: { id: true },
+  });
+
+  return teachers.map((teacher) => teacher.id);
+}
+
+export async function findTeacherCodeforcesSyncConfig(teacherId: number): Promise<{
+  codeforces_handle: string | null;
+  codeforces_api_key: string | null;
+  codeforces_api_secret: string | null;
+} | null> {
+  return AppDataSource.getRepository(TeacherCodeforcesCredential).findOneBy({
+    teacher_id: teacherId,
+  });
+}
+
+export async function findTeacherDiscordUserId(teacherId: number): Promise<string | null> {
+  const teacher = await AppDataSource.getRepository(Teacher).findOne({
+    where: { id: teacherId },
+    select: { id: true, discord_user_id: true },
+  });
+
+  return teacher?.discord_user_id?.trim() || null;
+}
+
+export async function listStudentDiscordIdentities(studentIds: number[]): Promise<Array<{
+  student_id: number;
+  discord_user_id: string | null;
+  discord_username: string | null;
+}>> {
+  if (studentIds.length === 0) {
+    return [];
   }
 
-  findByOwnerAndDiscordGuildId(
-    discordUserId: string,
-    discordGuildId: string,
-  ): Promise<DiscordUserGuild | null> {
-    return AppDataSource.getRepository(DiscordUserGuild).findOneBy({
-      discord_user_id: discordUserId,
-      discord_guild_id: discordGuildId,
-    });
-  }
+  const credentials = await AppDataSource.getRepository(StudentDiscordCredential).findBy({
+    student_id: In(studentIds),
+  });
 
-  createUserGuild(values: Partial<DiscordUserGuild>): DiscordUserGuild {
-    return AppDataSource.getRepository(DiscordUserGuild).create(values);
-  }
-
-  saveUserGuild(userGuild: DiscordUserGuild): Promise<DiscordUserGuild> {
-    return AppDataSource.getRepository(DiscordUserGuild).save(userGuild);
-  }
-
-  async replaceChannelCache(
-    discordUserId: string,
-    discordGuildId: string,
-    channels: Array<{ discord_channel_id: string; name: string; type: 'text' | 'voice' }>,
-  ): Promise<DiscordGuildChannelCache[]> {
-    const repo = AppDataSource.getRepository(DiscordGuildChannelCache);
-    await repo.delete({
-      discord_user_id: discordUserId,
-      discord_guild_id: discordGuildId,
-    });
-
-    if (channels.length === 0) {
-      return [];
-    }
-
-    return repo.save(channels.map((channel) => repo.create({
-      discord_user_id: discordUserId,
-      discord_guild_id: discordGuildId,
-      discord_channel_id: channel.discord_channel_id,
-      name: channel.name,
-      type: channel.type,
-      synced_at: new Date(),
-    })));
-  }
+  return credentials.map((credential) => ({
+    student_id: credential.student_id,
+    discord_user_id: credential.discord_user_id,
+    discord_username: credential.discord_username,
+  }));
 }
 
 // TypeOrmStudentDiscordIdentityStore.ts
@@ -108,18 +138,50 @@ export class TypeOrmStudentDiscordIdentityStore {
     tokenExpiresAt: Date;
     authorizedAt: Date;
   }): Promise<void> {
-    await AppDataSource.getRepository(Student).update(
+    const student = await AppDataSource.getRepository(Student).findOneBy({
+      teacher_id: input.teacherId,
+      id: input.studentId,
+    });
+    if (!student) {
+      return;
+    }
+
+    const repo = AppDataSource.getRepository(StudentDiscordCredential);
+    const existing = await repo.findOneBy({ student_id: input.studentId });
+
+    await repo.save(repo.create({
+      id: existing?.id,
+      student_id: input.studentId,
+      discord_user_id: input.discordUserId,
+      discord_username: input.discordUsername,
+      discord_access_token: input.accessToken,
+      discord_refresh_token: input.refreshToken,
+      discord_token_expires_at: input.tokenExpiresAt,
+      discord_authorized_at: input.authorizedAt,
+    }));
+  }
+
+  async updateStudentDiscordTokens(input: {
+    teacherId: number;
+    studentId: number;
+    accessToken: string;
+    refreshToken: string;
+    tokenExpiresAt: Date;
+  }): Promise<void> {
+    const student = await AppDataSource.getRepository(Student).findOneBy({
+      teacher_id: input.teacherId,
+      id: input.studentId,
+    });
+    if (!student) {
+      return;
+    }
+
+    await AppDataSource.getRepository(StudentDiscordCredential).update(
+      { student_id: input.studentId },
       {
-        teacher_id: input.teacherId,
-        id: input.studentId,
-      },
-      {
-        discord_user_id: input.discordUserId,
-        discord_username: input.discordUsername,
         discord_access_token: input.accessToken,
         discord_refresh_token: input.refreshToken,
         discord_token_expires_at: input.tokenExpiresAt,
-        discord_authorized_at: input.authorizedAt,
       },
     );
   }
@@ -226,37 +288,61 @@ export class TypeOrmTeacherWriter {
     return AppDataSource.getRepository(Teacher).findOneBy({ username });
   }
 
-  findTopicBotConfig(teacherId: number): Promise<TopicBotConfig | null> {
-    return AppDataSource.getRepository(TopicBotConfig).findOneBy({ teacher_id: teacherId });
+  findTeacherCodeforcesCredential(teacherId: number): Promise<TeacherCodeforcesCredential | null> {
+    return AppDataSource.getRepository(TeacherCodeforcesCredential).findOneBy({ teacher_id: teacherId });
   }
 
-  async saveTopicBotConfig(
+  async saveTeacherCodeforcesCredential(
     teacherId: number,
     input: {
+      codeforces_handle?: string | null;
       codeforces_api_key?: string | null;
       codeforces_api_secret?: string | null;
     },
-  ): Promise<TopicBotConfig | null> {
+  ): Promise<TeacherCodeforcesCredential | null> {
+    const hasHandleInput = input.codeforces_handle !== undefined;
     const hasApiKeyInput = input.codeforces_api_key !== undefined;
     const hasApiSecretInput = input.codeforces_api_secret !== undefined;
-    if (!hasApiKeyInput && !hasApiSecretInput) {
-      return this.findTopicBotConfig(teacherId);
+    if (!hasHandleInput && !hasApiKeyInput && !hasApiSecretInput) {
+      return this.findTeacherCodeforcesCredential(teacherId);
     }
 
-    const repo = AppDataSource.getRepository(TopicBotConfig);
+    const repo = AppDataSource.getRepository(TeacherCodeforcesCredential);
     const existing = await repo.findOneBy({ teacher_id: teacherId });
     const config = existing ?? repo.create({ teacher_id: teacherId });
+    const nextHandle = hasHandleInput
+      ? input.codeforces_handle?.trim() || null
+      : config.codeforces_handle;
+    const nextApiKey = hasApiKeyInput
+      ? input.codeforces_api_key?.trim() || null
+      : config.codeforces_api_key;
+    const nextApiSecret = hasApiSecretInput
+      ? input.codeforces_api_secret?.trim() || null
+      : config.codeforces_api_secret;
+    const credentialsChanged = nextHandle !== config.codeforces_handle
+      || nextApiKey !== config.codeforces_api_key
+      || nextApiSecret !== config.codeforces_api_secret;
+
+    if (hasHandleInput) {
+      config.codeforces_handle = nextHandle;
+    }
 
     if (hasApiKeyInput) {
-      config.codeforces_api_key = input.codeforces_api_key?.trim() || null;
+      config.codeforces_api_key = nextApiKey;
     }
 
     if (hasApiSecretInput) {
-      config.codeforces_api_secret = input.codeforces_api_secret?.trim() || null;
+      config.codeforces_api_secret = nextApiSecret;
+    }
+
+    if (!credentialsChanged && existing) {
+      return existing;
     }
 
     config.updated_at = new Date();
-    return repo.save(config);
+    const saved = await repo.save(config);
+
+    return saved;
   }
 
   async clearDiscordWorkspaceData(teacherId: number, discordUserId: string | null): Promise<void> {

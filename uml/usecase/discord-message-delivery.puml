@@ -1,0 +1,25 @@
+@startuml
+left to right direction
+actor "Teacher" as Teacher
+actor "Discord REST API" as Discord
+rectangle "Student Module" {
+  usecase "Send DM to selected students" as UC1
+  usecase "Load active class guild" as UC2
+  usecase "Resolve Discord recipient" as UC3
+  usecase "Send direct message" as UC4
+  usecase "Return delivery summary" as UC5
+}
+rectangle "Classroom Module" {
+  usecase "Send channel post" as UC6
+  usecase "Resolve notification channel" as UC7
+}
+Teacher --> UC1
+Teacher --> UC6
+UC1 .> UC3 : include
+UC1 .> UC2 : include
+UC3 .> UC4 : include
+UC4 .> Discord : calls
+UC4 .> UC5 : include
+UC6 .> UC7 : include
+UC6 .> Discord : calls
+@enduml

@@ -1,0 +1,20 @@
+@startuml
+object Teacher
+object AttendanceController
+object UpsertAttendanceUseCase
+object AttendanceWriter
+object ClassroomWriter
+object TransactionWriter
+object Database <<database>>
+Teacher --> AttendanceController : 1: attendance command
+AttendanceController --> UpsertAttendanceUseCase : 2: execute
+UpsertAttendanceUseCase --> AttendanceWriter : 3: load session/class/student
+AttendanceWriter --> Database : 4: SELECT validation rows
+UpsertAttendanceUseCase --> AttendanceWriter : 5: load enrollment at session time
+UpsertAttendanceUseCase --> AttendanceWriter : 6: save manual attendance
+AttendanceWriter --> Database : 7: INSERT/UPDATE attendance
+UpsertAttendanceUseCase --> ClassroomWriter : 8: sync fee projection
+ClassroomWriter --> TransactionWriter : 9: write fee record
+TransactionWriter --> Database : 10: UPSERT/DELETE fee
+UpsertAttendanceUseCase --> AttendanceController : 11: summary
+@enduml

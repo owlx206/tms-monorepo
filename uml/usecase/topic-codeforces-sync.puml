@@ -1,0 +1,28 @@
+@startuml
+left to right direction
+actor "Teacher" as Teacher
+actor "Codeforces Gym Sync Worker" as Worker
+actor "Codeforces API" as CF
+rectangle "Classroom Module" {
+  usecase "List available gyms" as UC1
+  usecase "Bind gym to class" as UC2
+  usecase "Unbind class gym" as UC3
+  usecase "Add gym problem" as UC4
+  usecase "Upsert standing override" as UC5
+  usecase "View class gym standing" as UC6
+  usecase "Sync gym catalog" as UC7
+  usecase "Sync gym problems" as UC8
+  usecase "Sync standing projection" as UC9
+}
+Teacher --> UC1
+Teacher --> UC2
+Teacher --> UC3
+Teacher --> UC4
+Teacher --> UC5
+Teacher --> UC6
+Worker --> UC7
+Worker --> UC9
+UC7 .> CF : calls
+UC7 .> UC8 : include
+UC9 .> CF : calls
+@enduml

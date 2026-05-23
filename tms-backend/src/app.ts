@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 import express from 'express';
 
 import config from './config.js';
@@ -23,6 +26,24 @@ export function createApp(): express.Express {
     for (const route of module.routes) {
       app.use(`${config.apiPrefix}${route.path === '/' ? '' : route.path}`, route.router);
     }
+  }
+
+  if (config.frontendDistDir && existsSync(join(config.frontendDistDir, 'index.html'))) {
+    const indexPath = join(config.frontendDistDir, 'index.html');
+
+    app.use(express.static(config.frontendDistDir));
+    app.use((req, res, next) => {
+      if (
+        req.method !== 'GET'
+        || req.path === config.apiPrefix
+        || req.path.startsWith(`${config.apiPrefix}/`)
+      ) {
+        next();
+        return;
+      }
+
+      res.sendFile(indexPath);
+    });
   }
 
   app.use(notFoundHandler);

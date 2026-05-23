@@ -1,53 +1,52 @@
 services:
   tms-backend:
-    build: ./tms-backend
-    restart: always
+    image: node:20-alpine
+    working_dir: /usr/app
+    restart: unless-stopped
     env_file:
-      - .env
+      - .env.dev
     environment:
-      - PORT=${BACKEND_PORT}
-      - HOST=${BACKEND_HOST}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_ENCRYPT=${DB_ENCRYPT}
-      - DB_TRUST_SERVER_CERTIFICATE=${DB_TRUST_SERVER_CERTIFICATE}
-      - DB_SYNCHRONIZE=${DB_SYNCHRONIZE}
-      - DB_DROP_SCHEMA=${DB_DROP_SCHEMA}
-      - AUTH_ALLOW_PUBLIC_REGISTRATION=${AUTH_ALLOW_PUBLIC_REGISTRATION}
-      - SYSADMIN_USERNAME=${SYSADMIN_USERNAME}
-      - SYSADMIN_PASSWORD=${SYSADMIN_PASSWORD}
-      - DATABASE_URL=${DATABASE_URL}
-      - TZ=${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
-      - VOICE_ATTENDANCE_SYNC_ENABLED=${VOICE_ATTENDANCE_SYNC_ENABLED:-true}
-      - VOICE_ATTENDANCE_SYNC_INTERVAL_SECONDS=${VOICE_ATTENDANCE_SYNC_INTERVAL_SECONDS:-15}
-      - SESSION_STATUS_SYNC_ENABLED=${SESSION_STATUS_SYNC_ENABLED:-true}
-      - SESSION_STATUS_SYNC_INTERVAL_SECONDS=${SESSION_STATUS_SYNC_INTERVAL_SECONDS:-15}
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 4000
+      BACKEND_PORT: 4000
+      FRONTEND_URL: http://localhost:5173
+      BACKEND_URL: http://localhost:4000
+      DISCORD_FALLBACK_URL: http://localhost:5173
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
+      - "4000:4000"
     volumes:
-      - ./tms-backend:/usr/app/
-      - /usr/app/node_modules
+      - ./tms-backend:/usr/app
+      - backend_node_modules:/usr/app/node_modules
+    command: sh -c "if [ ! -d node_modules/.bin ]; then npm ci; fi; npm run dev"
     networks:
       - tms-network
-    command: sh -c "npm install && npm run dev"
 
   tms-frontend:
-    build: ./tms-frontend
-    restart: always
+    image: node:20-alpine
+    working_dir: /usr/app
+    restart: unless-stopped
     environment:
-      - PORT=${FRONTEND_PORT}
-      - VITE_API_URL=${VITE_API_URL}
+      NODE_ENV: development
+      VITE_API_URL: /api
+      API_PREFIX: /api
+      BACKEND_HOST: tms-backend
+      BACKEND_PORT: 4000
+      CHOKIDAR_USEPOLLING: "true"
     ports:
-      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+      - "5173:5173"
     volumes:
-      - ./tms-frontend:/usr/app/
-      - /usr/app/node_modules
+      - ./tms-frontend:/usr/app
+      - frontend_node_modules:/usr/app/node_modules
+    command: sh -c "if [ ! -d node_modules/.bin ]; then npm ci; fi; npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - tms-backend
     networks:
       - tms-network
-    command: npm run dev
+
+volumes:
+  backend_node_modules:
+  frontend_node_modules:
 
 networks:
   tms-network:

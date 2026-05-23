@@ -1,7 +1,8 @@
 import type { RequestHandler } from 'express';
 
 import { TeacherRole } from '../../contracts/types.js';
-import { Teacher } from '../../infrastructure/persistence/typeorm/entities/teacher.entity.js';
+import { roleForTeacher } from '../../application/mappers/AuthMapper.js';
+import { Teacher } from '../../../../infrastructure/database/entities/teacher.entity.js';
 
 export function requireRoles(allowedRoles: TeacherRole[]): RequestHandler {
   return (req, res, next) => {
@@ -17,7 +18,7 @@ export function requireRoles(allowedRoles: TeacherRole[]): RequestHandler {
       return;
     }
 
-    if (!allowedRoles.includes(teacher.role)) {
+    if (!allowedRoles.includes(roleForTeacher(teacher))) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }

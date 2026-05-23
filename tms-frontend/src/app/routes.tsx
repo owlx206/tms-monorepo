@@ -7,9 +7,8 @@ import { ClassDetail } from "./pages/ClassDetail";
 import { Sessions } from "./pages/Sessions";
 import { SessionDetail } from "./pages/SessionDetail";
 import { Transactions } from "./pages/Transactions";
-import { Topics } from "./pages/Topics";
 import { TopicStanding } from "./pages/TopicStanding";
-import { Messaging } from "./pages/Messaging";
+import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
 import { Layout } from "./components/Layout";
 import { AdminTeachers } from "./pages/AdminTeachers";
@@ -94,9 +93,8 @@ export const router = createBrowserRouter([
       { path: "sessions", Component: Sessions, loader: requireRoleLoader(["teacher"]) },
       { path: "sessions/:sessionId", Component: SessionDetail, loader: requireRoleLoader(["teacher"]) },
       { path: "transactions", Component: Transactions, loader: requireRoleLoader(["teacher"]) },
-      { path: "topics", Component: Topics, loader: requireRoleLoader(["teacher"]) },
-      { path: "topics/:id/standing", Component: TopicStanding, loader: requireRoleLoader(["teacher"]) },
-      { path: "messaging", Component: Messaging, loader: requireRoleLoader(["teacher"]) },
+      { path: "classes/:classId/gyms/:gymId/standing", Component: TopicStanding, loader: requireRoleLoader(["teacher"]) },
+      { path: "settings", Component: Settings, loader: requireRoleLoader(["teacher"]) },
       { path: "reports", loader: () => redirect("/transactions") },
       { path: "admin/teachers", Component: AdminTeachers, loader: requireRoleLoader(["sysadmin"]) },
     ],

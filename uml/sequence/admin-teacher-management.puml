@@ -1,0 +1,33 @@
+@startuml
+actor Sysadmin
+participant "AdminController" as C
+participant "UpdateTeacherByAdminUseCase" as U
+participant "TypeOrmTeacherWriter" as W
+participant "BcryptPasswordHasher" as H
+participant "UpsertSysadminDiscordBotCredentialUseCase" as DU
+database "teachers" as T
+database "sysadmin_discord_bot_credentials" as D
+
+Sysadmin -> C : PATCH /admin/teachers/{teacherId}
+C -> U : execute(teacherId, input)
+U -> W : requireById(teacherId)
+W -> T : SELECT teacher
+T --> W : Teacher
+alt password provided
+  U -> H : hash(password)
+  H --> U : password_hash
+end
+U -> W : save(updated teacher)
+W -> T : UPDATE teachers
+U --> C : AdminTeacherView
+C --> Sysadmin : 200
+
+Sysadmin -> C : PUT /admin/discord-bot
+C -> DU : execute(input)
+DU -> W : findDefaultDiscordCredential()
+W -> D : SELECT singleton credential
+DU -> W : save credential + invite settings
+W -> D : INSERT/UPDATE credential
+DU --> C : credential view
+C --> Sysadmin : 200
+@enduml

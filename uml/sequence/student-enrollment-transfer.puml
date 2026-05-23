@@ -1,0 +1,34 @@
+@startuml
+actor Teacher
+participant "StudentController" as C
+participant "TransferStudentUseCase" as U
+participant "StudentWriter" as SW
+participant "EnrollmentWriter" as EW
+participant "Classroom Reader functions" as CR
+participant "TypeOrmStudentDiscordMembershipService" as DM
+participant "BalanceSnapshotReader" as BR
+database "students/enrollments/classes" as DB
+database "student_discord_credentials/class_discord_bindings" as DDB
+Teacher -> C : POST /students/{id}/transfer
+C -> U : execute(command)
+U -> SW : requireById(studentId)
+SW -> DB : SELECT student
+U -> CR : ensureActiveClass(teacherId,toClassId)
+CR -> DB : SELECT active class
+U -> EW : findActiveByStudent
+EW -> DB : SELECT current enrollment
+U -> EW : save ended current enrollment
+EW -> DB : UPDATE unenrolled_at
+U -> EW : save new enrollment
+EW -> DB : INSERT enrollment
+U -> DM : joinCurrentClassGuildIfPossible(studentId)
+DM -> DDB : SELECT student token + class guild
+alt Discord token and class guild exist
+  DM -> DDB : refresh token if needed
+  DM -> DDB : add Discord guild member
+end
+U -> BR : loadForStudent
+BR -> DB : SELECT fee/transaction totals
+U --> C : StudentSummary
+C --> Teacher : 200
+@enduml

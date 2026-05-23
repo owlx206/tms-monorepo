@@ -1,15 +1,21 @@
-import { Teacher } from '../../infrastructure/persistence/typeorm/entities/teacher.entity.js';
-import type { TopicBotConfig } from '../../../topic/infrastructure/persistence/typeorm/entities/topic-bot-config.entity.js';
-import type { AuthTeacher } from '../../contracts/types.js';
+import config from '../../../../config.js';
+import { Teacher } from '../../../../infrastructure/database/entities/teacher.entity.js';
+import type { TeacherCodeforcesCredential } from '../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
+import { TeacherRole, type AuthTeacher } from '../../contracts/types.js';
 
-export function toAuthTeacher(teacher: Teacher, topicBotConfig?: TopicBotConfig | null): AuthTeacher {
+export function roleForTeacher(teacher: Pick<Teacher, 'username'>): TeacherRole {
+  return teacher.username === config.auth.sysAdminUsername ? TeacherRole.SysAdmin : TeacherRole.Teacher;
+}
+
+export function toAuthTeacher(teacher: Teacher, codeforcesCredential?: TeacherCodeforcesCredential | null): AuthTeacher {
   return {
     id: teacher.id,
     username: teacher.username,
-    role: teacher.role,
+    role: roleForTeacher(teacher),
     is_active: teacher.is_active,
-    codeforces_api_key: topicBotConfig?.codeforces_api_key ?? null,
-    codeforces_api_secret: topicBotConfig?.codeforces_api_secret ?? null,
+    codeforces_handle: codeforcesCredential?.codeforces_handle ?? null,
+    codeforces_api_key: codeforcesCredential?.codeforces_api_key ?? null,
+    codeforces_api_secret: codeforcesCredential?.codeforces_api_secret ?? null,
     discord_username: teacher.discord_username,
     discord_user_id: teacher.discord_user_id,
     discord_verified_at: teacher.discord_verified_at,

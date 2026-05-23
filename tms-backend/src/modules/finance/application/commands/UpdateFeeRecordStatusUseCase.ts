@@ -1,33 +1,21 @@
-import type { EntityManager } from 'typeorm';
-
 import type { FeeRecordStatus } from '../../contracts/types.js';
-import { FeeRecord } from '../../infrastructure/persistence/typeorm/entities/fee-record.entity.js';
-import { AppDataSource } from '../../../../infrastructure/database/data-source.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { TypeOrmTransactionWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class UpdateFeeRecordStatusUseCase {
-  constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
+  constructor(private readonly financeWriter: TypeOrmTransactionWriter) {}
 
   async execute(input: {
     teacherId: number;
     feeRecordId: number;
     status: FeeRecordStatus;
   }) {
-    const feeRecordWriter = this.manager.getRepository(FeeRecord);
-    const feeRecord = await feeRecordWriter.findOneBy({
-      id: input.feeRecordId,
-      teacher_id: input.teacherId,
-    });
+    const feeRecord = await this.financeWriter.updateFeeRecordStatus(input);
 
     if (!feeRecord) {
       throw new HttpError('fee record not found', 404);
     }
 
-    if (feeRecord.status === input.status) {
-      return feeRecord;
-    }
-
-    feeRecord.setStatus(input.status);
-    return feeRecordWriter.save(feeRecord);
+    return feeRecord;
   }
 }

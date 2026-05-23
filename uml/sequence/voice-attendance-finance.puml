@@ -1,0 +1,28 @@
+@startuml
+actor "Discord Classroom Sync Worker" as Job
+participant "syncVoiceAttendanceForOpenSessionsOnce" as S
+participant "DiscordVoice" as G
+participant "AttendanceWriter" as AW
+participant "TypeOrmClassroomWriter" as CW
+participant "TransactionWriter" as FW
+database "sessions/schedules/bindings/students/credentials/attendance/fee_records" as DB
+Job -> S : run()
+S -> DB : SELECT open voice attendance sessions
+loop each active bot token
+  S -> G : ensureClient(bot_token)
+end
+loop each open session
+  S -> G : collectVoiceIdentities(guild,channel)
+  G --> S : voice member identities
+  S -> DB : SELECT enrolled students with Discord credentials
+  loop matched students
+    S -> DB : transaction
+    S -> AW : markBotPresentIfNotManual
+    AW -> DB : INSERT/UPDATE attendance if not manual
+    S -> CW : sync attendance fee projection
+    CW -> FW : upsert charged fee record
+    FW -> DB : UPSERT fee_record
+  end
+end
+S --> Job : marked count
+@enduml

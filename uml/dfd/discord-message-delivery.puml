@@ -1,0 +1,25 @@
+@startuml
+left to right direction
+actor "Teacher" as T
+actor "Discord REST API" as D
+rectangle "Student Message API" as P1
+rectangle "SendStudentMessagesUseCase" as P2
+rectangle "DiscordRecipientResolver" as P3
+rectangle "Class Channel Post API" as P4
+database "students/enrollments" as DS1
+database "student_discord_credentials" as DS2
+database "class_discord_bindings" as DS3
+T --> P1 : DM content + class/student target
+P1 --> P2 : send command
+P2 --> DS1 : load recipient bases
+P2 --> DS2 : load Discord identities
+P2 --> DS3 : load active class guilds
+P2 --> P3 : bot token + guild + identity
+P3 --> D : search/fetch guild member when needed
+D --> P3 : Discord user id or error
+P2 --> D : send direct message
+P2 --> P1 : delivery summary
+T --> P4 : channel post content
+P4 --> DS3 : load notification channel
+P4 --> D : send channel message
+@enduml

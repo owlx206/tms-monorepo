@@ -1,0 +1,21 @@
+@startuml
+left to right direction
+actor "Discord Gateway" as G
+rectangle "Discord Classroom Sync Worker" as P1
+rectangle "DiscordVoice" as P2
+rectangle "Attendance Writer" as P3
+rectangle "Classroom Fee Projection" as P4
+database "sessions/schedules/bindings" as D1
+database "students/enrollments/credentials" as D2
+database "attendance" as D3
+database "fee_records" as D4
+P1 --> D1 : find open voice sessions
+P1 --> P2 : ensure client and collect voice members
+G --> P2 : voice state/member cache
+P2 --> P1 : voice identities
+P1 --> D2 : load enrolled students with Discord credentials
+P1 --> P3 : mark present if not manual
+P3 --> D3 : insert/update attendance
+P1 --> P4 : charge session fee
+P4 --> D4 : upsert fee record
+@enduml

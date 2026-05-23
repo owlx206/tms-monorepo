@@ -1,0 +1,23 @@
+@startuml
+object Teacher
+object StudentController
+object SendStudentMessagesUseCase
+object StudentReaderFunctions
+object DiscordRecipientResolver
+object DiscordMessenger
+object ClassDiscordController
+object SendChannelPostUseCase
+object RecipientData <<database>>
+Teacher --> StudentController : 1: send DM request
+StudentController --> SendStudentMessagesUseCase : 2: execute
+SendStudentMessagesUseCase --> StudentReaderFunctions : 3: load recipient bases
+StudentReaderFunctions --> RecipientData : 4: SELECT students/classes
+SendStudentMessagesUseCase --> RecipientData : 5: load identities and class guilds
+SendStudentMessagesUseCase --> DiscordRecipientResolver : 6: resolve guild member
+SendStudentMessagesUseCase --> DiscordMessenger : 7: send direct message
+SendStudentMessagesUseCase --> StudentController : 8: delivery summary
+Teacher --> ClassDiscordController : 9: channel post request
+ClassDiscordController --> SendChannelPostUseCase : 10: execute
+SendChannelPostUseCase --> RecipientData : 11: load class binding
+SendChannelPostUseCase --> DiscordMessenger : 12: send channel message
+@enduml

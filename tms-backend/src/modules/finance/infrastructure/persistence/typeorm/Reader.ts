@@ -1,15 +1,15 @@
 import { type EntityManager, In, IsNull } from 'typeorm';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
-import { Enrollment } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/enrollment.entity.js';
-import { Class } from '../../../../classroom/infrastructure/persistence/typeorm/entities/class.entity.js';
+import { Enrollment } from '../../../../../infrastructure/database/entities/enrollment.entity.js';
+import { Class } from '../../../../../infrastructure/database/entities/class.entity.js';
 import { FeeRecordStatus } from '../../../contracts/types.js';
-import { StudentStatus } from '../../../../enrollment/contracts/types.js';
-import { FeeRecord } from './entities/fee-record.entity.js';
-import { Student } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
+import { StudentStatus } from '../../../../student/contracts/types.js';
+import { FeeRecord } from '../../../../../infrastructure/database/entities/fee-record.entity.js';
+import { Student } from '../../../../../infrastructure/database/entities/student.entity.js';
 import { HttpError } from '../../../../../shared/errors/HttpError.js';
 import { parseAmountToBigInt } from '../../../domain/Money.js';
-import { TransactionAuditLog } from './entities/transaction-audit-log.entity.js';
-import { Transaction } from './entities/transaction.entity.js';
+import { TransactionAuditLog } from '../../../../../infrastructure/database/entities/transaction-audit-log.entity.js';
+import { Transaction } from '../../../../../infrastructure/database/entities/transaction.entity.js';
 
 // TypeOrmIncomeReportReader.ts
 export class TypeOrmIncomeReportReader {
@@ -73,6 +73,28 @@ export class TypeOrmIncomeReportReader {
 // TypeOrmTransactionReader.ts
 export class TypeOrmTransactionReader {
   constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
+
+  countOwnedTransactions(teacherId: number, transactionIds: number[]): Promise<number> {
+    if (transactionIds.length === 0) {
+      return Promise.resolve(0);
+    }
+
+    return this.manager.getRepository(Transaction).countBy({
+      id: In(transactionIds),
+      teacher_id: teacherId,
+    });
+  }
+
+  countOwnedFeeRecords(teacherId: number, feeRecordIds: number[]): Promise<number> {
+    if (feeRecordIds.length === 0) {
+      return Promise.resolve(0);
+    }
+
+    return this.manager.getRepository(FeeRecord).countBy({
+      id: In(feeRecordIds),
+      teacher_id: teacherId,
+    });
+  }
 
   private validateDateRange(filters: { from?: Date; to?: Date }) {
     if (filters.from && filters.to && filters.from > filters.to) {
@@ -247,7 +269,7 @@ export class TypeOrmTransactionReader {
   async listStudentBalances(
     teacherId: number,
     filters: {
-      status?: import('../../../../enrollment/contracts/types.js').StudentStatus;
+      status?: import('../../../../student/contracts/types.js').StudentStatus;
       include_pending_archive?: boolean;
     },
   ) {

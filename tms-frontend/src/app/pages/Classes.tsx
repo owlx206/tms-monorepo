@@ -19,7 +19,7 @@ import {
   unbindDiscordGuildByClass,
   upsertDiscordGuildByClass,
   type BackendClassDiscordBinding,
-} from "../services/messagingService";
+} from "../services/discordService";
 
 type ClassCard = {
   id: number;
@@ -127,7 +127,7 @@ async function buildClassCards(rawClasses: BackendClass[], servers: BackendClass
       const server = serverByClassId.get(classItem.id);
       return {
         discordServerId: server?.id ?? null,
-        discordServerName: server?.name ?? null,
+        discordServerName: server?.name ?? server?.discord_guild_id ?? null,
       };
     })(),
     id: classItem.id,
@@ -557,11 +557,19 @@ function ClassMessageModal({
 
 function createScheduleDraft(schedule?: BackendClassSchedule): ScheduleDraft {
   return {
-    id: schedule ? `schedule-${schedule.id}` : `new-${crypto.randomUUID()}`,
+    id: schedule ? `schedule-${schedule.id}` : `new-${createClientId()}`,
     dayOfWeek: String(schedule?.day_of_week ?? 1),
     startTime: schedule?.start_time.slice(0, 5) ?? "",
     endTime: schedule?.end_time.slice(0, 5) ?? "",
   };
+}
+
+function createClientId(): string {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function validateScheduleDrafts(schedules: ScheduleDraft[]): ClassSchedulePayload[] {
@@ -780,7 +788,7 @@ function AddClassModal({
             >
               <option value="">Không gắn server</option>
               {availableServers.map((server) => (
-                <option key={server.id} value={server.id}>{server.name}</option>
+                <option key={server.id} value={server.id}>{server.name ?? `${server.discord_guild_id} (đang đồng bộ)`}</option>
               ))}
             </select>
           </div>
@@ -925,7 +933,7 @@ function EditClassModal({
             >
               <option value="">Không gắn server</option>
               {availableServers.map((server) => (
-                <option key={server.id} value={server.id}>{server.name}</option>
+                <option key={server.id} value={server.id}>{server.name ?? `${server.discord_guild_id} (đang đồng bộ)`}</option>
               ))}
             </select>
           </div>

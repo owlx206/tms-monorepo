@@ -4,9 +4,8 @@ import passport from 'passport';
 import { validate } from '../../../../shared/middlewares/validate.js';
 import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
-import { authorizeOwnedStudentParam } from '../middlewares/ownership.js';
 import { AuthController } from '../controllers/AuthController.js';
-import { loginBodySchema, registerBodySchema, studentIdParamSchema, updateMeBodySchema } from './auth.schema.js';
+import { loginBodySchema, registerBodySchema, updateMeBodySchema } from './auth.schema.js';
 
 type AuthRouteControllers = {
   register: AuthController;
@@ -15,7 +14,6 @@ type AuthRouteControllers = {
   updateMe: AuthController;
   startDiscordVerification: AuthController;
   completeDiscordVerification: AuthController;
-  startStudentDiscordAuthorization: AuthController;
   completeStudentDiscordAuthorization: AuthController;
 };
 
@@ -27,14 +25,6 @@ export function createAuthRouter(controllers: AuthRouteControllers): Router {
   router.get('/discord/verification/callback', adaptExpressRoute(controllers.completeDiscordVerification));
   router.get('/discord/student/callback', adaptExpressRoute(controllers.completeStudentDiscordAuthorization));
   router.get('/me', passport.authenticate('jwt', { session: false }), attachRequestContext(), adaptExpressRoute(controllers.me));
-  router.get(
-    '/students/:studentId/discord/authorization-url',
-    passport.authenticate('jwt', { session: false }),
-    attachRequestContext(),
-    validate({ params: studentIdParamSchema }),
-    authorizeOwnedStudentParam(),
-    adaptExpressRoute(controllers.startStudentDiscordAuthorization),
-  );
   router.get(
     '/me/discord/verification/start',
     passport.authenticate('jwt', { session: false }),

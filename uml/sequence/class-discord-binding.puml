@@ -1,0 +1,37 @@
+@startuml
+actor Teacher
+actor Discord
+participant "ClassDiscordController" as C
+participant "GetDiscordBotInviteLinkUseCase" as Link
+participant "BindClassDiscordGuildUseCase" as Bind
+participant "TypeOrmClassroomDiscordWriter" as W
+participant "TypeOrmDiscordCacheStore" as Cache
+database "class_discord_bindings" as B
+database "discord_user_guilds / channel_cache" as DC
+
+Teacher -> C : GET /discord/bot-invite-link
+C -> Link : execute(teacherId)
+Link -> W : find teacher Discord user id
+Link --> C : Discord OAuth bot install URL
+C --> Teacher : invite_link
+
+Discord -> C : GET /discord/oauth/callback?state&guild_id
+C -> C : verifyDiscordInstallState(state)
+C -> Cache : findAnyGuildByDiscordGuildId(guild_id)
+alt guild belongs to another teacher
+  C --> Discord : 302 /settings?discord_install=conflict
+else valid install
+  C -> Cache : saveGuild(discord_user_id, guild_id, synced_at=null)
+  Cache -> DC : INSERT/UPDATE raw guild row
+  C --> Discord : 302 /settings?discord_install=success
+end
+
+Teacher -> C : PUT /classes/{classId}/discord-guild/select
+C -> Bind : execute(teacherId, classId, input)
+Bind -> W : validate guild + text/voice channels from cache
+W -> DC : SELECT cached guild/channels
+Bind -> W : upsert class binding
+W -> B : INSERT/UPDATE class_discord_bindings
+Bind --> C : binding summary
+C --> Teacher : 200
+@enduml

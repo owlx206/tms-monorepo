@@ -1,0 +1,32 @@
+@startuml
+actor Teacher
+participant "AttendanceController" as C
+participant "UpsertSessionAttendanceUseCase" as U
+participant "AttendanceWriter" as AW
+participant "TypeOrmClassroomWriter" as CW
+participant "TransactionWriter" as FW
+database "sessions/classes/students/enrollments/attendance/fee_records" as DB
+Teacher -> C : PUT /sessions/{id}/attendance
+C -> U : execute(command)
+U -> AW : findSessionById
+AW -> DB : SELECT session
+U -> AW : findClassById
+AW -> DB : SELECT class
+U -> AW : findStudentById
+AW -> DB : SELECT student
+U -> AW : findEnrollmentAtSessionTime
+AW -> DB : SELECT enrollment
+alt session cancelled or enrollment missing
+  U --> C : HttpError
+  C --> Teacher : 409/404
+else valid attendance
+  U -> AW : findAttendanceForStudent
+  U -> AW : create/update manual attendance
+  AW -> DB : INSERT/UPDATE attendance
+  U -> CW : sync fee projection trigger
+  CW -> FW : upsert/delete fee record
+  FW -> DB : INSERT/UPDATE/DELETE fee_record
+  U --> C : AttendanceRecordSummary
+  C --> Teacher : 200
+end
+@enduml

@@ -13,6 +13,8 @@ type ApiRequestOptions = RequestInit & {
   withAuth?: boolean;
 };
 
+const apiBaseUrl = import.meta.env.VITE_API_URL ?? "/api";
+
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { withAuth = true, headers, ...init } = options;
 
@@ -30,7 +32,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     cache: "no-store",
     headers: requestHeaders,

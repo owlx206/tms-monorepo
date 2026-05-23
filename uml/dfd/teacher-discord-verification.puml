@@ -1,0 +1,17 @@
+@startuml
+left to right direction
+actor "Teacher" as T
+actor "Discord OAuth2" as O
+rectangle "Discord Verification API" as P1
+rectangle "LinkTeacherDiscordUseCase" as P2
+database "sysadmin_discord_bot_credentials" as D1
+database "teachers" as D2
+T --> P1 : request authorize URL/callback
+P1 --> P2 : teacher id or code/state/error
+P2 --> D1 : read client id/secret
+P2 --> O : exchange code / fetch user
+O --> P2 : access token/user id
+P2 --> D2 : read/update teacher discord identity
+P2 --> P1 : frontend redirect URL
+P1 --> T : redirect to settings fallback
+@enduml

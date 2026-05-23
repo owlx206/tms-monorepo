@@ -1,0 +1,24 @@
+@startuml
+object Teacher
+object DiscordOAuthCallback
+object ClassDiscordController
+object GetDiscordBotInviteLinkUseCase
+object BindClassDiscordGuildUseCase
+object ClassroomDiscordWriter
+object DiscordCacheStore
+object DiscordUserGuilds <<database>>
+object DiscordGuildChannels <<database>>
+object ClassDiscordBindings <<database>>
+Teacher --> ClassDiscordController : 1: request bot invite
+ClassDiscordController --> GetDiscordBotInviteLinkUseCase : 2: build install URL
+GetDiscordBotInviteLinkUseCase --> ClassroomDiscordWriter : 3: load teacher Discord user id
+ClassDiscordController --> Teacher : 4: invite_link
+DiscordOAuthCallback --> ClassDiscordController : 5: guild_id callback
+ClassDiscordController --> DiscordCacheStore : 6: save raw guild id
+DiscordCacheStore --> DiscordUserGuilds : 7: INSERT/UPDATE synced_at=null
+Teacher --> ClassDiscordController : 8: select guild/channels
+ClassDiscordController --> BindClassDiscordGuildUseCase : 9: execute
+BindClassDiscordGuildUseCase --> ClassroomDiscordWriter : 10: validate cached guild/channels
+ClassroomDiscordWriter --> DiscordGuildChannels : 11: SELECT
+ClassroomDiscordWriter --> ClassDiscordBindings : 12: INSERT/UPDATE binding
+@enduml

@@ -19,7 +19,7 @@ function toErrorMessage(error: unknown): string {
 }
 
 export function TopicStanding() {
-  const { id } = useParams();
+  const { classId: classIdParam, gymId: gymIdParam } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [requestError, setRequestError] = useState("");
@@ -28,9 +28,10 @@ export function TopicStanding() {
   const [autoSyncTick, setAutoSyncTick] = useState(15);
 
   const loadData = async (showLoading = true) => {
-    const topicId = Number(id);
-    if (!Number.isInteger(topicId) || topicId <= 0) {
-      setRequestError("ID chuyên đề không hợp lệ");
+    const classId = Number(classIdParam);
+    const gymId = Number(gymIdParam);
+    if (!Number.isInteger(classId) || classId <= 0 || !Number.isInteger(gymId) || gymId <= 0) {
+      setRequestError("ID GYM không hợp lệ");
       setLoading(false);
       return;
     }
@@ -42,12 +43,12 @@ export function TopicStanding() {
 
     try {
       const [standingMatrix, classes] = await Promise.all([
-        getTopicStanding(topicId),
+        getTopicStanding(classId, gymId),
         listClasses(),
       ]);
 
-      const classItem = classes.find((item) => item.id === standingMatrix.topic.class_id);
-      setClassName(classItem?.name ?? `Lớp #${standingMatrix.topic.class_id}`);
+      const classItem = classes.find((item) => item.id === standingMatrix.gym.class_id);
+      setClassName(classItem?.name ?? `Lớp #${standingMatrix.gym.class_id}`);
       setMatrix(standingMatrix);
     } catch (error) {
       setRequestError(toErrorMessage(error));
@@ -60,7 +61,7 @@ export function TopicStanding() {
 
   useEffect(() => {
     void loadData();
-  }, [id]);
+  }, [classIdParam, gymIdParam]);
 
   useEffect(() => {
     setAutoSyncTick(15);
@@ -76,14 +77,14 @@ export function TopicStanding() {
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [id]);
+  }, [classIdParam, gymIdParam]);
 
   const lastPulled = useMemo(() => {
     if (!matrix) {
       return null;
     }
 
-    let last = matrix.topic.last_pulled_at ? new Date(matrix.topic.last_pulled_at) : null;
+    let last = matrix.gym.last_pulled_at ? new Date(matrix.gym.last_pulled_at) : null;
     matrix.rows.forEach((row) => {
       row.problems.forEach((problem) => {
         if (!problem.pulled_at) {
@@ -112,9 +113,12 @@ export function TopicStanding() {
     return (
       <div className="p-8">
         <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center">
-          <p className="text-zinc-600">{requestError || "Không tìm thấy chuyên đề"}</p>
+          <p className="text-zinc-600">{requestError || "Không tìm thấy GYM"}</p>
           <button
-            onClick={() => navigate("/topics")}
+            onClick={() => {
+              const classId = Number(classIdParam);
+              navigate(Number.isInteger(classId) && classId > 0 ? `/classes/${classId}` : "/classes");
+            }}
             className="mt-4 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800"
           >
             Quay lại
@@ -129,16 +133,16 @@ export function TopicStanding() {
   return (
     <div className="p-8">
       <button
-        onClick={() => navigate("/topics")}
+        onClick={() => navigate(`/classes/${matrix.gym.class_id}`)}
         className="flex items-center gap-2 text-zinc-600 hover:text-zinc-900 mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Quay lại danh sách chuyên đề
+        Quay lại lớp học
       </button>
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 mb-2">{matrix.topic.title}</h1>
+          <h1 className="text-3xl font-semibold text-zinc-900 mb-2">{matrix.gym.title}</h1>
           <p className="text-zinc-600">{className}</p>
         </div>
         <button
@@ -225,7 +229,7 @@ export function TopicStanding() {
 
       {matrix.rows.length === 0 && (
         <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center mt-6">
-          <p className="text-zinc-600">Chưa có học sinh hoặc dữ liệu standing cho chuyên đề này</p>
+          <p className="text-zinc-600">Chưa có học sinh hoặc dữ liệu standing cho GYM này</p>
         </div>
       )}
     </div>

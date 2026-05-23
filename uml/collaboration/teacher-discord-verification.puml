@@ -1,0 +1,17 @@
+@startuml
+object Teacher
+object AuthController
+object LinkTeacherDiscordUseCase
+object CredentialStore
+object TeacherWriter
+object DiscordOAuth
+Teacher --> AuthController : 1: request/link callback
+AuthController --> LinkTeacherDiscordUseCase : 2: build/handle
+LinkTeacherDiscordUseCase --> CredentialStore : 3: load client credential
+LinkTeacherDiscordUseCase --> DiscordOAuth : 4: exchange code
+LinkTeacherDiscordUseCase --> DiscordOAuth : 5: fetch user
+LinkTeacherDiscordUseCase --> TeacherWriter : 6: load teacher
+LinkTeacherDiscordUseCase --> TeacherWriter : 7: save discord id
+LinkTeacherDiscordUseCase --> AuthController : 8: redirect url
+AuthController --> Teacher : 9: redirect
+@enduml

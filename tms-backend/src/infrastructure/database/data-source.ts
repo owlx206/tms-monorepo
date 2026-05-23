@@ -31,7 +31,10 @@ const dataSourceOptions: DataSourceOptions = {
   type: databaseType,
   ...connectionOptions,
   ...driverOptions,
-  entities: [join(rootDir, 'modules/**/infrastructure/persistence/typeorm/entities/*.entity.{js,ts}')],
+  entities: [
+    join(rootDir, 'infrastructure/database/entities/**/*.entity.{js,ts}'),
+    join(rootDir, 'infrastructure/external/**/cache/entities/**/*.entity.{js,ts}'),
+  ],
   dropSchema: false,
   synchronize: config.database.synchronize,
   logging: config.database.logging,

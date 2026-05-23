@@ -1,25 +1,117 @@
 import { Between, type EntityManager, In, IsNull, MoreThanOrEqual } from 'typeorm';
-import { type AttendanceRecordSummary, AttendanceSource, AttendanceStatus, type ClassScheduleInput, type ClassScheduleSummary, ClassStatus, type CreateClassInput, type CreateManualSessionInput, SessionStatus, type SessionSummary, type UpdateClassInput, type UpsertSessionAttendanceInput } from '../../../contracts/types.js';
+import { type AttendanceRecordSummary, AttendanceSource, AttendanceStatus, type ClassScheduleInput, type ClassScheduleSummary, type ClassSummary, ClassStatus, type CreateClassInput, type CreateManualSessionInput, SessionStatus, type SessionSummary, type UpdateClassInput, type UpsertSessionAttendanceInput } from '../../../contracts/types.js';
 import { HttpError } from '../../../../../shared/errors/HttpError.js';
-import { Enrollment } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/enrollment.entity.js';
-import { FeeRecord } from '../../../../finance/infrastructure/persistence/typeorm/entities/fee-record.entity.js';
-import { ClassDiscordBinding } from '../../../../messaging/infrastructure/persistence/typeorm/entities/class-discord-binding.entity.js';
-import { Topic } from '../../../../topic/infrastructure/persistence/typeorm/entities/topic.entity.js';
-import { Attendance } from './entities/attendance.entity.js';
-import { Session } from './entities/session.entity.js';
-import { ClassScheduleMapper, combineDateAndTime } from './Mapper.js';
-import { ClassSchedule } from './entities/class-schedule.entity.js';
-import { Class } from './entities/class.entity.js';
+import { Enrollment } from '../../../../../infrastructure/database/entities/enrollment.entity.js';
+import { FeeRecord } from '../../../../../infrastructure/database/entities/fee-record.entity.js';
+import { TypeOrmDiscordCacheStore } from '../../../../../infrastructure/external/discord/cache/discord-cache.store.js';
+import { ClassDiscordBinding } from '../../../../../infrastructure/database/entities/discord/class-discord-binding.entity.js';
+import { Gym } from '../../../../../infrastructure/database/entities/gym/gym.entity.js';
+import { GymProblem } from '../../../../../infrastructure/database/entities/gym/gym-problem.entity.js';
+import { GymStanding } from '../../../../../infrastructure/database/entities/gym/gym-standing.entity.js';
+import { Attendance } from '../../../../../infrastructure/database/entities/attendance.entity.js';
+import { Session } from '../../../../../infrastructure/database/entities/session.entity.js';
+import { ClassSchedule } from '../../../../../infrastructure/database/entities/class-schedule.entity.js';
+import { Class } from '../../../../../infrastructure/database/entities/class.entity.js';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import { UpsertSessionAttendanceUseCase } from '../../../application/commands/UpsertSessionAttendanceUseCase.js';
-import { syncVoiceAttendanceForSession } from '../../../jobs/voice-attendance-sync.job.js';
-import { Student } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
+import { syncVoiceAttendanceForSession } from '../../sync/discord-classroom-sync.worker.js';
+import { Student } from '../../../../../infrastructure/database/entities/student.entity.js';
 import { ArchiveClassUseCase } from '../../../application/commands/ArchiveClassUseCase.js';
 import { CreateClassUseCase } from '../../../application/commands/CreateClassUseCase.js';
 import { UpdateClassUseCase } from '../../../application/commands/UpdateClassUseCase.js';
 import { CancelSessionUseCase } from '../../../application/commands/CancelSessionUseCase.js';
 import { CreateManualSessionUseCase } from '../../../application/commands/CreateManualSessionUseCase.js';
 import { TypeOrmFinanceFeeSync } from '../../../../finance/infrastructure/persistence/typeorm/Writer.js';
+import { Teacher } from '../../../../../infrastructure/database/entities/teacher.entity.js';
+import { TeacherCodeforcesCredential } from '../../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
+import { findTeacherDiscordUserId } from '../../../../identity/infrastructure/persistence/typeorm/Writer.js';
+import {
+  resolveCodeforcesCredentials,
+  type CodeforcesContestListItem,
+  type CodeforcesGymSnapshot,
+} from '../../../../../infrastructure/external/codeforces/codeforces.js';
+import { TypeOrmStudentReader } from '../../../../student/infrastructure/persistence/typeorm/Reader.js';
+
+export class AttendanceMapper {
+  static toSummary(attendance: Attendance): AttendanceRecordSummary {
+    return {
+      id: attendance.id,
+      teacher_id: attendance.teacher_id,
+      session_id: attendance.session_id,
+      student_id: attendance.student_id,
+      status: attendance.status,
+      source: attendance.source,
+      overridden_at: attendance.overridden_at,
+      notes: attendance.notes,
+    };
+  }
+}
+
+export class ClassScheduleMapper {
+  static toSummary(schedule: ClassSchedule): ClassScheduleSummary {
+    return {
+      id: schedule.id,
+      teacher_id: schedule.teacher_id,
+      class_id: schedule.class_id,
+      day_of_week: schedule.day_of_week,
+      start_time: schedule.start_time,
+      end_time: schedule.end_time,
+    };
+  }
+}
+
+export class SessionMapper {
+  static toSummary(session: Session): SessionSummary {
+    return {
+      id: session.id,
+      teacher_id: session.teacher_id,
+      class_id: session.class_id,
+      scheduled_at: session.scheduled_at,
+      end_time: session.end_time,
+      status: session.status,
+      is_manual: session.is_manual,
+      created_at: session.created_at,
+      cancelled_at: session.cancelled_at,
+    };
+  }
+}
+
+export function dateOnlyToDate(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+export function combineDateAndTime(dateOnly: string, timeValue: string): Date {
+  const date = dateOnlyToDate(dateOnly);
+  const [hours, minutes, seconds] = timeValue.split(':').map(Number);
+
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    hours,
+    minutes,
+    seconds,
+    0,
+  );
+}
+
+const TYPEORM_SAVE_BATCH_SIZE = 300;
+const MSSQL_IN_CLAUSE_BATCH_SIZE = 1_000;
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
+}
+
+function buildCodeforcesGymLink(gymId: string): string {
+  return `https://codeforces.com/gym/${gymId}`;
+}
 
 // ClassArchiveSupport.ts
 function getSessionEndAt(session: Session): Date | null {
@@ -39,7 +131,7 @@ export async function assertClassArchivable(
   classId: number,
 ): Promise<void> {
   const enrollmentRepo = manager.getRepository(Enrollment);
-  const topicRepo = manager.getRepository(Topic);
+  const gymRepo = manager.getRepository(Gym);
   const classDiscordBindingRepo = manager.getRepository(ClassDiscordBinding);
   const candidateSessions = await manager
     .getRepository(Session)
@@ -80,17 +172,16 @@ export async function assertClassArchivable(
     );
   }
 
-  const activeTopicCount = await topicRepo.count({
+  const activeTopicCount = await gymRepo.count({
     where: {
       teacher_id: teacherId,
       class_id: classId,
-      closed_at: IsNull(),
     },
   });
 
   if (activeTopicCount > 0) {
     throw new HttpError(
-      `Không thể đóng lớp: còn ${activeTopicCount} chuyên đề chưa đóng`,
+      `Không thể đóng lớp: còn ${activeTopicCount} GYM đang gắn với lớp`,
       409,
     );
   }
@@ -656,6 +747,507 @@ export class TypeOrmClassArchiveGuard {
   }
 }
 
+export class TypeOrmClassWriter {
+  constructor(private readonly manager: EntityManager) {}
+
+  async createClass(input: {
+    teacherId: number;
+    name: string;
+    feePerSession: string;
+  }): Promise<ClassSummary> {
+    const classRepository = this.manager.getRepository(Class);
+    const classEntity = classRepository.create({
+      teacher_id: input.teacherId,
+      name: input.name,
+      fee_per_session: input.feePerSession,
+    });
+
+    return this.toSummary(await classRepository.save(classEntity));
+  }
+
+  async updateClass(input: {
+    teacherId: number;
+    classId: number;
+    name?: string;
+    feePerSession?: string;
+  }): Promise<ClassSummary> {
+    const classRepository = this.manager.getRepository(Class);
+    const classEntity = await classRepository.findOneBy({
+      id: input.classId,
+      teacher_id: input.teacherId,
+    });
+
+    if (!classEntity) {
+      throw new HttpError('class not found', 404);
+    }
+
+    if (classEntity.status !== ClassStatus.Active) {
+      throw new HttpError('class is archived', 409);
+    }
+
+    if (input.name !== undefined) {
+      classEntity.name = input.name;
+    }
+
+    if (input.feePerSession !== undefined) {
+      classEntity.fee_per_session = input.feePerSession;
+    }
+
+    return this.toSummary(await classRepository.save(classEntity));
+  }
+
+  async archiveClass(input: {
+    teacherId: number;
+    classId: number;
+    archivedAt: Date;
+  }): Promise<ClassSummary> {
+    const classRepository = this.manager.getRepository(Class);
+    const classEntity = await classRepository.findOneBy({
+      id: input.classId,
+      teacher_id: input.teacherId,
+    });
+
+    if (!classEntity) {
+      throw new HttpError('class not found', 404);
+    }
+
+    if (classEntity.status === ClassStatus.Archived) {
+      return this.toSummary(classEntity);
+    }
+
+    classEntity.status = ClassStatus.Archived;
+    classEntity.archived_at = input.archivedAt;
+
+    return this.toSummary(await classRepository.save(classEntity));
+  }
+
+  private toSummary(classEntity: Class): ClassSummary {
+    return {
+      id: classEntity.id,
+      teacher_id: classEntity.teacher_id,
+      name: classEntity.name,
+      fee_per_session: classEntity.fee_per_session,
+      status: classEntity.status,
+      created_at: classEntity.created_at,
+      archived_at: classEntity.archived_at,
+    };
+  }
+}
+
+export class TypeOrmClassroomDiscordWriter {
+  constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
+
+  async findDiscordUserGuildById(teacherId: number, userGuildId: number) {
+    const discordUserId = await findTeacherDiscordUserId(teacherId);
+    if (!discordUserId) {
+      return null;
+    }
+
+    return new TypeOrmDiscordCacheStore(this.manager).findGuildByOwnerAndId(discordUserId, userGuildId);
+  }
+
+  async findDiscordGuildChannelCacheById(teacherId: number, channelId: number) {
+    const discordUserId = await findTeacherDiscordUserId(teacherId);
+    if (!discordUserId) {
+      return null;
+    }
+
+    return new TypeOrmDiscordCacheStore(this.manager).findChannelByOwnerAndId(discordUserId, channelId);
+  }
+
+  findDiscordGuildByClass(teacherId: number, classId: number) {
+    return this.manager.getRepository(ClassDiscordBinding).findOneBy({
+      teacher_id: teacherId,
+      class_id: classId,
+    });
+  }
+
+  findDiscordGuildByDiscordGuildId(teacherId: number, discordGuildId: string) {
+    return this.manager.getRepository(ClassDiscordBinding).findOneBy({
+      teacher_id: teacherId,
+      discord_guild_id: discordGuildId,
+    });
+  }
+
+  findDiscordGuildsByIds(teacherId: number, guildIds: number[]) {
+    if (guildIds.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.manager.getRepository(ClassDiscordBinding).findBy({
+      teacher_id: teacherId,
+      id: In(guildIds),
+    });
+  }
+
+  createClassDiscordBinding(values: Partial<ClassDiscordBinding>) {
+    return this.manager.getRepository(ClassDiscordBinding).create(values);
+  }
+
+  saveClassDiscordBinding(binding: ClassDiscordBinding) {
+    return this.manager.getRepository(ClassDiscordBinding).save(binding);
+  }
+
+  removeClassDiscordBinding(binding: ClassDiscordBinding) {
+    return this.manager.getRepository(ClassDiscordBinding).remove(binding);
+  }
+}
+
+export class TypeOrmGymWriter {
+  constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
+
+  findClassById(classId: number) {
+    return this.manager.getRepository(Class).findOneBy({ id: classId });
+  }
+
+  findTeacherById(teacherId: number) {
+    return this.manager.getRepository(Teacher).findOneBy({ id: teacherId });
+  }
+
+  async resolveGymCodeforcesCredentials(teacherId: number) {
+    const config = await this.manager.getRepository(TeacherCodeforcesCredential).findOneBy({
+      teacher_id: teacherId,
+    });
+    const resolved = resolveCodeforcesCredentials(
+      config?.codeforces_api_key,
+      config?.codeforces_api_secret,
+    );
+
+    return resolved
+      ? {
+        apiKey: resolved.apiKey,
+        apiSecret: resolved.apiSecret,
+      }
+      : null;
+  }
+
+  findOwnedGym(teacherId: number, gymId: number) {
+    return this.manager.getRepository(Gym).findOneBy({
+      id: gymId,
+      teacher_id: teacherId,
+    });
+  }
+
+  findClassGymByCodeforcesGymId(teacherId: number, classId: number, codeforcesGymId: string) {
+    return this.manager.getRepository(Gym).findOneBy({
+      teacher_id: teacherId,
+      class_id: classId,
+      gym_id: codeforcesGymId,
+    });
+  }
+
+  findCatalogGym(teacherId: number, codeforcesGymId: string) {
+    return this.manager.getRepository(Gym).findOneBy({
+      teacher_id: teacherId,
+      gym_id: codeforcesGymId,
+      class_id: IsNull(),
+    });
+  }
+
+  findOwnedClassGym(teacherId: number, classId: number, gymId: number) {
+    return this.manager.getRepository(Gym).findOneBy({
+      id: gymId,
+      teacher_id: teacherId,
+      class_id: classId,
+    });
+  }
+
+  createGym(values: Partial<Gym>) {
+    return this.manager.getRepository(Gym).create(values);
+  }
+
+  saveGym(gym: Gym) {
+    return this.manager.getRepository(Gym).save(gym);
+  }
+
+  async syncCodeforcesGymCatalog(
+    teacherId: number,
+    ownedGyms: CodeforcesContestListItem[],
+    pulledAt: Date,
+  ): Promise<number> {
+    const gymRepo = this.manager.getRepository(Gym);
+    const ownedGymIdSet = new Set(ownedGyms.map((gym) => String(gym.id)));
+
+    for (const gym of ownedGyms) {
+      const gymId = String(gym.id);
+      const existing = await gymRepo.findOneBy({
+        teacher_id: teacherId,
+        gym_id: gymId,
+        class_id: IsNull(),
+      });
+
+      if (existing) {
+        existing.title = gym.name.trim();
+        existing.gym_link = buildCodeforcesGymLink(gymId);
+        existing.last_pulled_at = pulledAt;
+        await gymRepo.save(existing);
+        continue;
+      }
+
+      await gymRepo.save(gymRepo.create({
+        teacher_id: teacherId,
+        class_id: null,
+        gym_id: gymId,
+        title: gym.name.trim(),
+        gym_link: buildCodeforcesGymLink(gymId),
+        pull_interval_minutes: 60,
+        last_pulled_at: pulledAt,
+      }));
+    }
+
+    const catalogGyms = await gymRepo.find({
+      where: { teacher_id: teacherId, class_id: IsNull() },
+      select: { id: true, gym_id: true },
+    });
+    const staleIds = catalogGyms
+      .filter((gym) => gym.gym_id && !ownedGymIdSet.has(gym.gym_id))
+      .map((gym) => gym.id);
+
+    for (const batch of chunkArray(staleIds, MSSQL_IN_CLAUSE_BATCH_SIZE)) {
+      await gymRepo.delete({ id: In(batch) });
+    }
+
+    return ownedGyms.length;
+  }
+
+  async syncCodeforcesGymStandingProjection(input: {
+    teacherId: number;
+    gymId: number;
+    classId: number;
+    standings: CodeforcesGymSnapshot;
+    pulledAt: Date;
+  }): Promise<boolean> {
+    await AppDataSource.transaction(async (manager) => {
+      const gymRepo = manager.getRepository(Gym);
+      const gymProblemRepo = manager.getRepository(GymProblem);
+      const gymStandingRepo = manager.getRepository(GymStanding);
+
+      const gym = await gymRepo.findOneBy({
+        id: input.gymId,
+        teacher_id: input.teacherId,
+        class_id: input.classId,
+      });
+      if (!gym) {
+        return;
+      }
+
+      gym.gym_id = input.standings.gym_id;
+      gym.title = input.standings.title;
+      gym.last_pulled_at = input.pulledAt;
+      await gymRepo.save(gym);
+
+      const existingProblems = await gymProblemRepo.findBy({
+        teacher_id: input.teacherId,
+        topic_id: input.gymId,
+      });
+      const problemByIndex = new Map(existingProblems.map((problem) => [problem.problem_index, problem]));
+      const syncedProblemIndexes = new Set(input.standings.problems.map((problem) => problem.index));
+      const staleProblemIds = existingProblems
+        .filter((problem) => !syncedProblemIndexes.has(problem.problem_index))
+        .map((problem) => problem.id);
+
+      for (const batch of chunkArray(staleProblemIds, MSSQL_IN_CLAUSE_BATCH_SIZE)) {
+        await gymStandingRepo.delete({
+          teacher_id: input.teacherId,
+          topic_id: input.gymId,
+          problem_id: In(batch),
+        });
+        await gymProblemRepo.delete({
+          teacher_id: input.teacherId,
+          topic_id: input.gymId,
+          id: In(batch),
+        });
+      }
+
+      const syncedProblems: GymProblem[] = [];
+      for (const problemInput of input.standings.problems) {
+        const existing = problemByIndex.get(problemInput.index);
+        if (existing) {
+          existing.problem_name = problemInput.name;
+          syncedProblems.push(existing);
+          continue;
+        }
+
+        syncedProblems.push(gymProblemRepo.create({
+          teacher_id: input.teacherId,
+          topic_id: input.gymId,
+          problem_index: problemInput.index,
+          problem_name: problemInput.name,
+        }));
+      }
+
+      const savedProblems = syncedProblems.length > 0
+        ? await gymProblemRepo.save(syncedProblems, { chunk: TYPEORM_SAVE_BATCH_SIZE })
+        : [];
+      const savedProblemByIndex = new Map(savedProblems.map((problem) => [problem.problem_index, problem]));
+
+      const students = await new TypeOrmStudentReader(manager).listActiveCodeforcesStudentsForClass(
+        input.teacherId,
+        input.classId,
+      );
+      const activeStudentIdSet = new Set(students.map((student) => student.id));
+      const studentByHandle = new Map<string, { id: number; codeforces_handle: string | null }>();
+      students.forEach((student) => {
+        const handle = student.codeforces_handle?.trim().toLowerCase();
+        if (handle) {
+          studentByHandle.set(handle, student);
+        }
+      });
+
+      const resultByStudentProblem = new Map<string, { solved: boolean; penalty_minutes: number | null }>();
+      input.standings.rows.forEach((row) => {
+        const student = row.handles
+          .map((handle) => studentByHandle.get(handle.trim().toLowerCase()))
+          .find(Boolean);
+        if (!student) {
+          return;
+        }
+
+        input.standings.problems.forEach((problemInput, index) => {
+          const problem = savedProblemByIndex.get(problemInput.index);
+          if (!problem) {
+            return;
+          }
+
+          const result = row.problemResults[index];
+          resultByStudentProblem.set(`${student.id}:${problem.id}`, {
+            solved: result?.solved ?? false,
+            penalty_minutes: result?.penalty_minutes ?? null,
+          });
+        });
+      });
+
+      const existingStandings = await gymStandingRepo.findBy({
+        teacher_id: input.teacherId,
+        topic_id: input.gymId,
+      });
+      const staleStandingIds = existingStandings
+        .filter((standing) => !activeStudentIdSet.has(standing.student_id))
+        .map((standing) => standing.id);
+
+      for (const batch of chunkArray(staleStandingIds, MSSQL_IN_CLAUSE_BATCH_SIZE)) {
+        await gymStandingRepo.delete({
+          teacher_id: input.teacherId,
+          topic_id: input.gymId,
+          id: In(batch),
+        });
+      }
+
+      const standingByStudentProblem = new Map(
+        existingStandings
+          .filter((standing) => activeStudentIdSet.has(standing.student_id))
+          .map((standing) => [`${standing.student_id}:${standing.problem_id}`, standing]),
+      );
+
+      const nextStandings: GymStanding[] = [];
+      for (const student of students) {
+        for (const problem of savedProblems) {
+          const key = `${student.id}:${problem.id}`;
+          const result = resultByStudentProblem.get(key) ?? { solved: false, penalty_minutes: null };
+          const existing = standingByStudentProblem.get(key);
+
+          if (existing) {
+            existing.solved = result.solved;
+            existing.penalty_minutes = result.penalty_minutes;
+            existing.pulled_at = input.pulledAt;
+            nextStandings.push(existing);
+            continue;
+          }
+
+          nextStandings.push(gymStandingRepo.create({
+            teacher_id: input.teacherId,
+            topic_id: input.gymId,
+            student_id: student.id,
+            problem_id: problem.id,
+            solved: result.solved,
+            penalty_minutes: result.penalty_minutes,
+            pulled_at: input.pulledAt,
+          }));
+        }
+      }
+
+      if (nextStandings.length > 0) {
+        await gymStandingRepo.save(nextStandings, { chunk: TYPEORM_SAVE_BATCH_SIZE });
+      }
+    });
+
+    return true;
+  }
+
+  async deleteGym(gym: Gym): Promise<Gym> {
+    await this.manager.getRepository(GymStanding).delete({
+      teacher_id: gym.teacher_id,
+      topic_id: gym.id,
+    });
+    await this.manager.getRepository(GymProblem).delete({
+      teacher_id: gym.teacher_id,
+      topic_id: gym.id,
+    });
+    await this.manager.getRepository(Gym).delete({
+      teacher_id: gym.teacher_id,
+      id: gym.id,
+    });
+
+    return gym;
+  }
+
+  findGymProblemByIndex(gymId: number, problemIndex: string) {
+    return this.manager.getRepository(GymProblem).findOneBy({
+      topic_id: gymId,
+      problem_index: problemIndex,
+    });
+  }
+
+  findOwnedGymProblem(teacherId: number, gymId: number, problemId: number) {
+    return this.manager.getRepository(GymProblem).findOneBy({
+      id: problemId,
+      teacher_id: teacherId,
+      topic_id: gymId,
+    });
+  }
+
+  createGymProblem(values: Partial<GymProblem>) {
+    return this.manager.getRepository(GymProblem).create(values);
+  }
+
+  saveGymProblem(gymProblem: GymProblem) {
+    return this.manager.getRepository(GymProblem).save(gymProblem);
+  }
+
+  findOwnedStudent(teacherId: number, studentId: number) {
+    return this.manager.getRepository(Student).findOneBy({
+      id: studentId,
+      teacher_id: teacherId,
+    });
+  }
+
+  findActiveEnrollment(teacherId: number, classId: number, studentId: number) {
+    return this.manager.getRepository(Enrollment).findOneBy({
+      teacher_id: teacherId,
+      class_id: classId,
+      student_id: studentId,
+      unenrolled_at: IsNull(),
+    });
+  }
+
+  findGymStanding(teacherId: number, gymId: number, studentId: number, problemId: number) {
+    return this.manager.getRepository(GymStanding).findOneBy({
+      teacher_id: teacherId,
+      topic_id: gymId,
+      student_id: studentId,
+      problem_id: problemId,
+    });
+  }
+
+  createGymStanding(values: Partial<GymStanding>) {
+    return this.manager.getRepository(GymStanding).create(values);
+  }
+
+  saveGymStanding(gymStanding: GymStanding) {
+    return this.manager.getRepository(GymStanding).save(gymStanding);
+  }
+}
+
 // TypeOrmClassCommandHandlers.ts
 export class TypeOrmClassCommandHandlers {
   async createClass(input: {
@@ -665,8 +1257,9 @@ export class TypeOrmClassCommandHandlers {
     schedules: CreateClassInput['schedules'];
   }) {
     return AppDataSource.transaction(async (manager) => {
+      const classes = new TypeOrmClassWriter(manager);
       const classSchedules = new TypeOrmClassScheduleService(manager);
-      const useCase = new CreateClassUseCase(manager, classSchedules);
+      const useCase = new CreateClassUseCase(classes, classSchedules);
 
       return useCase.execute(input);
     });
@@ -680,8 +1273,9 @@ export class TypeOrmClassCommandHandlers {
     schedules?: UpdateClassInput['schedules'];
   }) {
     return AppDataSource.transaction(async (manager) => {
+      const classes = new TypeOrmClassWriter(manager);
       const classSchedules = new TypeOrmClassScheduleService(manager);
-      const useCase = new UpdateClassUseCase(manager, classSchedules);
+      const useCase = new UpdateClassUseCase(classes, classSchedules);
 
       return useCase.execute(input);
     });
@@ -694,8 +1288,9 @@ export class TypeOrmClassCommandHandlers {
   }) {
     return AppDataSource.transaction(async (manager) => {
       const archiveGuard = new TypeOrmClassArchiveGuard(manager);
+      const classes = new TypeOrmClassWriter(manager);
       const sessionLifecycle = new TypeOrmClassSessionLifecycle(manager);
-      const useCase = new ArchiveClassUseCase(manager, archiveGuard, sessionLifecycle);
+      const useCase = new ArchiveClassUseCase(classes, archiveGuard, sessionLifecycle);
 
       return useCase.execute(input);
     });

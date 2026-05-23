@@ -1,0 +1,15 @@
+@startuml
+[*] --> PendingStudent
+PendingStudent --> ActiveStudent : enroll in active class
+ActiveStudent --> Enrolled : active enrollment exists
+Enrolled --> Transferring : teacher transfers class
+Transferring --> PreviousEnrollmentClosed : set unenrolled_at
+PreviousEnrollmentClosed --> Enrolled : create next enrollment
+Enrolled --> JoiningClassGuild : Discord identity + class guild exist
+JoiningClassGuild --> Enrolled : add guild member succeeds or is skipped
+Enrolled --> Withdrawn : withdraw from class
+Withdrawn --> Enrolled : reinstate/enroll again
+PendingStudent --> Archived : archive pending student
+Enrolled --> Archived : archive student
+Archived --> ActiveStudent : reinstate
+@enduml

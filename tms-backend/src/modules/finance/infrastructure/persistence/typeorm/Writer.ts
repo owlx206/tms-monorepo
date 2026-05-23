@@ -1,11 +1,11 @@
 import { type EntityManager, In } from 'typeorm';
 import { FeeRecordStatus } from '../../../contracts/types.js';
-import { FeeRecord } from './entities/fee-record.entity.js';
+import { FeeRecord } from '../../../../../infrastructure/database/entities/fee-record.entity.js';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
-import { Student } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
+import { Student } from '../../../../../infrastructure/database/entities/student.entity.js';
 import { parseAmountToBigInt } from '../../../domain/Money.js';
-import { TransactionAuditLog } from './entities/transaction-audit-log.entity.js';
-import { Transaction } from './entities/transaction.entity.js';
+import { TransactionAuditLog } from '../../../../../infrastructure/database/entities/transaction-audit-log.entity.js';
+import { Transaction } from '../../../../../infrastructure/database/entities/transaction.entity.js';
 
 // FeeRecordSyncDataAccess.ts
 export function findFeeRecordForAttendance(
@@ -150,6 +150,29 @@ export class TypeOrmFinanceFeeSync {
 // TypeOrmTransactionWriter.ts
 export class TypeOrmTransactionWriter {
   constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
+
+  async updateFeeRecordStatus(input: {
+    teacherId: number;
+    feeRecordId: number;
+    status: FeeRecordStatus;
+  }): Promise<FeeRecord | null> {
+    const feeRecordWriter = this.manager.getRepository(FeeRecord);
+    const feeRecord = await feeRecordWriter.findOneBy({
+      id: input.feeRecordId,
+      teacher_id: input.teacherId,
+    });
+
+    if (!feeRecord) {
+      return null;
+    }
+
+    if (feeRecord.status === input.status) {
+      return feeRecord;
+    }
+
+    feeRecord.setStatus(input.status);
+    return feeRecordWriter.save(feeRecord);
+  }
 
   findOwnedStudent(teacherId: number, studentId: number) {
     return this.manager.getRepository(Student).findOneBy({

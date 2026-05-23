@@ -1,7 +1,7 @@
 import { ClassStatus, SessionStatus } from '../../contracts/types.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { CreateManualSessionCommand, SessionSummary } from '../../contracts/types.js';
-import { SessionMapper } from '../../infrastructure/persistence/typeorm/Mapper.js';
+import { SessionMapper } from '../../infrastructure/persistence/typeorm/Writer.js';
 import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class CreateManualSessionUseCase {

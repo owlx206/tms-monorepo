@@ -1,0 +1,20 @@
+@startuml
+left to right direction
+actor "Teacher" as T
+actor "Discord OAuth2" as O
+rectangle "Class Discord API" as P1
+rectangle "Bot Install Callback" as P2
+rectangle "BindClassDiscordGuildUseCase" as P3
+database "discord_user_guilds" as D1
+database "discord_guild_channel_cache" as D2
+database "class_discord_bindings" as D3
+T --> P1 : request bot invite / select channels
+P1 --> T : invite link or binding result
+O --> P2 : guild_id + state
+P2 --> D1 : store raw guild row synced_at=null
+P1 --> P3 : class guild selection
+P3 --> D1 : verify selected guild owned by teacher
+P3 --> D2 : verify notification and voice channels
+P3 --> D3 : check class/guild uniqueness
+P3 --> D3 : create/update binding
+@enduml

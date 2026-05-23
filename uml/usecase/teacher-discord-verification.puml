@@ -1,0 +1,21 @@
+@startuml
+left to right direction
+actor "Teacher" as Teacher
+actor "Discord OAuth2" as Discord
+rectangle "Identity Module" {
+  usecase "Build verification URL" as UC1
+  usecase "Verify OAuth state" as UC2
+  usecase "Exchange code" as UC3
+  usecase "Fetch Discord user" as UC4
+  usecase "Save teacher Discord identity" as UC5
+  usecase "Redirect settings fallback" as UC6
+}
+Teacher --> UC1
+Teacher --> UC2
+UC2 .> UC3 : include
+UC3 .> Discord : calls
+UC3 .> UC4 : include
+UC4 .> Discord : calls
+UC4 .> UC5 : include
+UC5 .> UC6 : include
+@enduml

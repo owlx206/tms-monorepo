@@ -1,0 +1,44 @@
+@startuml
+actor Teacher
+participant "StudentController" as SC
+participant "SendStudentMessagesUseCase" as SU
+participant "Student Reader functions" as SR
+participant "DiscordRecipientResolver" as R
+participant "DiscordMessenger" as DM
+participant "ClassDiscordController" as CC
+participant "SendChannelPostUseCase" as CU
+database "students/enrollments/discord_credentials/class_discord_bindings" as DB
+actor "Discord REST API" as Discord
+
+Teacher -> SC : POST /discord/messages/students
+SC -> SU : execute(teacherId,input)
+alt class target
+  SU -> SR : list recipients by class
+else explicit students
+  SU -> SR : list recipients by student ids
+end
+SR -> DB : SELECT student + active class
+SU -> DB : SELECT student Discord identities
+SU -> DB : SELECT class Discord bindings
+loop each recipient
+  alt missing active class or guild
+    SU -> SU : append failed result
+  else guild configured
+    SU -> R : resolve(botToken, guild, discord identity)
+    R --> SU : userId/error
+    alt userId resolved
+      SU -> DM : sendDirectMessage(userId, content)
+      DM -> Discord : POST DM
+    end
+  end
+end
+SU --> SC : delivery summary
+SC --> Teacher : 201
+
+Teacher -> CC : POST /classes/{id}/discord/channel-post
+CC -> CU : execute(teacherId,input)
+CU -> DB : SELECT class binding + channel
+CU -> Discord : POST channel message
+CU --> CC : sent result
+CC --> Teacher : 201
+@enduml

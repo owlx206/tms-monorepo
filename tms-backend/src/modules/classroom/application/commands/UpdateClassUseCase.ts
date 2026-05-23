@@ -1,10 +1,6 @@
-import type { EntityManager } from 'typeorm';
-
-import { Class } from '../../infrastructure/persistence/typeorm/entities/class.entity.js';
-import { ClassStatus } from '../../contracts/types.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
-import type { TypeOrmClassScheduleService } from '../../infrastructure/persistence/typeorm/Writer.js';
-import type { ClassSummary, ClassSummaryWithSchedules, UpdateClassCommand } from '../../contracts/types.js';
+import type { TypeOrmClassScheduleService, TypeOrmClassWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { ClassSummaryWithSchedules, UpdateClassCommand } from '../../contracts/types.js';
 
 function normalizeClassName(name: string): string {
   const normalized = name.trim();
@@ -28,34 +24,17 @@ function normalizeFeePerSession(feePerSession: string): string {
 
 export class UpdateClassUseCase {
   constructor(
-    private readonly manager: EntityManager,
+    private readonly classes: TypeOrmClassWriter,
     private readonly classSchedules: TypeOrmClassScheduleService,
   ) {}
 
   async execute(command: UpdateClassCommand): Promise<ClassSummaryWithSchedules> {
-    const classRepository = this.manager.getRepository(Class);
-    const classEntity = await classRepository.findOneBy({
-      id: command.classId,
-      teacher_id: command.teacherId,
+    const savedClass = await this.classes.updateClass({
+      teacherId: command.teacherId,
+      classId: command.classId,
+      name: command.name === undefined ? undefined : normalizeClassName(command.name),
+      feePerSession: command.feePerSession === undefined ? undefined : normalizeFeePerSession(command.feePerSession),
     });
-
-    if (!classEntity) {
-      throw new HttpError('class not found', 404);
-    }
-
-    if (classEntity.status !== ClassStatus.Active) {
-      throw new HttpError('class is archived', 409);
-    }
-
-    if (command.name !== undefined) {
-      classEntity.name = normalizeClassName(command.name);
-    }
-
-    if (command.feePerSession !== undefined) {
-      classEntity.fee_per_session = normalizeFeePerSession(command.feePerSession);
-    }
-
-    const savedClass = await classRepository.save(classEntity);
 
     if (command.schedules !== undefined) {
       await this.classSchedules.replaceSchedules(command.teacherId, command.classId, command.schedules);
@@ -63,20 +42,8 @@ export class UpdateClassUseCase {
     const schedules = await this.classSchedules.listSchedules(command.teacherId, command.classId);
 
     return {
-      ...this.toSummary(savedClass),
+      ...savedClass,
       schedules,
-    };
-  }
-
-  private toSummary(classEntity: Class): ClassSummary {
-    return {
-      id: classEntity.id,
-      teacher_id: classEntity.teacher_id,
-      name: classEntity.name,
-      fee_per_session: classEntity.fee_per_session,
-      status: classEntity.status,
-      created_at: classEntity.created_at,
-      archived_at: classEntity.archived_at,
     };
   }
 }

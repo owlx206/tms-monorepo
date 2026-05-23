@@ -1,0 +1,20 @@
+@startuml
+object User
+object AuthController
+object LoginUseCase
+object TeacherWriter
+object PasswordHasher
+object JwtSigner
+object Teachers <<database>>
+User --> AuthController : 1: POST credentials
+AuthController --> LoginUseCase : 2: execute
+LoginUseCase --> TeacherWriter : 3: findByUsername
+TeacherWriter --> Teachers : 4: SELECT teacher
+LoginUseCase --> PasswordHasher : 5: compare password
+LoginUseCase --> JwtSigner : 6: sign claims
+LoginUseCase --> AuthController : 7: auth result/error
+AuthController --> User : 8: response
+User --> AuthController : 9: GET /me
+AuthController --> TeacherWriter : 10: load current profile
+TeacherWriter --> Teachers : 11: SELECT teacher
+@enduml

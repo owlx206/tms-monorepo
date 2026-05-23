@@ -1,7 +1,7 @@
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { CancelSessionCommand, SessionSummary } from '../../contracts/types.js';
 import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/Writer.js';
-import { SessionMapper } from '../../infrastructure/persistence/typeorm/Mapper.js';
+import { SessionMapper } from '../../infrastructure/persistence/typeorm/Writer.js';
 import type { TypeOrmSessionWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 import type { TypeOrmAttendanceWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 

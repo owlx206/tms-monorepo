@@ -55,7 +55,7 @@ export interface BackendClassDetailTopic {
   pull_interval_minutes: number;
   last_pulled_at: string | null;
   created_at: string;
-  status: "active" | "closed";
+  status: "active";
   problems: Array<{
     id: number;
     teacher_id: number;

@@ -1,5 +1,79 @@
-import type { StudentStatus } from '../../enrollment/contracts/types.js';
-import type { TopicStatusFilter } from '../../topic/contracts/types.js';
+import type { StudentStatus } from '../../student/contracts/types.js';
+
+export type GymStatusFilter = 'active';
+
+export type GymListQuery = {
+  class_id?: number | null;
+  status?: GymStatusFilter;
+};
+
+export type BindClassGymInput = {
+  gym_id: string;
+  pull_interval_minutes?: number;
+};
+
+export type AddGymProblemInput = {
+  problem_index: string;
+  problem_name?: string | null;
+};
+
+export type UpsertGymStandingInput = {
+  student_id: number;
+  problem_id: number;
+  solved: boolean;
+  penalty_minutes?: number | null;
+  pulled_at?: Date;
+};
+
+export type GymSummarySource = {
+  closed_at: Date | null;
+};
+
+export type ListGymsReader<TGym extends GymSummarySource = GymSummarySource> = {
+  listGymsForTeacher(teacherId: number, filters: { class_id?: number | null }): Promise<TGym[]>;
+};
+
+export type GymStandingMatrixGym = {
+  id: number;
+  class_id: number | null;
+};
+
+export type GymStandingMatrixProblem = {
+  id: number;
+  problem_index: string;
+  problem_name: string | null;
+};
+
+export type GymStandingMatrixEnrollment = {
+  student_id: number;
+};
+
+export type GymStandingMatrixStudent = {
+  id: number;
+  full_name: string;
+};
+
+export type GymStandingMatrixStanding = {
+  student_id: number;
+  problem_id: number;
+  solved: boolean;
+  penalty_minutes: number | null;
+  pulled_at: Date | null;
+};
+
+export type GymStandingMatrixReader<
+  TGym extends GymStandingMatrixGym = GymStandingMatrixGym,
+  TProblem extends GymStandingMatrixProblem = GymStandingMatrixProblem,
+  TEnrollment extends GymStandingMatrixEnrollment = GymStandingMatrixEnrollment,
+  TStudent extends GymStandingMatrixStudent = GymStandingMatrixStudent,
+  TStanding extends GymStandingMatrixStanding = GymStandingMatrixStanding,
+> = {
+  findOwnedClassGym(teacherId: number, classId: number, gymId: number): Promise<TGym | null>;
+  listGymProblems(teacherId: number, gymId: number): Promise<TProblem[]>;
+  listActiveEnrollmentsForClass(teacherId: number, classId: number): Promise<TEnrollment[]>;
+  findStudentsByIds(teacherId: number, studentIds: number[]): Promise<TStudent[]>;
+  listGymStandings(teacherId: number, gymId: number): Promise<TStanding[]>;
+};
 
 export enum AttendanceSource {
   Bot = 'bot',
@@ -41,6 +115,17 @@ export type UpdateClassInput = {
   name?: string;
   fee_per_session?: string;
   schedules?: ClassScheduleInput[];
+};
+
+export type SelectClassDiscordGuildInput = {
+  guild_id: number;
+  notification_channel_id?: string | null;
+  attendance_voice_channel_id?: string | null;
+};
+
+export type ChannelPostInput = {
+  content: string;
+  guild_ids: number[];
 };
 
 export type ClassListFilters = {
@@ -93,6 +178,36 @@ export type ClassDiscordGuildSummary = {
   notification_channel_id: string | null;
 };
 
+export type TeacherDiscordGuildOption = {
+  id: number;
+  teacher_id: number;
+  discord_guild_id: string;
+  name: string | null;
+  synced_at: Date | null;
+  binding: {
+    role: 'unbound' | 'class';
+    guild_binding_id: number | null;
+    class_id: number | null;
+    class_name: string | null;
+    notification_channel_id: string | null;
+    notification_channel_name: string | null;
+    notification_channel_cache_id: number | null;
+    attendance_voice_channel_id: string | null;
+    attendance_voice_channel_name: string | null;
+    attendance_voice_channel_cache_id: number | null;
+  };
+};
+
+export type TeacherDiscordChannelOption = {
+  id: number;
+  teacher_id: number;
+  discord_guild_id: string;
+  discord_channel_id: string;
+  name: string;
+  type: 'text' | 'voice';
+  synced_at: Date;
+};
+
 export type ClassDetailStudentSummary = {
   id: number;
   teacher_id: number;
@@ -121,7 +236,7 @@ export type ClassDetails = {
     pull_interval_minutes: number;
     last_pulled_at: Date | null;
     created_at: Date;
-    status: TopicStatusFilter;
+    status: GymStatusFilter;
     problems: Array<{
       id: number;
       teacher_id: number;

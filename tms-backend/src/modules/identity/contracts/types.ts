@@ -11,6 +11,7 @@ export type LoginInput = {
 export type RegisterInput = {
   username: string;
   password: string;
+  codeforces_handle?: string | null;
   codeforces_api_key?: string | null;
   codeforces_api_secret?: string | null;
 };
@@ -18,6 +19,7 @@ export type RegisterInput = {
 export type UpdateTeacherInput = {
   username?: string;
   password?: string;
+  codeforces_handle?: string | null;
   codeforces_api_key?: string | null;
   codeforces_api_secret?: string | null;
 };
@@ -28,6 +30,7 @@ export type AuthTeacher = {
   username: string;
   role: TeacherRole;
   is_active: boolean;
+  codeforces_handle: string | null;
   codeforces_api_key: string | null;
   codeforces_api_secret: string | null;
   discord_username: string | null;
@@ -39,7 +42,6 @@ export type AuthTeacher = {
 export type AuthTokenPayload = {
   sub: number;
   username: string;
-  role: TeacherRole;
 };
 
 export type AuthTokenResponse = {
@@ -52,8 +54,8 @@ export type AuthTokenResponse = {
 export type UpdateTeacherByAdminInput = {
   username?: string;
   password?: string;
-  role?: TeacherRole;
   is_active?: boolean;
+  codeforces_handle?: string | null;
   codeforces_api_key?: string | null;
   codeforces_api_secret?: string | null;
 };
@@ -63,6 +65,7 @@ export type AdminTeacher = {
   username: string;
   role: TeacherRole;
   is_active: boolean;
+  codeforces_handle: string | null;
   has_codeforces_api_key: boolean;
   has_codeforces_api_secret: boolean;
   created_at: Date;

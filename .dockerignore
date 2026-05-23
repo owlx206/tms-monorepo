@@ -1,0 +1,9 @@
+.git
+.github
+.DS_Store
+node_modules
+dist
+tms-backend/node_modules
+tms-backend/dist
+tms-frontend/node_modules
+tms-frontend/dist

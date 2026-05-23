@@ -1,0 +1,14 @@
+@startuml
+[*] --> NotVerified
+NotVerified --> AuthorizeUrlBuilt : build authorize URL
+AuthorizeUrlBuilt --> OAuthRedirected : teacher opens Discord OAuth
+OAuthRedirected --> Cancelled : user cancels
+OAuthRedirected --> CallbackReceived : Discord returns code/state
+CallbackReceived --> Rejected : missing code/state or invalid state
+CallbackReceived --> TokenExchanged : exchange code
+TokenExchanged --> DiscordUserFetched : fetch current user
+DiscordUserFetched --> Verified : save Discord identity
+Rejected --> NotVerified
+Cancelled --> NotVerified
+Verified --> [*]
+@enduml

@@ -1,0 +1,17 @@
+@startuml
+object Student
+object AuthController
+object LinkStudentDiscordUseCase
+object CredentialStore
+object StudentDiscordIdentityStore
+object DiscordOAuth
+Student --> AuthController : 1: callback code/state
+AuthController --> LinkStudentDiscordUseCase : 2: handleCallback
+LinkStudentDiscordUseCase --> CredentialStore : 3: load OAuth credential
+LinkStudentDiscordUseCase --> LinkStudentDiscordUseCase : 4: verify signed state
+LinkStudentDiscordUseCase --> DiscordOAuth : 5: exchange code
+LinkStudentDiscordUseCase --> DiscordOAuth : 6: fetch current user
+LinkStudentDiscordUseCase --> StudentDiscordIdentityStore : 7: upsert identity and token
+LinkStudentDiscordUseCase --> AuthController : 8: success/cancelled
+AuthController --> Student : 9: HTML postMessage + close
+@enduml

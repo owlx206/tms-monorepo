@@ -1,0 +1,25 @@
+@startuml
+actor Student
+participant "AuthController" as C
+participant "LinkStudentDiscordUseCase" as U
+database "sysadmin_discord_bot_credentials/students/student_discord_credentials" as DB
+participant "Discord OAuth2" as OAuth
+Student -> C : open student authorize link
+C -> U : handleCallback(code,state)
+U -> DB : load default Discord credential
+U -> U : verify state(teacher_id, student_id)
+U -> OAuth : exchange code
+OAuth --> U : access/refresh token
+U -> OAuth : fetch Discord user
+OAuth --> U : user id + username
+U -> DB : UPSERT student_discord_credentials
+U --> C : success
+C --> Student : HTML postMessage(type,status) + close popup
+
+alt user cancels Discord authorization
+  OAuth -> C : callback(error)
+  C -> U : handleCallback(error)
+  U --> C : cancelled
+  C --> Student : HTML postMessage(cancelled)
+end
+@enduml

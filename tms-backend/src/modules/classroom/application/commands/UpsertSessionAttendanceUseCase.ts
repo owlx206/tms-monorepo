@@ -2,7 +2,7 @@ import { AttendanceSource, AttendanceStatus } from '../../contracts/types.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { AttendanceRecordSummary, UpsertSessionAttendanceCommand } from '../../contracts/types.js';
 import type { TypeOrmSessionFinanceService } from '../../infrastructure/persistence/typeorm/Writer.js';
-import { AttendanceMapper } from '../../infrastructure/persistence/typeorm/Mapper.js';
+import { AttendanceMapper } from '../../infrastructure/persistence/typeorm/Writer.js';
 import type { TypeOrmAttendanceWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 export class UpsertSessionAttendanceUseCase {

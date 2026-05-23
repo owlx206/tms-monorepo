@@ -1,4 +1,4 @@
-import type { StudentStatus } from '../../enrollment/contracts/types.js';
+import type { StudentStatus } from '../../student/contracts/types.js';
 
 export enum FeeRecordStatus {
   Active = 'active',

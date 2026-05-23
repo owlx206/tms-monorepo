@@ -1,17 +1,298 @@
-import { type EntityManager, type FindOptionsWhere } from 'typeorm';
+import { type EntityManager, type FindOptionsWhere, In, IsNull, Not } from 'typeorm';
 import { type AttendanceListFilters, type AttendanceRecordSummary, type ClassDetails, type ClassDiscordGuildSummary, type ClassListFilters, type ClassScheduleSummary, type ClassStatus, type ClassSummary, type SessionAttendanceSummary, type SessionListFilters, SessionStatus, type SessionSummary } from '../../../contracts/types.js';
 import { HttpError } from '../../../../../shared/errors/HttpError.js';
-import { Attendance } from './entities/attendance.entity.js';
-import { Session } from './entities/session.entity.js';
-import { StudentStatus } from '../../../../enrollment/contracts/types.js';
-import { Enrollment } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/enrollment.entity.js';
-import { Student } from '../../../../enrollment/infrastructure/persistence/typeorm/entities/student.entity.js';
-import { ClassDiscordBinding } from '../../../../messaging/infrastructure/persistence/typeorm/entities/class-discord-binding.entity.js';
-import { ClassSchedule } from './entities/class-schedule.entity.js';
-import { Class } from './entities/class.entity.js';
-import { Topic } from '../../../../topic/infrastructure/persistence/typeorm/entities/topic.entity.js';
-import { TopicProblem } from '../../../../topic/infrastructure/persistence/typeorm/entities/topic-problem.entity.js';
-import { TopicStanding } from '../../../../topic/infrastructure/persistence/typeorm/entities/topic-standing.entity.js';
+import { Attendance } from '../../../../../infrastructure/database/entities/attendance.entity.js';
+import { Session } from '../../../../../infrastructure/database/entities/session.entity.js';
+import { StudentStatus } from '../../../../student/contracts/types.js';
+import { Enrollment } from '../../../../../infrastructure/database/entities/enrollment.entity.js';
+import { Student } from '../../../../../infrastructure/database/entities/student.entity.js';
+import { ClassDiscordBinding } from '../../../../../infrastructure/database/entities/discord/class-discord-binding.entity.js';
+import { ClassSchedule } from '../../../../../infrastructure/database/entities/class-schedule.entity.js';
+import { Class } from '../../../../../infrastructure/database/entities/class.entity.js';
+import { Gym } from '../../../../../infrastructure/database/entities/gym/gym.entity.js';
+import { GymProblem } from '../../../../../infrastructure/database/entities/gym/gym-problem.entity.js';
+import { GymStanding } from '../../../../../infrastructure/database/entities/gym/gym-standing.entity.js';
+import { StudentDiscordCredential } from '../../../../../infrastructure/database/entities/student-discord-credential.entity.js';
+import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
+import { DiscordGuildChannelCache } from '../../../../../infrastructure/external/discord/cache/entities/discord-guild-channel-cache.entity.js';
+import { DiscordUserGuild } from '../../../../../infrastructure/external/discord/cache/entities/discord-user-guild.entity.js';
+import { TypeOrmDiscordCacheStore } from '../../../../../infrastructure/external/discord/cache/discord-cache.store.js';
+import { findTeacherDiscordUserId } from '../../../../identity/infrastructure/persistence/typeorm/Writer.js';
+
+export type ClassDiscordBindingContext = {
+  id: number;
+  teacher_id: number;
+  class_id: number;
+  discord_guild_id: string;
+  name: string | null;
+  attendance_voice_channel_id: string | null;
+  notification_channel_id: string | null;
+};
+
+export async function listClassDiscordBindingsByClassIds(
+  teacherId: number,
+  classIds: number[],
+): Promise<ClassDiscordBindingContext[]> {
+  const uniqueClassIds = Array.from(new Set(classIds.filter((classId) => Number.isInteger(classId) && classId > 0)));
+  if (uniqueClassIds.length === 0) {
+    return [];
+  }
+
+  const bindings = await AppDataSource.getRepository(ClassDiscordBinding).findBy({
+    teacher_id: teacherId,
+    class_id: In(uniqueClassIds),
+  });
+
+  return bindings.map((binding) => ({
+    id: binding.id,
+    teacher_id: binding.teacher_id,
+    class_id: binding.class_id,
+    discord_guild_id: binding.discord_guild_id,
+    name: binding.name,
+    attendance_voice_channel_id: binding.attendance_voice_channel_id,
+    notification_channel_id: binding.notification_channel_id,
+  }));
+}
+
+export async function listTeacherDiscordGuilds(teacherId: number): Promise<Array<{
+  id: number;
+  teacher_id: number;
+  discord_guild_id: string;
+  name: string | null;
+  synced_at: Date | null;
+  binding_guild_id: number | null;
+  binding_role: 'unbound' | 'class';
+  binding_class_id: number | null;
+  binding_class_name: string | null;
+  binding_notification_channel_id: string | null;
+  binding_notification_channel_name: string | null;
+  binding_notification_channel_cache_id: number | null;
+  binding_attendance_voice_channel_id: string | null;
+  binding_attendance_voice_channel_name: string | null;
+  binding_attendance_voice_channel_cache_id: number | null;
+}>> {
+  const discordUserId = await findTeacherDiscordUserId(teacherId);
+  if (!discordUserId) {
+    return [];
+  }
+
+  return AppDataSource.getRepository(DiscordUserGuild)
+    .createQueryBuilder('user_guild')
+    .leftJoin(
+      ClassDiscordBinding,
+      'class_binding',
+      'class_binding.teacher_id = :teacherId AND class_binding.discord_guild_id = user_guild.discord_guild_id',
+    )
+    .leftJoin(
+      Class,
+      'class',
+      'class.id = class_binding.class_id AND class.teacher_id = class_binding.teacher_id',
+    )
+    .leftJoin(
+      DiscordGuildChannelCache,
+      'notification_channel',
+      'notification_channel.discord_user_id = user_guild.discord_user_id AND notification_channel.discord_guild_id = class_binding.discord_guild_id AND notification_channel.discord_channel_id = class_binding.notification_channel_id',
+    )
+    .leftJoin(
+      DiscordGuildChannelCache,
+      'voice_channel',
+      'voice_channel.discord_user_id = user_guild.discord_user_id AND voice_channel.discord_guild_id = class_binding.discord_guild_id AND voice_channel.discord_channel_id = class_binding.attendance_voice_channel_id',
+    )
+    .select('user_guild.id', 'id')
+    .addSelect('user_guild.discord_guild_id', 'discord_guild_id')
+    .addSelect('user_guild.name', 'name')
+    .addSelect('user_guild.synced_at', 'synced_at')
+    .addSelect(`
+      CASE
+        WHEN class_binding.id IS NOT NULL THEN 'class'
+        ELSE 'unbound'
+      END
+    `, 'binding_role')
+    .addSelect('class_binding.id', 'binding_guild_id')
+    .addSelect('class_binding.class_id', 'binding_class_id')
+    .addSelect('class.name', 'binding_class_name')
+    .addSelect('class_binding.notification_channel_id', 'binding_notification_channel_id')
+    .addSelect('notification_channel.name', 'binding_notification_channel_name')
+    .addSelect('notification_channel.id', 'binding_notification_channel_id_ref')
+    .addSelect('class_binding.attendance_voice_channel_id', 'binding_attendance_voice_channel_id')
+    .addSelect('voice_channel.name', 'binding_attendance_voice_channel_name')
+    .addSelect('voice_channel.id', 'binding_attendance_voice_channel_id_ref')
+    .where('user_guild.discord_user_id = :discordUserId', { teacherId, discordUserId })
+    .orderBy('COALESCE(user_guild.name, user_guild.discord_guild_id)', 'ASC')
+    .getRawMany<{
+      id: string;
+      discord_guild_id: string;
+      name: string | null;
+      synced_at: string | Date | null;
+      binding_guild_id: string | null;
+      binding_role: 'unbound' | 'class';
+      binding_class_id: string | null;
+      binding_class_name: string | null;
+      binding_notification_channel_id: string | null;
+      binding_notification_channel_name: string | null;
+      binding_notification_channel_id_ref: string | null;
+      binding_attendance_voice_channel_id: string | null;
+      binding_attendance_voice_channel_name: string | null;
+      binding_attendance_voice_channel_id_ref: string | null;
+    }>()
+    .then((rows) => rows.map((row) => ({
+      id: Number(row.id),
+      teacher_id: teacherId,
+      discord_guild_id: row.discord_guild_id,
+      name: row.name,
+      synced_at: row.synced_at ? new Date(row.synced_at) : null,
+      binding_guild_id: row.binding_guild_id === null ? null : Number(row.binding_guild_id),
+      binding_role: row.binding_role,
+      binding_class_id: row.binding_class_id === null ? null : Number(row.binding_class_id),
+      binding_class_name: row.binding_class_name,
+      binding_notification_channel_id: row.binding_notification_channel_id,
+      binding_notification_channel_name: row.binding_notification_channel_name,
+      binding_notification_channel_cache_id: row.binding_notification_channel_id_ref === null ? null : Number(row.binding_notification_channel_id_ref),
+      binding_attendance_voice_channel_id: row.binding_attendance_voice_channel_id,
+      binding_attendance_voice_channel_name: row.binding_attendance_voice_channel_name,
+      binding_attendance_voice_channel_cache_id: row.binding_attendance_voice_channel_id_ref === null ? null : Number(row.binding_attendance_voice_channel_id_ref),
+    })));
+}
+
+export async function listTeacherDiscordChannelsForGuild(
+  teacherId: number,
+  discordGuildId: string,
+): Promise<Array<{
+  id: number;
+  teacher_id: number;
+  discord_guild_id: string;
+  discord_channel_id: string;
+  name: string;
+  type: 'text' | 'voice';
+  synced_at: Date;
+}>> {
+  const discordUserId = await findTeacherDiscordUserId(teacherId);
+  if (!discordUserId) {
+    return [];
+  }
+
+  const channels = await new TypeOrmDiscordCacheStore().listChannelsForOwnerAndGuild(
+    discordUserId,
+    discordGuildId,
+  );
+
+  return channels.map((channel) => ({
+    ...channel,
+    teacher_id: teacherId,
+  }));
+}
+
+export type CodeforcesBoundGymSyncTarget = {
+  id: number;
+  teacher_id: number;
+  class_id: number;
+  title: string;
+  gym_link: string;
+  gym_id: string | null;
+  pull_interval_minutes: number;
+  last_pulled_at: Date | null;
+  created_at: Date;
+};
+
+export class TypeOrmGymReader {
+  constructor(private readonly manager: EntityManager) {}
+
+  listGymsForTeacher(teacherId: number, filters: { class_id?: number | null }) {
+    return this.manager.getRepository(Gym).find({
+      where: {
+        teacher_id: teacherId,
+        ...(filters.class_id === null
+          ? { class_id: IsNull() }
+          : filters.class_id !== undefined
+            ? { class_id: filters.class_id }
+            : {}),
+      },
+      order: {
+        created_at: 'DESC',
+      },
+    });
+  }
+
+  findOwnedGym(teacherId: number, gymId: number) {
+    return this.manager.getRepository(Gym).findOneBy({
+      id: gymId,
+      teacher_id: teacherId,
+    });
+  }
+
+  findOwnedClassGym(teacherId: number, classId: number, gymId: number) {
+    return this.manager.getRepository(Gym).findOneBy({
+      id: gymId,
+      teacher_id: teacherId,
+      class_id: classId,
+    });
+  }
+
+  listGymProblems(teacherId: number, gymId: number) {
+    return this.manager.getRepository(GymProblem).find({
+      where: {
+        teacher_id: teacherId,
+        topic_id: gymId,
+      },
+      order: {
+        problem_index: 'ASC',
+      },
+    });
+  }
+
+  listActiveEnrollmentsForClass(teacherId: number, classId: number) {
+    return this.manager.getRepository(Enrollment).find({
+      where: {
+        teacher_id: teacherId,
+        class_id: classId,
+        unenrolled_at: IsNull(),
+      },
+    });
+  }
+
+  findStudentsByIds(teacherId: number, studentIds: number[]) {
+    if (studentIds.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.manager.getRepository(Student).findBy({
+      teacher_id: teacherId,
+      id: In(studentIds),
+    });
+  }
+
+  listGymStandings(teacherId: number, gymId: number) {
+    return this.manager.getRepository(GymStanding).find({
+      where: {
+        teacher_id: teacherId,
+        topic_id: gymId,
+      },
+    });
+  }
+
+  async listBoundCodeforcesGymsForTeacher(teacherId: number): Promise<CodeforcesBoundGymSyncTarget[]> {
+    const gyms = await this.manager.getRepository(Gym).find({
+      where: {
+        teacher_id: teacherId,
+        class_id: Not(IsNull()),
+      },
+    });
+
+    return gyms
+      .filter((gym): gym is Gym & { class_id: number } => gym.class_id !== null)
+      .map((gym) => ({
+        id: gym.id,
+        teacher_id: gym.teacher_id,
+        class_id: gym.class_id,
+        title: gym.title,
+        gym_link: gym.gym_link,
+        gym_id: gym.gym_id,
+        pull_interval_minutes: gym.pull_interval_minutes,
+        last_pulled_at: gym.last_pulled_at,
+        created_at: gym.created_at,
+      }));
+  }
+}
 
 // TypeOrmAttendanceReader.ts
 type SessionAttendanceRow = SessionAttendanceSummary['attendance'][number];
@@ -127,6 +408,39 @@ export class TypeOrmAttendanceReader {
 export class TypeOrmClassReader {
   constructor(private readonly manager: EntityManager) {}
 
+  countOwnedClasses(teacherId: number, classIds: number[]): Promise<number> {
+    if (classIds.length === 0) {
+      return Promise.resolve(0);
+    }
+
+    return this.manager.getRepository(Class).countBy({
+      id: In(classIds),
+      teacher_id: teacherId,
+    });
+  }
+
+  countOwnedSessions(teacherId: number, sessionIds: number[]): Promise<number> {
+    if (sessionIds.length === 0) {
+      return Promise.resolve(0);
+    }
+
+    return this.manager.getRepository(Session).countBy({
+      id: In(sessionIds),
+      teacher_id: teacherId,
+    });
+  }
+
+  countOwnedGyms(teacherId: number, gymIds: number[]): Promise<number> {
+    if (gymIds.length === 0) {
+      return Promise.resolve(0);
+    }
+
+    return this.manager.getRepository(Gym).countBy({
+      id: In(gymIds),
+      teacher_id: teacherId,
+    });
+  }
+
   async listClasses(teacherId: number, filters: ClassListFilters): Promise<ClassSummary[]> {
     if (filters.ready_only) {
       const classes = await this.manager.getRepository(Class)
@@ -205,6 +519,7 @@ export class TypeOrmClassReader {
           'enrollment.unenrolled_at IS NULL',
           'enrollment.class_id = :classId',
         ].join(' AND '), { classId })
+        .leftJoin(StudentDiscordCredential, 'discord_credential', 'discord_credential.student_id = student.id')
         .where('student.teacher_id = :teacherId', { teacherId })
         .andWhere('student.status = :activeStatus', { activeStatus: StudentStatus.Active })
         .orderBy('student.full_name', 'ASC')
@@ -213,8 +528,8 @@ export class TypeOrmClassReader {
           'student.teacher_id AS teacher_id',
           'student.full_name AS full_name',
           'student.codeforces_handle AS codeforces_handle',
-          'student.discord_username AS discord_username',
-          'student.discord_user_id AS discord_user_id',
+          'discord_credential.discord_username AS discord_username',
+          'discord_credential.discord_user_id AS discord_user_id',
           'student.phone AS phone',
           'student.status AS status',
           'enrollment.enrolled_at AS enrolled_at',
@@ -230,13 +545,12 @@ export class TypeOrmClassReader {
           status: string;
           enrolled_at: Date;
         }>(),
-      this.manager.getRepository(Topic).find({
+      this.manager.getRepository(Gym).find({
         where: {
           teacher_id: teacherId,
           class_id: classId,
         },
         order: {
-          closed_at: 'ASC',
           created_at: 'DESC',
         },
       }),
@@ -244,16 +558,16 @@ export class TypeOrmClassReader {
 
     const topicIds = topics.map((topic) => topic.id);
     const [topicProblems, topicStandings] = topicIds.length === 0
-      ? [[], []] as [TopicProblem[], TopicStanding[]]
+      ? [[], []] as [GymProblem[], GymStanding[]]
       : await Promise.all([
-        this.manager.getRepository(TopicProblem)
+        this.manager.getRepository(GymProblem)
           .createQueryBuilder('problem')
           .where('problem.teacher_id = :teacherId', { teacherId })
           .andWhere('problem.topic_id IN (:...topicIds)', { topicIds })
           .orderBy('problem.topic_id', 'ASC')
           .addOrderBy('problem.problem_index', 'ASC')
           .getMany(),
-        this.manager.getRepository(TopicStanding)
+        this.manager.getRepository(GymStanding)
           .createQueryBuilder('standing')
           .where('standing.teacher_id = :teacherId', { teacherId })
           .andWhere('standing.topic_id IN (:...topicIds)', { topicIds })
@@ -261,7 +575,7 @@ export class TypeOrmClassReader {
       ]);
 
     const activeStudentIds = new Set(activeStudents.map((student) => Number(student.id)));
-    const problemsByTopicId = new Map<number, TopicProblem[]>();
+    const problemsByTopicId = new Map<number, GymProblem[]>();
     topicProblems.forEach((problem) => {
       const problems = problemsByTopicId.get(problem.topic_id);
       if (problems) {
@@ -321,7 +635,7 @@ export class TypeOrmClassReader {
         return {
           id: topic.id,
           teacher_id: topic.teacher_id,
-          class_id: topic.class_id,
+          class_id: classId,
           title: topic.title,
           gym_link: topic.gym_link,
           gym_id: topic.gym_id,
@@ -329,7 +643,7 @@ export class TypeOrmClassReader {
           pull_interval_minutes: topic.pull_interval_minutes,
           last_pulled_at: topic.last_pulled_at,
           created_at: topic.created_at,
-          status: topic.closed_at ? 'closed' as const : 'active' as const,
+          status: 'active' as const,
           problems: problems.map((problem) => ({
             id: problem.id,
             teacher_id: problem.teacher_id,

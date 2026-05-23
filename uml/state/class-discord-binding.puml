@@ -1,0 +1,18 @@
+@startuml
+[*] --> Unbound
+Unbound --> BotInstallStarted : teacher clicks add bot
+BotInstallStarted --> InstallCancelled : Discord OAuth cancelled
+BotInstallStarted --> RawGuildSaved : callback returns guild_id
+RawGuildSaved --> GuildSynced : sync worker fetches metadata/channels
+GuildSynced --> GuildSelected : teacher selects owned guild
+GuildSelected --> ChannelValidating : notification/voice channels selected
+ChannelValidating --> InvalidSelection : channel not in guild or wrong type
+InvalidSelection --> GuildSelected : choose again
+ChannelValidating --> Bound : save class_discord_binding
+Bound --> Bound : update channels
+Bound --> Unbound : teacher unbinds
+Bound --> SyncStale : sync worker cannot access guild
+SyncStale --> GuildSynced : access restored
+SyncStale --> Unbound : teacher unbinds
+InstallCancelled --> Unbound
+@enduml

@@ -1,0 +1,36 @@
+@startuml
+actor User
+participant "AuthController" as C
+participant "LoginUseCase" as U
+participant "TeacherWriter" as W
+participant "BcryptPasswordHasher" as H
+participant "JwtAccessTokenSigner" as J
+database "teachers" as DB
+User -> C : POST /login
+C -> U : execute(username, password)
+U -> W : findByUsername(username)
+W -> DB : SELECT teacher
+DB --> W : teacher/null
+W --> U : teacher/null
+alt teacher missing or inactive
+  U --> C : HttpError
+  C --> User : 401/403
+else valid account
+  U -> H : compare(password, hash)
+  H --> U : true/false
+  alt password mismatch
+    U --> C : HttpError 401
+  else password match
+    U -> J : sign(teacher)
+    J --> U : accessToken
+    U --> C : auth payload
+    C --> User : 200 token + profile
+  end
+end
+
+User -> C : GET /me
+C -> W : findById(teacherId from JWT)
+W -> DB : SELECT teacher
+W --> C : AuthTeacher
+C --> User : 200 profile
+@enduml

@@ -99,4 +99,5 @@ export class AdminController implements Controller {
       body: { credential },
     };
   }
+
 }

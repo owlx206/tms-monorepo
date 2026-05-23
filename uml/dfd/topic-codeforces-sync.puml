@@ -1,0 +1,23 @@
+@startuml
+left to right direction
+actor "Codeforces API" as CF
+rectangle "Codeforces Gym Sync Worker" as P1
+rectangle "CodeforcesGym" as P2
+rectangle "CodeforcesClient singleton" as P3
+database "class_gyms" as D1
+database "teacher_codeforces_credentials" as D2
+database "gym_problems" as D3
+database "gym_standings" as D4
+database "students/enrollments" as D5
+P1 --> D1 : read bound gyms
+P1 --> D2 : read teacher credentials
+P1 --> P2 : list owned gyms / get snapshot
+P2 --> P3 : rate limited API request
+P3 --> CF : HTTP request
+CF --> P3 : metadata/standings
+P3 --> P2 : normalized response
+P1 --> D1 : sync gym catalog
+P1 --> D3 : sync problem list
+P1 --> D5 : map handles to enrolled students
+P1 --> D4 : sync standing projection
+@enduml

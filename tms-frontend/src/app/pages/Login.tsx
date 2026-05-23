@@ -122,7 +122,7 @@ export function Login() {
 
             {mode === "register" && (
               <div>
-                <label className="block text-sm text-zinc-700 mb-2">Codeforces Handle (tùy chọn)</label>
+                <label className="block text-sm text-zinc-700 mb-2">Codeforces owner handle (tùy chọn)</label>
                 <input
                   type="text"
                   value={codeforcesHandle}

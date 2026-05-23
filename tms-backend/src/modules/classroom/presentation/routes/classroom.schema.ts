@@ -4,6 +4,7 @@ import { ClassStatus, SessionStatus } from '../../contracts/types.js';
 import {
   booleanSchema,
   dateTimeSchema,
+  nullableOptionalTrimmedStringSchema,
   positiveIntegerSchema,
   requiredTrimmedStringSchema,
 } from '../../../../shared/presentation/validation.js';
@@ -78,6 +79,10 @@ export const sessionIdParamSchema = z.object({
   sessionId: positiveIntegerSchema,
 });
 
+export const guildIdParamSchema = z.object({
+  guildId: positiveIntegerSchema,
+});
+
 export const classListQuerySchema = z.object({
   status: z.nativeEnum(ClassStatus).optional(),
   ready_only: booleanSchema.optional(),
@@ -104,6 +109,19 @@ export const updateClassBodySchema = z.object({
   schedules: z.array(classScheduleBodySchema).min(1, 'class must have at least one schedule').optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: 'at least one field is required',
+});
+
+export const upsertDiscordGuildBodySchema = z.object({
+  guild_id: positiveIntegerSchema,
+  attendance_voice_channel_id: nullableOptionalTrimmedStringSchema,
+  notification_channel_id: nullableOptionalTrimmedStringSchema,
+});
+
+export const channelPostBodySchema = z.object({
+  content: requiredTrimmedStringSchema,
+  guild_ids: z.array(positiveIntegerSchema)
+    .min(1, 'at least one guild is required')
+    .transform((values) => Array.from(new Set(values))),
 });
 
 export const sessionListQuerySchema = z.object({

@@ -1,0 +1,29 @@
+@startuml
+left to right direction
+actor "Teacher" as Teacher
+rectangle "Classroom Module" {
+  usecase "Create class" as UC1
+  usecase "Update class schedule" as UC2
+  usecase "Create manual session" as UC3
+  usecase "Cancel session" as UC4
+  usecase "Upsert attendance" as UC5
+  usecase "Validate enrollment at session time" as UC6
+  usecase "Sync session status" as UC7
+  usecase "Materialize attendance rows" as UC8
+}
+rectangle "Finance Module" {
+  usecase "Sync fee record" as UC9
+}
+actor "Session Status Sync Worker" as Worker
+Teacher --> UC1
+Teacher --> UC2
+Teacher --> UC3
+Teacher --> UC4
+Teacher --> UC5
+Worker --> UC7
+UC3 .> UC6 : include
+UC5 .> UC6 : include
+UC7 .> UC8 : include
+UC5 .> UC9 : include
+UC7 .> UC9 : include
+@enduml

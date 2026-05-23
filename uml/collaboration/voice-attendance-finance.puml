@@ -1,0 +1,23 @@
+@startuml
+object SyncRunner
+object DiscordClassroomSyncWorker
+object DiscordVoice
+object AttendanceWriter
+object ClassroomWriter
+object TransactionWriter
+object OpenSessions <<database>>
+object StudentCredentials <<database>>
+object Attendance <<database>>
+object FeeRecords <<database>>
+SyncRunner --> DiscordClassroomSyncWorker : 1: run loop
+DiscordClassroomSyncWorker --> OpenSessions : 2: find open sessions
+DiscordClassroomSyncWorker --> DiscordVoice : 3: ensure client
+DiscordVoice --> DiscordClassroomSyncWorker : 4: voice identities
+DiscordClassroomSyncWorker --> StudentCredentials : 5: load enrolled credentials
+DiscordClassroomSyncWorker --> AttendanceWriter : 6: mark present if not manual
+AttendanceWriter --> Attendance : 7: INSERT/UPDATE
+DiscordClassroomSyncWorker --> ClassroomWriter : 8: sync charge
+ClassroomWriter --> TransactionWriter : 9: write fee projection
+TransactionWriter --> FeeRecords : 10: UPSERT
+DiscordClassroomSyncWorker --> SyncRunner : 11: complete
+@enduml

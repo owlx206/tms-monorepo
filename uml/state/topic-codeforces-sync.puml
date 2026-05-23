@@ -1,0 +1,13 @@
+@startuml
+[*] --> Unbound
+Unbound --> GymBoundToClass : teacher selects gym
+GymBoundToClass --> CatalogSyncDue : worker sees teacher credential
+CatalogSyncDue --> CatalogSynced : owned gym list fetched
+CatalogSynced --> StandingDue : bound gym needs projection refresh
+StandingDue --> SyncingStanding : worker calls standings API
+SyncingStanding --> StandingSynced : problems and rows persisted
+SyncingStanding --> RetryLater : API error/timeout
+RetryLater --> StandingDue : next job loop
+StandingSynced --> StandingDue : next interval
+GymBoundToClass --> Unbound : teacher unbinds gym
+@enduml

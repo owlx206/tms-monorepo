@@ -1,0 +1,31 @@
+@startuml
+left to right direction
+actor "Teacher" as Teacher
+rectangle "Student Module" {
+  usecase "Create/update student" as UC1
+  usecase "Validate Codeforces handle" as UC2
+  usecase "Enroll student" as UC3
+  usecase "Transfer student" as UC4
+  usecase "Withdraw student" as UC5
+  usecase "Load balance snapshot" as UC6
+  usecase "Archive pending student" as UC7
+  usecase "Reinstate archived student" as UC8
+}
+rectangle "Classroom Module" {
+  usecase "Ensure active class" as UC9
+  usecase "Join current class Discord guild" as UC10
+}
+Teacher --> UC1
+Teacher --> UC3
+Teacher --> UC4
+Teacher --> UC5
+Teacher --> UC7
+Teacher --> UC8
+UC1 .> UC2 : include
+UC3 .> UC9 : include
+UC4 .> UC9 : include
+UC4 .> UC6 : include
+UC3 .> UC10 : extend
+UC4 .> UC10 : extend
+UC8 .> UC10 : extend
+@enduml
