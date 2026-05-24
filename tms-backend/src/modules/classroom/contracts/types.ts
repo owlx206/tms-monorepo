@@ -12,19 +12,6 @@ export type BindClassGymInput = {
   pull_interval_minutes?: number;
 };
 
-export type AddGymProblemInput = {
-  problem_index: string;
-  problem_name?: string | null;
-};
-
-export type UpsertGymStandingInput = {
-  student_id: number;
-  problem_id: number;
-  solved: boolean;
-  penalty_minutes?: number | null;
-  pulled_at?: Date;
-};
-
 export type GymSummarySource = {
   closed_at: Date | null;
 };

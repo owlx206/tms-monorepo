@@ -13,14 +13,14 @@ import { Session } from '../../../../../infrastructure/database/entities/session
 import { ClassSchedule } from '../../../../../infrastructure/database/entities/class-schedule.entity.js';
 import { Class } from '../../../../../infrastructure/database/entities/class.entity.js';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
-import { UpsertSessionAttendanceUseCase } from '../../../application/commands/UpsertSessionAttendanceUseCase.js';
+import { UpdateAttendance } from '../../../application/commands/UpdateAttendance.js';
 import { syncVoiceAttendanceForSession } from '../../sync/discord-classroom-sync.worker.js';
 import { Student } from '../../../../../infrastructure/database/entities/student.entity.js';
-import { ArchiveClassUseCase } from '../../../application/commands/ArchiveClassUseCase.js';
-import { CreateClassUseCase } from '../../../application/commands/CreateClassUseCase.js';
-import { UpdateClassUseCase } from '../../../application/commands/UpdateClassUseCase.js';
-import { CancelSessionUseCase } from '../../../application/commands/CancelSessionUseCase.js';
-import { CreateManualSessionUseCase } from '../../../application/commands/CreateManualSessionUseCase.js';
+import { ArchiveClass } from '../../../application/commands/ArchiveClass.js';
+import { CreateClass } from '../../../application/commands/CreateClass.js';
+import { UpdateClass } from '../../../application/commands/UpdateClass.js';
+import { CancelSession } from '../../../application/commands/CancelSession.js';
+import { CreateSession } from '../../../application/commands/CreateSession.js';
 import { TypeOrmFinanceFeeSync } from '../../../../finance/infrastructure/persistence/typeorm/Writer.js';
 import { Teacher } from '../../../../../infrastructure/database/entities/teacher.entity.js';
 import { TeacherCodeforcesCredential } from '../../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
@@ -585,7 +585,7 @@ export class TypeOrmAttendanceCommandHandlers {
     return AppDataSource.transaction(async (manager) => {
       const attendanceWriter = new TypeOrmAttendanceWriter(manager);
       const finance = new TypeOrmSessionFinanceService(manager);
-      const useCase = new UpsertSessionAttendanceUseCase(attendanceWriter, finance);
+      const useCase = new UpdateAttendance(attendanceWriter, finance);
       return useCase.execute(input);
     });
   }
@@ -1191,61 +1191,6 @@ export class TypeOrmGymWriter {
     return gym;
   }
 
-  findGymProblemByIndex(gymId: number, problemIndex: string) {
-    return this.manager.getRepository(GymProblem).findOneBy({
-      topic_id: gymId,
-      problem_index: problemIndex,
-    });
-  }
-
-  findOwnedGymProblem(teacherId: number, gymId: number, problemId: number) {
-    return this.manager.getRepository(GymProblem).findOneBy({
-      id: problemId,
-      teacher_id: teacherId,
-      topic_id: gymId,
-    });
-  }
-
-  createGymProblem(values: Partial<GymProblem>) {
-    return this.manager.getRepository(GymProblem).create(values);
-  }
-
-  saveGymProblem(gymProblem: GymProblem) {
-    return this.manager.getRepository(GymProblem).save(gymProblem);
-  }
-
-  findOwnedStudent(teacherId: number, studentId: number) {
-    return this.manager.getRepository(Student).findOneBy({
-      id: studentId,
-      teacher_id: teacherId,
-    });
-  }
-
-  findActiveEnrollment(teacherId: number, classId: number, studentId: number) {
-    return this.manager.getRepository(Enrollment).findOneBy({
-      teacher_id: teacherId,
-      class_id: classId,
-      student_id: studentId,
-      unenrolled_at: IsNull(),
-    });
-  }
-
-  findGymStanding(teacherId: number, gymId: number, studentId: number, problemId: number) {
-    return this.manager.getRepository(GymStanding).findOneBy({
-      teacher_id: teacherId,
-      topic_id: gymId,
-      student_id: studentId,
-      problem_id: problemId,
-    });
-  }
-
-  createGymStanding(values: Partial<GymStanding>) {
-    return this.manager.getRepository(GymStanding).create(values);
-  }
-
-  saveGymStanding(gymStanding: GymStanding) {
-    return this.manager.getRepository(GymStanding).save(gymStanding);
-  }
 }
 
 // TypeOrmClassCommandHandlers.ts
@@ -1259,7 +1204,7 @@ export class TypeOrmClassCommandHandlers {
     return AppDataSource.transaction(async (manager) => {
       const classes = new TypeOrmClassWriter(manager);
       const classSchedules = new TypeOrmClassScheduleService(manager);
-      const useCase = new CreateClassUseCase(classes, classSchedules);
+      const useCase = new CreateClass(classes, classSchedules);
 
       return useCase.execute(input);
     });
@@ -1275,7 +1220,7 @@ export class TypeOrmClassCommandHandlers {
     return AppDataSource.transaction(async (manager) => {
       const classes = new TypeOrmClassWriter(manager);
       const classSchedules = new TypeOrmClassScheduleService(manager);
-      const useCase = new UpdateClassUseCase(classes, classSchedules);
+      const useCase = new UpdateClass(classes, classSchedules);
 
       return useCase.execute(input);
     });
@@ -1290,7 +1235,7 @@ export class TypeOrmClassCommandHandlers {
       const archiveGuard = new TypeOrmClassArchiveGuard(manager);
       const classes = new TypeOrmClassWriter(manager);
       const sessionLifecycle = new TypeOrmClassSessionLifecycle(manager);
-      const useCase = new ArchiveClassUseCase(classes, archiveGuard, sessionLifecycle);
+      const useCase = new ArchiveClass(classes, archiveGuard, sessionLifecycle);
 
       return useCase.execute(input);
     });
@@ -1340,7 +1285,7 @@ export class TypeOrmSessionCommandHandlers {
   }): Promise<SessionSummary> {
     return AppDataSource.transaction(async (manager) => {
       const sessions = new TypeOrmSessionWriter(manager);
-      const useCase = new CreateManualSessionUseCase(sessions);
+      const useCase = new CreateSession(sessions);
       return useCase.execute(input);
     });
   }
@@ -1353,7 +1298,7 @@ export class TypeOrmSessionCommandHandlers {
       const sessions = new TypeOrmSessionWriter(manager);
       const attendance = new TypeOrmAttendanceWriter(manager);
       const finance = new TypeOrmSessionFinanceService(manager);
-      const useCase = new CancelSessionUseCase(sessions, attendance, finance);
+      const useCase = new CancelSession(sessions, attendance, finance);
       return useCase.execute({
         ...input,
         cancelledAt: new Date(),

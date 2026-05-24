@@ -2,8 +2,8 @@ import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
 import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
-import { GetDashboardSummaryUseCase } from '../../application/queries/GetDashboardSummaryUseCase.js';
-import { GetStudentLearningProfileUseCase } from '../../application/queries/GetStudentLearningProfileUseCase.js';
+import { GetDashboardSummary } from '../../application/queries/GetDashboardSummary.js';
+import { GetStudentLearningProfile } from '../../application/queries/GetStudentLearningProfile.js';
 
 type StudentReportControllerAction = 'getDashboardSummary' | 'getStudentLearningProfile';
 
@@ -19,8 +19,8 @@ export class StudentReportController implements Controller {
   constructor(
     private readonly action: StudentReportControllerAction,
     private readonly dependencies: {
-      getDashboardSummary: GetDashboardSummaryUseCase;
-      getStudentLearningProfile: GetStudentLearningProfileUseCase;
+      getDashboardSummary: GetDashboardSummary;
+      getStudentLearningProfile: GetStudentLearningProfile;
     },
   ) {}
 

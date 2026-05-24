@@ -3,39 +3,28 @@ import type { HttpRequest } from '../../../../../shared/presentation/HttpRequest
 import type { HttpResponse } from '../../../../../shared/presentation/HttpResponse.js';
 import type { ParsedRequestContext } from '../../../../../infrastructure/http/request-context.js';
 import type {
-  AddGymProblemInput,
   BindClassGymInput,
   GymListQuery,
-  UpsertGymStandingInput,
 } from '../../../contracts/types.js';
 
 type ClassGymControllerAction =
   | 'listAvailableClassGyms'
   | 'bindClassGym'
-  | 'unbindClassGym'
-  | 'addGymProblem'
-  | 'upsertGymStanding';
+  | 'unbindClassGym';
 
 type ClassGymControllerDependencies = {
   listAvailableClassGyms(teacherId: number, classId: number, filters: GymListQuery): Promise<unknown>;
   bindClassGym(teacherId: number, classId: number, input: BindClassGymInput): Promise<unknown>;
   unbindClassGym(teacherId: number, classId: number, gymId: number): Promise<unknown>;
-  addGymProblem(teacherId: number, classId: number, gymId: number, input: AddGymProblemInput): Promise<unknown>;
-  upsertGymStanding(
-    teacherId: number,
-    classId: number,
-    gymId: number,
-    input: UpsertGymStandingInput,
-  ): Promise<unknown>;
 };
 
 type ClassGymHttpRequest = HttpRequest<
-  AddGymProblemInput | BindClassGymInput | UpsertGymStandingInput,
+  BindClassGymInput,
   { classId: number; gymId: number },
   GymListQuery,
   unknown,
   ParsedRequestContext<
-    AddGymProblemInput | BindClassGymInput | UpsertGymStandingInput,
+    BindClassGymInput,
     { classId: number; gymId: number },
     GymListQuery
   > & { teacherId: number }
@@ -55,10 +44,6 @@ export class ClassGymController implements Controller {
         return this.bindClassGym(request);
       case 'unbindClassGym':
         return this.unbindClassGym(request);
-      case 'addGymProblem':
-        return this.addGymProblem(request);
-      case 'upsertGymStanding':
-        return this.upsertGymStanding(request);
     }
   }
 
@@ -92,25 +77,4 @@ export class ClassGymController implements Controller {
     return { statusCode: 200, body: { gym } };
   }
 
-  private async addGymProblem(request: ClassGymHttpRequest): Promise<HttpResponse> {
-    const problem = await this.dependencies.addGymProblem(
-      request.context.teacherId,
-      request.context.params.classId,
-      request.context.params.gymId,
-      request.body as AddGymProblemInput,
-    );
-
-    return { statusCode: 201, body: { problem } };
-  }
-
-  private async upsertGymStanding(request: ClassGymHttpRequest): Promise<HttpResponse> {
-    const standing = await this.dependencies.upsertGymStanding(
-      request.context.teacherId,
-      request.context.params.classId,
-      request.context.params.gymId,
-      request.body as UpsertGymStandingInput,
-    );
-
-    return { statusCode: 200, body: { standing } };
-  }
 }

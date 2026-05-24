@@ -1,7 +1,7 @@
 import type { AppModule } from '../module.types.js';
-import { CreateTransactionUseCase } from './application/commands/CreateTransactionUseCase.js';
-import { UpdateFeeRecordStatusUseCase } from './application/commands/UpdateFeeRecordStatusUseCase.js';
-import { UpdateTransactionUseCase } from './application/commands/UpdateTransactionUseCase.js';
+import { CreateTransaction } from './application/commands/CreateTransaction.js';
+import { UpdateFeeRecordStatus } from './application/commands/UpdateFeeRecordStatus.js';
+import { UpdateTransaction } from './application/commands/UpdateTransaction.js';
 import { TypeOrmIncomeReportReader } from './infrastructure/persistence/typeorm/Reader.js';
 import { TypeOrmTransactionReader } from './infrastructure/persistence/typeorm/Reader.js';
 import { TypeOrmTransactionWriter } from './infrastructure/persistence/typeorm/Writer.js';
@@ -29,16 +29,16 @@ const financeControllerDependencies = {
       new TypeOrmTransactionReader(AppDataSource.manager).getFinanceSummary(...args),
   },
   createTransaction: {
-    execute: (...args: Parameters<CreateTransactionUseCase['execute']>) =>
-      new CreateTransactionUseCase(createTransactionWriter()).execute(...args),
+    execute: (...args: Parameters<CreateTransaction['execute']>) =>
+      new CreateTransaction(createTransactionWriter()).execute(...args),
   },
   updateTransaction: {
-    execute: (...args: Parameters<UpdateTransactionUseCase['execute']>) =>
-      new UpdateTransactionUseCase(createTransactionWriter()).execute(...args),
+    execute: (...args: Parameters<UpdateTransaction['execute']>) =>
+      new UpdateTransaction(createTransactionWriter()).execute(...args),
   },
   updateFeeRecordStatus: {
-    execute: (...args: Parameters<UpdateFeeRecordStatusUseCase['execute']>) =>
-      new UpdateFeeRecordStatusUseCase(createTransactionWriter()).execute(...args),
+    execute: (...args: Parameters<UpdateFeeRecordStatus['execute']>) =>
+      new UpdateFeeRecordStatus(createTransactionWriter()).execute(...args),
   },
 };
 

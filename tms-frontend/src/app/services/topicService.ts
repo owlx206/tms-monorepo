@@ -107,38 +107,6 @@ export async function unbindClassTopic(classId: number, topicId: number): Promis
   return data.gym;
 }
 
-export async function addTopicProblem(
-  classId: number,
-  topicId: number,
-  payload: { problem_index: string; problem_name?: string | null },
-): Promise<BackendTopicProblem> {
-  const data = await apiRequest<{ problem: BackendTopicProblem }>(`/classes/${classId}/gyms/${topicId}/problems`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-  return data.problem;
-}
-
-export async function upsertTopicStanding(
-  classId: number,
-  topicId: number,
-  payload: {
-    student_id: number;
-    problem_id: number;
-    solved: boolean;
-    penalty_minutes?: number | null;
-    pulled_at?: string;
-  },
-) {
-  const data = await apiRequest<{ standing: unknown }>(`/classes/${classId}/gyms/${topicId}/standings`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-
-  return data.standing;
-}
-
 export async function getTopicStanding(classId: number, topicId: number): Promise<BackendTopicStandingMatrix> {
   return apiRequest<BackendTopicStandingMatrix>(`/classes/${classId}/gyms/${topicId}/standing`);
 }

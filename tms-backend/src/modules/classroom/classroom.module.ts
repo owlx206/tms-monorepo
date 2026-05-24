@@ -1,18 +1,16 @@
 import type { AppModule } from '../module.types.js';
 import { TypeOrmDiscordCacheStore } from '../../infrastructure/external/discord/cache/discord-cache.store.js';
 import { TypeOrmSysadminDiscordBotCredentialStore } from '../identity/infrastructure/persistence/typeorm/Writer.js';
-import { AddGymProblemUseCase } from './application/commands/AddGymProblemUseCase.js';
-import { BindClassGymUseCase } from './application/commands/BindClassGymUseCase.js';
-import { UnbindClassGymUseCase } from './application/commands/UnbindClassGymUseCase.js';
-import { UpsertGymStandingUseCase } from './application/commands/UpsertGymStandingUseCase.js';
-import { GetGymStandingMatrixUseCase } from './application/queries/GetGymStandingMatrixUseCase.js';
-import { ListGymsUseCase } from './application/queries/ListGymsUseCase.js';
-import { BindClassDiscordGuildUseCase } from './application/commands/BindClassDiscordGuildUseCase.js';
-import { SendChannelPostUseCase } from './application/commands/SendChannelPostUseCase.js';
-import { UnbindClassDiscordGuildUseCase } from './application/commands/UnbindClassDiscordGuildUseCase.js';
-import { GetDiscordBotInviteLinkUseCase } from './application/queries/GetDiscordBotInviteLinkUseCase.js';
-import { ListTeacherDiscordChannelsUseCase } from './application/queries/ListTeacherDiscordChannelsUseCase.js';
-import { ListTeacherDiscordGuildsUseCase } from './application/queries/ListTeacherDiscordGuildsUseCase.js';
+import { AssignGym } from './application/commands/AssignGym.js';
+import { UnassignGym } from './application/commands/UnassignGym.js';
+import { GetGymStanding } from './application/queries/GetGymStanding.js';
+import { ListAvailableGyms } from './application/queries/ListAvailableGyms.js';
+import { AssignDiscordGuild } from './application/commands/AssignDiscordGuild.js';
+import { SendChannelPost } from './application/commands/SendChannelPost.js';
+import { UnassignDiscordGuild } from './application/commands/UnassignDiscordGuild.js';
+import { GetDiscordBotInviteLink } from './application/queries/GetDiscordBotInviteLink.js';
+import { ListDiscordChannels } from './application/queries/ListDiscordChannels.js';
+import { ListDiscordGuilds } from './application/queries/ListDiscordGuilds.js';
 import { Attendance } from '../../infrastructure/database/entities/attendance.entity.js';
 import { ClassSchedule } from '../../infrastructure/database/entities/class-schedule.entity.js';
 import { Class } from '../../infrastructure/database/entities/class.entity.js';
@@ -53,14 +51,14 @@ const createGymReader = () => new TypeOrmGymReader(AppDataSource.manager);
 const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore();
 const discordCache = new TypeOrmDiscordCacheStore();
 const classroomDiscordWriter = new TypeOrmClassroomDiscordWriter();
-const classDiscordUseCases = {
-  listDiscordGuilds: new ListTeacherDiscordGuildsUseCase(),
-  listDiscordGuildChannels: new ListTeacherDiscordChannelsUseCase(),
+const classDiscordActions = {
+  listDiscordGuilds: new ListDiscordGuilds(),
+  listDiscordGuildChannels: new ListDiscordChannels(),
   discordCache,
-  getBotInviteLink: new GetDiscordBotInviteLinkUseCase(discordBotCredentialStore),
-  upsertDiscordGuildByClass: new BindClassDiscordGuildUseCase(classroomDiscordWriter),
-  unbindDiscordGuildByClass: new UnbindClassDiscordGuildUseCase(classroomDiscordWriter),
-  sendChannelPost: new SendChannelPostUseCase(classroomDiscordWriter, discordBotCredentialStore),
+  getBotInviteLink: new GetDiscordBotInviteLink(discordBotCredentialStore),
+  upsertDiscordGuildByClass: new AssignDiscordGuild(classroomDiscordWriter),
+  unbindDiscordGuildByClass: new UnassignDiscordGuild(classroomDiscordWriter),
+  sendChannelPost: new SendChannelPost(classroomDiscordWriter, discordBotCredentialStore),
 };
 const classReader = {
   listClasses: (...args: Parameters<TypeOrmClassReader['listClasses']>) =>
@@ -84,32 +82,18 @@ const attendanceReader = {
   listAttendanceRecords: (...args: Parameters<TypeOrmAttendanceReader['listAttendanceRecords']>) =>
     new TypeOrmAttendanceReader(AppDataSource.manager).listAttendanceRecords(...args),
 };
-const classGymUseCases = {
-  listAvailableClassGyms: (teacherId: number, _classId: number, filters: Parameters<ListGymsUseCase['execute']>[1]) =>
-    new ListGymsUseCase(createGymReader()).execute(teacherId, filters),
+const classGymActions = {
+  listAvailableClassGyms: (teacherId: number, _classId: number, filters: Parameters<ListAvailableGyms['execute']>[1]) =>
+    new ListAvailableGyms(createGymReader()).execute(teacherId, filters),
   bindClassGym: (
     teacherId: number,
     classId: number,
-    input: Parameters<BindClassGymUseCase['execute']>[2],
+    input: Parameters<AssignGym['execute']>[2],
   ) => AppDataSource.transaction((manager) =>
-    new BindClassGymUseCase(new TypeOrmGymWriter(manager)).execute(teacherId, classId, input)),
+    new AssignGym(new TypeOrmGymWriter(manager)).execute(teacherId, classId, input)),
   unbindClassGym: (teacherId: number, classId: number, gymId: number) =>
     AppDataSource.transaction((manager) =>
-      new UnbindClassGymUseCase(new TypeOrmGymWriter(manager)).execute(teacherId, classId, gymId)),
-  addGymProblem: (
-    teacherId: number,
-    classId: number,
-    gymId: number,
-    input: Parameters<AddGymProblemUseCase['execute']>[3],
-  ) => AppDataSource.transaction((manager) =>
-    new AddGymProblemUseCase(new TypeOrmGymWriter(manager)).execute(teacherId, classId, gymId, input)),
-  upsertGymStanding: (
-    teacherId: number,
-    classId: number,
-    gymId: number,
-    input: Parameters<UpsertGymStandingUseCase['execute']>[3],
-  ) => AppDataSource.transaction((manager) =>
-    new UpsertGymStandingUseCase(new TypeOrmGymWriter(manager)).execute(teacherId, classId, gymId, input)),
+      new UnassignGym(new TypeOrmGymWriter(manager)).execute(teacherId, classId, gymId)),
 };
 
 const classroomRouter = createClassroomRouter({
@@ -149,13 +133,13 @@ const classroomRouter = createClassroomRouter({
     updateClass: classCommandHandlers,
     archiveClass: classCommandHandlers,
   }),
-  listDiscordGuilds: new ClassDiscordController('listDiscordGuilds', classDiscordUseCases),
-  listDiscordGuildChannels: new ClassDiscordController('listDiscordGuildChannels', classDiscordUseCases),
-  completeDiscordInstall: new ClassDiscordController('completeDiscordInstall', classDiscordUseCases),
-  getBotInviteLink: new ClassDiscordController('getBotInviteLink', classDiscordUseCases),
-  upsertClassDiscordBinding: new ClassDiscordController('upsertClassDiscordBinding', classDiscordUseCases),
-  unbindClassDiscordBinding: new ClassDiscordController('unbindClassDiscordBinding', classDiscordUseCases),
-  sendChannelPost: new ClassDiscordController('sendChannelPost', classDiscordUseCases),
+  listDiscordGuilds: new ClassDiscordController('listDiscordGuilds', classDiscordActions),
+  listDiscordGuildChannels: new ClassDiscordController('listDiscordGuildChannels', classDiscordActions),
+  completeDiscordInstall: new ClassDiscordController('completeDiscordInstall', classDiscordActions),
+  getBotInviteLink: new ClassDiscordController('getBotInviteLink', classDiscordActions),
+  upsertClassDiscordBinding: new ClassDiscordController('upsertClassDiscordBinding', classDiscordActions),
+  unbindClassDiscordBinding: new ClassDiscordController('unbindClassDiscordBinding', classDiscordActions),
+  sendChannelPost: new ClassDiscordController('sendChannelPost', classDiscordActions),
 });
 
 const classScheduleRouter = createClassScheduleRouter({
@@ -203,17 +187,15 @@ const attendanceRouter = createAttendanceRouter({
 });
 
 const classGymRouter = createClassGymRouter({
-  listAvailableClassGyms: new ClassGymController('listAvailableClassGyms', classGymUseCases),
-  bindClassGym: new ClassGymController('bindClassGym', classGymUseCases),
-  unbindClassGym: new ClassGymController('unbindClassGym', classGymUseCases),
-  addGymProblem: new ClassGymController('addGymProblem', classGymUseCases),
-  upsertGymStanding: new ClassGymController('upsertGymStanding', classGymUseCases),
+  listAvailableClassGyms: new ClassGymController('listAvailableClassGyms', classGymActions),
+  bindClassGym: new ClassGymController('bindClassGym', classGymActions),
+  unbindClassGym: new ClassGymController('unbindClassGym', classGymActions),
 });
 
 const classGymStandingReportRouter = createClassGymStandingReportRouter(
   new ClassGymStandingReportController({
     getGymStandingMatrix: (teacherId, classId, gymId) =>
-      new GetGymStandingMatrixUseCase(createGymReader()).execute(teacherId, classId, gymId),
+      new GetGymStanding(createGymReader()).execute(teacherId, classId, gymId),
   }),
 );
 

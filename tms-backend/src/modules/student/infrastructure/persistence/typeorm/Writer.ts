@@ -4,12 +4,12 @@ import { EnrollmentId } from '../../../domain/value-objects/EnrollmentId.js';
 import { StudentId } from '../../../domain/value-objects/StudentId.js';
 import { Enrollment as EnrollmentOrmEntity } from '../../../../../infrastructure/database/entities/enrollment.entity.js';
 import { HttpError } from '../../../../../shared/errors/HttpError.js';
-import { ArchivePendingStudentUseCase } from '../../../application/commands/ArchivePendingStudentUseCase.js';
-import { CreateStudentUseCase } from '../../../application/commands/CreateStudentUseCase.js';
-import { ReinstateStudentUseCase } from '../../../application/commands/ReinstateStudentUseCase.js';
-import { TransferStudentUseCase } from '../../../application/commands/TransferStudentUseCase.js';
-import { UpdateStudentUseCase } from '../../../application/commands/UpdateStudentUseCase.js';
-import { WithdrawStudentUseCase } from '../../../application/commands/WithdrawStudentUseCase.js';
+import { ArchivePendingStudent } from '../../../application/commands/ArchivePendingStudent.js';
+import { CreateStudent } from '../../../application/commands/CreateStudent.js';
+import { ReinstateStudent } from '../../../application/commands/ReinstateStudent.js';
+import { TransferStudent } from '../../../application/commands/TransferStudent.js';
+import { UpdateStudent } from '../../../application/commands/UpdateStudent.js';
+import { WithdrawStudent } from '../../../application/commands/WithdrawStudent.js';
 import { type ArchivePendingStudentCommand, type CreateStudentCommand, type ReinstateStudentCommand, type TransferStudentCommand, type UpdateStudentCommand, type WithdrawStudentCommand } from '../../../contracts/types.js';
 import { findActiveEnrollment, findDiscordGuildByClass, findLastEnrollment, findRecentEnrollments, TypeOrmBalanceSnapshotReader, TypeOrmClassroomAccess } from './Reader.js';
 import { type ClassDiscordBinding } from '../../../../../infrastructure/database/entities/discord/class-discord-binding.entity.js';
@@ -201,7 +201,7 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly createStudent = {
     execute: async (input: CreateStudentCommand) => {
-      const result = await this.withTransaction((context) => new CreateStudentUseCase(
+      const result = await this.withTransaction((context) => new CreateStudent(
         context.students,
         context.enrollments,
         context.classroom,
@@ -214,7 +214,7 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly updateStudent = {
     execute: (input: UpdateStudentCommand) => this.withTransaction((context) => {
-      return new UpdateStudentUseCase(
+      return new UpdateStudent(
         context.students,
         context.enrollments,
         context.balanceSnapshots,
@@ -230,7 +230,7 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly transferStudent = {
     execute: async (input: TransferStudentCommand) => {
-      const result = await this.withTransaction((context) => this.createTransferStudentUseCase(context).execute(input));
+      const result = await this.withTransaction((context) => this.createTransferStudent(context).execute(input));
 
       this.assertDiscordMembershipAdded(
         await this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, input.studentId, input.toClassId),
@@ -241,7 +241,7 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly withdrawStudent = {
     execute: async (input: WithdrawStudentCommand) => {
-      const result = await this.withTransaction((context) => this.createWithdrawStudentUseCase(context).execute(input));
+      const result = await this.withTransaction((context) => this.createWithdrawStudent(context).execute(input));
 
       this.studentDiscordMembershipNotifier.studentWithdrawn(input.teacherId, input.studentId);
       return result;
@@ -250,7 +250,7 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly reinstateStudent = {
     execute: async (input: ReinstateStudentCommand) => {
-      const result = await this.withTransaction((context) => new ReinstateStudentUseCase(
+      const result = await this.withTransaction((context) => new ReinstateStudent(
         context.students,
         context.enrollments,
         context.classroom,
@@ -265,7 +265,7 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly archivePendingStudent = {
     execute: (input: ArchivePendingStudentCommand) => this.withTransaction((context) => {
-      return new ArchivePendingStudentUseCase(
+      return new ArchivePendingStudent(
         context.students,
         context.enrollments,
         context.balanceSnapshots,
@@ -286,8 +286,8 @@ export class TypeOrmStudentCommandHandlers {
     };
   }
 
-  private createTransferStudentUseCase(context: StudentPersistenceContext): TransferStudentUseCase {
-    return new TransferStudentUseCase(
+  private createTransferStudent(context: StudentPersistenceContext): TransferStudent {
+    return new TransferStudent(
       context.students,
       context.enrollments,
       context.classroom,
@@ -295,8 +295,8 @@ export class TypeOrmStudentCommandHandlers {
     );
   }
 
-  private createWithdrawStudentUseCase(context: StudentPersistenceContext): WithdrawStudentUseCase {
-    return new WithdrawStudentUseCase(
+  private createWithdrawStudent(context: StudentPersistenceContext): WithdrawStudent {
+    return new WithdrawStudent(
       context.students,
       context.enrollments,
       context.balanceSnapshots,

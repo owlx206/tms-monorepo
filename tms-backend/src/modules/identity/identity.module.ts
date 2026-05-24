@@ -1,12 +1,12 @@
 import type { AppModule } from '../module.types.js';
 import config from '../../config.js';
-import { LoginUseCase } from './application/commands/LoginUseCase.js';
-import { RegisterUseCase } from './application/commands/RegisterUseCase.js';
-import { LinkTeacherDiscordUseCase } from './application/commands/LinkTeacherDiscordUseCase.js';
-import { LinkStudentDiscordUseCase } from './application/commands/LinkStudentDiscordUseCase.js';
-import { UpsertSysadminDiscordBotCredentialUseCase } from './application/commands/UpsertSysadminDiscordBotCredentialUseCase.js';
-import { UpdateTeacherByAdminUseCase } from './application/commands/UpdateTeacherByAdminUseCase.js';
-import { UpdateMyProfileUseCase } from './application/commands/UpdateMyProfileUseCase.js';
+import { Login } from './application/commands/Login.js';
+import { Register } from './application/commands/Register.js';
+import { VerifyTeacherDiscord } from './application/commands/VerifyTeacherDiscord.js';
+import { AuthorizeStudentDiscord } from './application/commands/AuthorizeStudentDiscord.js';
+import { ConfigureDiscordBot } from './application/commands/ConfigureDiscordBot.js';
+import { UpdateTeacher } from './application/commands/UpdateTeacher.js';
+import { UpdateMyProfile } from './application/commands/UpdateMyProfile.js';
 import { SysadminDiscordBotCredential } from '../../infrastructure/database/entities/sysadmin-discord-bot-credential.entity.js';
 import { TeacherCodeforcesCredential } from '../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
 import { StudentDiscordCredential } from '../../infrastructure/database/entities/student-discord-credential.entity.js';
@@ -30,35 +30,35 @@ const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore()
 const discordBotCredentialReader = new TypeOrmSysadminDiscordBotCredentialReader();
 const passwordHasher = new BcryptPasswordHasher();
 const accessTokenSigner = new JwtAccessTokenSigner();
-const registerUseCase = new RegisterUseCase(
+const register = new Register(
   teacherWriter,
   passwordHasher,
   accessTokenSigner,
   config.auth.jwtExpiresIn,
 );
-const loginUseCase = new LoginUseCase(
+const login = new Login(
   teacherWriter,
   passwordHasher,
   accessTokenSigner,
   config.auth.jwtExpiresIn,
 );
-const updateMyProfileUseCase = new UpdateMyProfileUseCase(teacherWriter, passwordHasher);
-const updateTeacherByAdminUseCase = new UpdateTeacherByAdminUseCase(teacherWriter, passwordHasher);
-const linkTeacherDiscordUseCase = new LinkTeacherDiscordUseCase(
+const updateMyProfile = new UpdateMyProfile(teacherWriter, passwordHasher);
+const updateTeacher = new UpdateTeacher(teacherWriter, passwordHasher);
+const verifyTeacherDiscord = new VerifyTeacherDiscord(
   teacherWriter,
   discordBotCredentialStore,
 );
-const linkStudentDiscordUseCase = new LinkStudentDiscordUseCase(
+const authorizeStudentDiscord = new AuthorizeStudentDiscord(
   studentDiscordIdentityStore,
   discordBotCredentialStore,
 );
-const upsertSysadminDiscordBotCredentialUseCase = new UpsertSysadminDiscordBotCredentialUseCase(
+const configureDiscordBot = new ConfigureDiscordBot(
   discordBotCredentialStore,
 );
 
 const authControllerDeps = {
-  register: registerUseCase,
-  login: loginUseCase,
+  register,
+  login,
   me: {
     execute: async (teacherId: number) => {
       const teacher = await teacherWriter.findById(teacherId);
@@ -69,9 +69,9 @@ const authControllerDeps = {
       return toAuthTeacher(teacher, await teacherWriter.findTeacherCodeforcesCredential(teacherId));
     },
   },
-  updateMe: updateMyProfileUseCase,
-  linkTeacherDiscord: linkTeacherDiscordUseCase,
-  linkStudentDiscord: linkStudentDiscordUseCase,
+  updateMe: updateMyProfile,
+  linkTeacherDiscord: verifyTeacherDiscord,
+  linkStudentDiscord: authorizeStudentDiscord,
 };
 
 const adminReadDependencies = {
@@ -79,8 +79,8 @@ const adminReadDependencies = {
   getDiscordBotCredential: { execute: () => discordBotCredentialReader.getDefaultView() },
 };
 const adminWriteDependencies = {
-  updateTeacher: updateTeacherByAdminUseCase,
-  upsertDiscordBotCredential: upsertSysadminDiscordBotCredentialUseCase,
+  updateTeacher,
+  upsertDiscordBotCredential: configureDiscordBot,
 };
 
 const authRouter = createAuthRouter({
