@@ -1,17 +1,17 @@
 @startuml
 object Student
-object AuthController
-object LinkStudentDiscordUseCase
-object CredentialStore
-object StudentDiscordIdentityStore
-object DiscordOAuth
-Student --> AuthController : 1: callback code/state
-AuthController --> LinkStudentDiscordUseCase : 2: handleCallback
-LinkStudentDiscordUseCase --> CredentialStore : 3: load OAuth credential
-LinkStudentDiscordUseCase --> LinkStudentDiscordUseCase : 4: verify signed state
-LinkStudentDiscordUseCase --> DiscordOAuth : 5: exchange code
-LinkStudentDiscordUseCase --> DiscordOAuth : 6: fetch current user
-LinkStudentDiscordUseCase --> StudentDiscordIdentityStore : 7: upsert identity and token
-LinkStudentDiscordUseCase --> AuthController : 8: success/cancelled
-AuthController --> Student : 9: HTML postMessage + close
+object "Auth API" as AuthAPI
+object "Student Discord authorization" as StudentDiscordAuthorization
+object "Discord bot credential" as DiscordBotCredential
+object "Student Discord credential" as StudentDiscordCredential
+object "Discord OAuth" as DiscordOAuth
+Student --> AuthAPI : 1: callback code/state
+AuthAPI --> StudentDiscordAuthorization : 2: handle callback
+StudentDiscordAuthorization --> DiscordBotCredential : 3: load OAuth credential
+StudentDiscordAuthorization --> StudentDiscordAuthorization : 4: verify signed state
+StudentDiscordAuthorization --> DiscordOAuth : 5: exchange code
+StudentDiscordAuthorization --> DiscordOAuth : 6: fetch current user
+StudentDiscordAuthorization --> StudentDiscordCredential : 7: save identity and token
+StudentDiscordAuthorization --> AuthAPI : 8: success/cancelled
+AuthAPI --> Student : 9: HTML postMessage + close
 @enduml

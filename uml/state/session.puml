@@ -1,0 +1,11 @@
+@startuml
+title Object lifecycle: Session
+[*] --> Scheduled : session created
+Scheduled --> InProgress : start time reached
+InProgress --> Completed : end time reached
+Scheduled --> Cancelled : teacher cancels
+InProgress --> Cancelled : teacher cancels
+Scheduled --> Completed : sync catches already-ended session
+Completed --> [*]
+Cancelled --> [*]
+@enduml

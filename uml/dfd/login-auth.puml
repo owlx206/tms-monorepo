@@ -2,10 +2,10 @@
 left to right direction
 actor "User" as U
 rectangle "Auth API" as P1
-rectangle "LoginUseCase" as P2
+rectangle "Login" as P2
 database "teachers" as D1
 rectangle "Password Hasher" as P3
-rectangle "JWT Signer" as P4
+rectangle "Access token signer" as P4
 U --> P1 : username/password or bearer token
 P1 --> P2 : login command
 P2 --> D1 : load teacher by username

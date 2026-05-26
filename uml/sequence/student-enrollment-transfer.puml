@@ -1,12 +1,12 @@
 @startuml
 actor Teacher
-participant "StudentController" as C
-participant "TransferStudentUseCase" as U
-participant "StudentWriter" as SW
-participant "EnrollmentWriter" as EW
-participant "Classroom Reader functions" as CR
-participant "TypeOrmStudentDiscordMembershipService" as DM
-participant "BalanceSnapshotReader" as BR
+participant "Student API" as C
+participant "Transfer student" as U
+participant "Student storage" as SW
+participant "Enrollment storage" as EW
+participant "Class access check" as CR
+participant "Student guild membership" as DM
+participant "Student balance reader" as BR
 database "students/enrollments/classes" as DB
 database "student_discord_credentials/class_discord_bindings" as DDB
 Teacher -> C : POST /students/{id}/transfer
@@ -29,6 +29,6 @@ alt Discord token and class guild exist
 end
 U -> BR : loadForStudent
 BR -> DB : SELECT fee/transaction totals
-U --> C : StudentSummary
+U --> C : Student
 C --> Teacher : 200
 @enduml

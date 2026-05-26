@@ -1,8 +1,8 @@
 @startuml
 left to right direction
-actor "Discord Classroom Sync Worker" as Worker
+actor "Scheduler" as Scheduler
 actor "Discord Gateway" as Gateway
-rectangle "Classroom Module" {
+rectangle "Classroom" {
   usecase "Find open voice sessions" as UC1
   usecase "Connect bot client" as UC2
   usecase "Collect voice members" as UC3
@@ -10,10 +10,10 @@ rectangle "Classroom Module" {
   usecase "Mark bot attendance" as UC5
   usecase "Respect manual attendance" as UC6
 }
-rectangle "Finance Module" {
+rectangle "Finance" {
   usecase "Sync charged fee record" as UC7
 }
-Worker --> UC1
+Scheduler --> UC1
 Gateway --> UC2
 UC1 .> UC2 : include
 UC2 .> UC3 : include

@@ -1,0 +1,21 @@
+@startuml
+object Sysadmin
+object "Admin API" as AdminAPI
+object "Teacher update" as TeacherUpdate
+object "Teacher storage" as TeacherStorage
+object "Password hasher" as PasswordHasher
+object Teachers <<database>>
+object "Discord bot configuration" as DiscordBotConfiguration
+object "Discord bot credential" as DiscordBotCredential <<database>>
+Sysadmin --> AdminAPI : 1: submit admin command
+AdminAPI --> TeacherUpdate : 2: execute teacher update
+TeacherUpdate --> TeacherStorage : 3: load teacher
+TeacherStorage --> Teachers : 4: SELECT
+TeacherUpdate --> PasswordHasher : 5: hash password when needed
+TeacherUpdate --> TeacherStorage : 6: save teacher
+TeacherStorage --> Teachers : 7: UPDATE
+TeacherUpdate --> AdminAPI : 8: Teacher
+AdminAPI --> DiscordBotConfiguration : 9: update bot credential
+DiscordBotConfiguration --> DiscordBotCredential : 10: INSERT/UPDATE
+AdminAPI --> Sysadmin : 11: response
+@enduml

@@ -1,7 +1,7 @@
 @startuml
 actor Teacher
-participant "AuthController" as C
-participant "LinkTeacherDiscordUseCase" as U
+participant "Auth API" as C
+participant "Teacher Discord verification" as U
 database "sysadmin_discord_bot_credentials/teachers" as DB
 participant "Discord OAuth2" as OAuth
 Teacher -> C : GET authorize URL
@@ -19,7 +19,7 @@ OAuth --> U : access token
 U -> OAuth : fetch current user
 OAuth --> U : discord user
 U -> DB : UPDATE teacher discord identity
-U --> C : frontend success URL
+U --> C : settings redirect URL
 C --> Teacher : redirect
 
 alt user cancels authorization

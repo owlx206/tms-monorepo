@@ -5,7 +5,7 @@ import {
   type DiscordRecipientResolver,
 } from '../../../../infrastructure/external/discord/discord.js';
 import { listClassDiscordBindingsByClassIds } from '../../../classroom/infrastructure/persistence/typeorm/Reader.js';
-import { listStudentDiscordIdentities } from '../../../identity/infrastructure/persistence/typeorm/Writer.js';
+import { listStudentDiscordIdentities } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { DeliveryStatus, StudentMessageInput } from '../../contracts/types.js';
 import {

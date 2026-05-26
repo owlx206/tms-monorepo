@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../identity/contracts/types.js';
+import { TeacherRole } from '../../../account/contracts/types.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
 import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
-import { authorizeOwnedStudentParam } from '../../../identity/presentation/middlewares/ownership.js';
-import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
+import { authorizeOwnedStudentParam } from '../../../../infrastructure/security/ownership.js';
+import { requireRoles } from '../../../../infrastructure/security/rbac.js';
 import {
   studentIdParamSchema,
 } from './student-report.schema.js';

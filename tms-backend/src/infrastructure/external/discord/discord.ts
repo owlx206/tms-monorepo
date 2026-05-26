@@ -108,8 +108,8 @@ export type DiscordSentDirectMessage = {
 };
 
 const discordRestByBotToken = new Map<string, REST>();
-const discordBearerRestByAccessToken = new Map<string, REST>();
 const discordUnauthenticatedRest = new REST({ version: '10' });
+const discordBearerRest = new REST({ version: '10' });
 
 function normalizeRequiredString(value: string, fieldName: string): string {
   const normalized = value.trim();
@@ -407,18 +407,6 @@ export function getDiscordBotRest(botToken: string): REST {
 
   const rest = new REST({ version: '10' }).setToken(normalizedBotToken);
   discordRestByBotToken.set(normalizedBotToken, rest);
-  return rest;
-}
-
-function getDiscordBearerRest(accessToken: string): REST {
-  const normalizedAccessToken = normalizeRequiredString(accessToken, 'access_token');
-  const existing = discordBearerRestByAccessToken.get(normalizedAccessToken);
-  if (existing) {
-    return existing;
-  }
-
-  const rest = new REST({ version: '10', authPrefix: 'Bearer' }).setToken(normalizedAccessToken);
-  discordBearerRestByAccessToken.set(normalizedAccessToken, rest);
   return rest;
 }
 
@@ -1109,7 +1097,12 @@ export class DiscordOAuth {
   static async fetchCurrentUser(accessToken: string): Promise<{ id: string; username: string }> {
     let payload: unknown;
     try {
-      payload = await getDiscordBearerRest(accessToken).get('/users/@me', { authPrefix: 'Bearer' });
+      payload = await discordBearerRest.get('/users/@me', {
+        auth: false,
+        headers: {
+          Authorization: `Bearer ${normalizeRequiredString(accessToken, 'access_token')}`,
+        },
+      });
     } catch (error) {
       throw toDiscordHttpError(error, 'failed to fetch Discord user profile');
     }

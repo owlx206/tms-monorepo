@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../identity/contracts/types.js';
+import { TeacherRole } from '../../../account/contracts/types.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
 import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
-import { authorizeOwnedSessionParam, authorizeOwnedStudentParam } from '../../../identity/presentation/middlewares/ownership.js';
-import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
+import { authorizeOwnedSessionParam, authorizeOwnedStudentParam } from '../../../../infrastructure/security/ownership.js';
+import { requireRoles } from '../../../../infrastructure/security/rbac.js';
 import {
   attendanceListQuerySchema,
   sessionIdParamSchema,
@@ -25,9 +25,13 @@ type AttendanceRouteControllers = {
 export function createAttendanceRouter(controllers: AttendanceRouteControllers): Router {
   const router = Router();
 
-  router.use(passport.authenticate('jwt', { session: false }));
-  router.use(requireRoles([TeacherRole.Teacher]));
-  router.use(attachRequestContext());
+  const requireTeacherAuth = [
+    passport.authenticate('jwt', { session: false }),
+    requireRoles([TeacherRole.Teacher]),
+    attachRequestContext(),
+  ];
+  router.use('/sessions', ...requireTeacherAuth);
+  router.use('/attendance', ...requireTeacherAuth);
 
   router.get('/sessions/:sessionId/attendance', validate({ params: sessionIdParamSchema }), authorizeOwnedSessionParam(), adaptExpressRoute(controllers.getSessionAttendance));
   router.post('/sessions/:sessionId/attendance/sync', validate({ params: sessionIdParamSchema }), authorizeOwnedSessionParam(), adaptExpressRoute(controllers.syncSessionAttendance));

@@ -1,9 +1,9 @@
 @startuml
 left to right direction
 actor "Discord Gateway" as G
-rectangle "Discord Classroom Sync Worker" as P1
-rectangle "DiscordVoice" as P2
-rectangle "Attendance Writer" as P3
+rectangle "Voice attendance sync" as P1
+rectangle "Discord voice API" as P2
+rectangle "Attendance storage" as P3
 rectangle "Classroom Fee Projection" as P4
 database "sessions/schedules/bindings" as D1
 database "students/enrollments/credentials" as D2

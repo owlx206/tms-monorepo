@@ -1,17 +1,17 @@
 @startuml
 object Teacher
-object AuthController
-object LinkTeacherDiscordUseCase
-object CredentialStore
-object TeacherWriter
-object DiscordOAuth
-Teacher --> AuthController : 1: request/link callback
-AuthController --> LinkTeacherDiscordUseCase : 2: build/handle
-LinkTeacherDiscordUseCase --> CredentialStore : 3: load client credential
-LinkTeacherDiscordUseCase --> DiscordOAuth : 4: exchange code
-LinkTeacherDiscordUseCase --> DiscordOAuth : 5: fetch user
-LinkTeacherDiscordUseCase --> TeacherWriter : 6: load teacher
-LinkTeacherDiscordUseCase --> TeacherWriter : 7: save discord id
-LinkTeacherDiscordUseCase --> AuthController : 8: redirect url
-AuthController --> Teacher : 9: redirect
+object "Auth API" as AuthAPI
+object "Teacher Discord verification" as TeacherDiscordVerification
+object "Discord bot credential" as DiscordBotCredential
+object "Teacher storage" as TeacherStorage
+object "Discord OAuth" as DiscordOAuth
+Teacher --> AuthAPI : 1: request/link callback
+AuthAPI --> TeacherDiscordVerification : 2: build/handle
+TeacherDiscordVerification --> DiscordBotCredential : 3: load client credential
+TeacherDiscordVerification --> DiscordOAuth : 4: exchange code
+TeacherDiscordVerification --> DiscordOAuth : 5: fetch user
+TeacherDiscordVerification --> TeacherStorage : 6: load teacher
+TeacherDiscordVerification --> TeacherStorage : 7: save Teacher Discord identity
+TeacherDiscordVerification --> AuthAPI : 8: redirect url
+AuthAPI --> Teacher : 9: redirect
 @enduml

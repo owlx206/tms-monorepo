@@ -51,6 +51,7 @@ type StudentControllerDependencies = {
   };
   getStudentDiscordAuthorizationUrl: {
     buildAuthorizeUrl(teacherId: number, studentId: number): Promise<string>;
+    handleCallback(input: { code?: string; state?: string; error?: string }): Promise<string>;
   };
   sendStudentMessages: {
     execute(teacherId: number, input: StudentMessageInput): Promise<unknown>;
@@ -95,6 +96,7 @@ type StudentControllerAction =
   | 'listStudentEnrollments'
   | 'inviteStudentToCurrentClass'
   | 'getStudentDiscordAuthorizationUrl'
+  | 'completeStudentDiscordAuthorization'
   | 'sendStudentMessage'
   | 'sendStudentMessages'
   | 'transferStudent'
@@ -139,6 +141,8 @@ export class StudentController implements Controller {
           return this.inviteStudentToCurrentClass(request);
         case 'getStudentDiscordAuthorizationUrl':
           return this.getStudentDiscordAuthorizationUrl(request);
+        case 'completeStudentDiscordAuthorization':
+          return this.completeStudentDiscordAuthorization(request);
         case 'sendStudentMessage':
           return this.sendStudentMessage(request);
         case 'sendStudentMessages':
@@ -250,6 +254,20 @@ export class StudentController implements Controller {
     };
   }
 
+  private async completeStudentDiscordAuthorization(request: HttpRequest): Promise<HttpResponse> {
+    const status = await this.dependencies.getStudentDiscordAuthorizationUrl.handleCallback(
+      (request.query ?? {}) as { code?: string; state?: string; error?: string },
+    );
+
+    return {
+      statusCode: 200,
+      body: renderStudentDiscordClosePage(status),
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+      },
+    };
+  }
+
   private async sendStudentMessage(request: StudentHttpRequest): Promise<HttpResponse> {
     const input = request.body as StudentMessageInput;
     const result = await this.dependencies.sendStudentMessages.execute(
@@ -351,6 +369,47 @@ export class StudentController implements Controller {
       throw error;
     }
   }
+}
+
+function renderStudentDiscordClosePage(status: string): string {
+  const safeStatus = status.replace(/[^a-z0-9_]/gi, '');
+  const isSuccess = safeStatus === 'success';
+  const title = isSuccess ? 'Discord authorization completed' : 'Discord authorization received';
+  const message = isSuccess
+    ? 'Your Discord account has been connected. This tab will close automatically.'
+    : 'Your Discord authorization was processed. This tab will close automatically.';
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #fafafa; color: #18181b; }
+    main { max-width: 420px; padding: 32px; text-align: center; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    p { margin: 0; color: #52525b; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>${title}</h1>
+    <p>${message}</p>
+    <p>If the tab does not close, you can close it now.</p>
+  </main>
+  <script>
+    try {
+      if (window.opener) {
+        window.opener.postMessage({ type: 'student-discord-authorization', status: '${safeStatus}' }, '*');
+      }
+    } catch (_) {}
+    setTimeout(function () {
+      window.close();
+    }, 300);
+  </script>
+</body>
+</html>`;
 }
 
 function mapDomainErrorStatus(code: string): number {

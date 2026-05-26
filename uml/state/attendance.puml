@@ -1,0 +1,16 @@
+@startuml
+title Object lifecycle: Attendance record
+[*] --> MaterializedAbsent : session attendance is materialized
+MaterializedAbsent --> BotPresent : voice sync sees student in channel
+MaterializedAbsent --> ManualPresent : teacher marks present
+MaterializedAbsent --> ManualAbsentExcused : teacher marks excused
+BotPresent --> ManualPresent : teacher edits bot result
+BotPresent --> ManualAbsentExcused : teacher edits bot result
+ManualPresent --> ManualAbsentExcused : teacher edits attendance
+ManualAbsentExcused --> ManualPresent : teacher edits attendance
+BotPresent --> FeeCharged : fee projection synced
+ManualPresent --> FeeCharged : fee projection synced
+ManualAbsentExcused --> FeeNotCharged : fee projection synced
+FeeCharged --> [*]
+FeeNotCharged --> [*]
+@enduml

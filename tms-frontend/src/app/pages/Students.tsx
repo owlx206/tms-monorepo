@@ -169,6 +169,11 @@ export function Students() {
         return;
       }
 
+      if (status === "unauthorized") {
+        setRequestError("Link authorize Discord không còn khớp với học sinh hoặc giáo viên này. Hãy copy link mới rồi thử lại.");
+        return;
+      }
+
       setRequestError("Không xử lý được kết quả authorize Discord của học sinh.");
     };
 
@@ -177,10 +182,7 @@ export function Students() {
       handleStudentDiscordAuthorizationStatus(status);
     }
 
-    const allowedMessageOrigins = new Set([
-      window.location.origin,
-      new URL(import.meta.env.VITE_API_URL ?? window.location.origin, window.location.origin).origin,
-    ]);
+    const allowedMessageOrigins = new Set([window.location.origin]);
 
     const handleMessage = (event: MessageEvent): void => {
       if (!allowedMessageOrigins.has(event.origin)) {

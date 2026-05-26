@@ -2,7 +2,7 @@
 left to right direction
 actor "Teacher" as Teacher
 actor "Admin" as Admin
-rectangle "Identity Module" {
+rectangle "Identity" {
   usecase "Submit username/password" as UC1
   usecase "Validate credential" as UC2
   usecase "Check account status" as UC3

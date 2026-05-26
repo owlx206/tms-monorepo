@@ -1,0 +1,31 @@
+@startuml
+actor "Scheduler" as Runner
+participant "Codeforces gym sync" as Job
+participant "Gym storage" as R
+participant "Codeforces API" as Gym
+participant "Codeforces HTTP client" as CF
+participant "Gym storage" as W
+database "class_gyms/gym_problems/gym_standings/teacher_codeforces_credentials" as DB
+Runner -> Job : run()
+Job -> R : load assigned gyms and credentials
+R -> DB : SELECT class gyms + credentials
+loop each teacher credential
+  Job -> Gym : listOwnedGyms(ownerHandle)
+  Gym -> CF : contest.list
+  CF --> Gym : visible gyms
+  Job -> W : save raw gym catalog rows
+  W -> DB : UPSERT class_gyms cache rows
+end
+loop each bound gym
+  Job -> Gym : getGymSnapshot(gymId)
+  Gym -> CF : contest.standings
+  CF --> Gym : contest + problems + rows
+  alt snapshot fetched
+    Job -> W : save gym problems and standing rows
+    W -> DB : UPSERT gym_problems and standings
+  else API failed
+    Job -> Job : skip
+  end
+end
+Job --> Runner : complete
+@enduml

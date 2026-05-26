@@ -16,10 +16,10 @@ export class AssignDiscordGuild {
     }
 
     const notificationChannel = input.notification_channel_id
-      ? await this.classroomDiscordWriter.findDiscordGuildChannelCacheById(teacherId, Number(input.notification_channel_id))
+      ? await this.classroomDiscordWriter.findDiscordGuildChannelCacheByDiscordChannelId(teacherId, input.notification_channel_id)
       : null;
     const voiceChannel = input.attendance_voice_channel_id
-      ? await this.classroomDiscordWriter.findDiscordGuildChannelCacheById(teacherId, Number(input.attendance_voice_channel_id))
+      ? await this.classroomDiscordWriter.findDiscordGuildChannelCacheByDiscordChannelId(teacherId, input.attendance_voice_channel_id)
       : null;
 
     if (notificationChannel && notificationChannel.discord_guild_id !== userGuild.discord_guild_id) {

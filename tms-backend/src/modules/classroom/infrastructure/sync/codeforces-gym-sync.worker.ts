@@ -3,7 +3,7 @@ import { AppDataSource } from '../../../../infrastructure/database/data-source.j
 import {
   findTeacherCodeforcesSyncConfig,
   listTeacherIdsForCodeforcesSync,
-} from '../../../identity/infrastructure/persistence/typeorm/Writer.js';
+} from '../../../account/infrastructure/persistence/typeorm/Writer.js';
 import {
   CodeforcesClient,
   CodeforcesGym,

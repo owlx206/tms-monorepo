@@ -1,12 +1,14 @@
 import config from './config.js';
 import { AppDataSource, initializeDatabase } from './infrastructure/database/data-source.js';
-import { ensureSystemAdminAccount } from './modules/identity/infrastructure/bootstrap/ensureSystemAdminAccount.js';
+import { ensureAdminAccount } from './modules/account/infrastructure/bootstrap/ensureAdminAccount.js';
 import { startCodeforcesSyncWorker } from './modules/classroom/infrastructure/sync/codeforces-gym-sync.worker.js';
 import { startClassroomDiscordSyncWorker } from './modules/classroom/infrastructure/sync/discord-classroom-sync.worker.js';
+import { ensureDiscordBotConfig } from './modules/system/infrastructure/bootstrap/ensureDiscordBotConfig.js';
 
 export async function main(): Promise<void> {
   await initializeDatabase();
-  await ensureSystemAdminAccount();
+  await ensureAdminAccount();
+  await ensureDiscordBotConfig();
   const { createApp } = await import('./app.js');
   const syncLoops = [startClassroomDiscordSyncWorker(), startCodeforcesSyncWorker()];
 

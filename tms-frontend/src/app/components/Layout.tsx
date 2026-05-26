@@ -27,11 +27,11 @@ const teacherNavItems: NavItem[] = [
   { path: "/students", icon: Users, label: "Học sinh" },
   { path: "/classes", icon: GraduationCap, label: "Lớp học" },
   { path: "/sessions", icon: ClipboardList, label: "Buổi học" },
-  { path: "/settings", icon: Settings, label: "Cài đặt" },
   { path: "/transactions", icon: DollarSign, label: "Tài chính" },
+  { path: "/settings", icon: Settings, label: "Cài đặt" },
 ];
 
-const sysAdminNavItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
   { path: "/admin/teachers", icon: Shield, label: "Quản trị tài khoản" },
 ];
 
@@ -55,7 +55,7 @@ export function Layout() {
     return <Navigate to="/login" replace />;
   }
 
-  const navItems = teacher.role === "sysadmin" ? sysAdminNavItems : teacherNavItems;
+  const navItems = teacher.role === "admin" ? adminNavItems : teacherNavItems;
 
   const handleLogout = () => {
     clearAuthSession();
@@ -86,7 +86,7 @@ export function Layout() {
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
                     <BadgeCheck className="h-4 w-4" />
-                    <span>{teacher.role === "sysadmin" ? "Admin" : "Teacher"}</span>
+                    <span>{teacher.role === "admin" ? "Admin" : "Teacher"}</span>
                   </div>
                 </div>
                 <ChevronDown className={`mt-1 h-4 w-4 text-zinc-400 transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />

@@ -1,0 +1,12 @@
+@startuml
+title Object lifecycle: Gym
+[*] --> Cataloged : Codeforces catalog sync sees owned gym
+Cataloged --> Assigned : teacher assigns gym to class
+Assigned --> StandingSynced : standings sync writes problems and rows
+StandingSynced --> StandingSynced : next sync refreshes projection
+Assigned --> Unassigned : teacher unassigns gym
+Unassigned --> Cataloged : row remains in teacher catalog
+Cataloged --> Stale : gym disappears from owned catalog
+Stale --> Deleted : stale catalog cleanup removes row
+Deleted --> [*]
+@enduml

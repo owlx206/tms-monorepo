@@ -3,10 +3,6 @@ import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-const apiPrefix = process.env.API_PREFIX || '/api'
-const backendHost = process.env.BACKEND_HOST || 'localhost'
-const backendPort = process.env.BACKEND_PORT || '4000'
-
 function figmaAssetResolver() {
   return {
     name: 'figma-asset-resolver',
@@ -35,12 +31,6 @@ export default defineConfig({
   },
   server: {
     allowedHosts: true,
-    proxy: {
-      [apiPrefix]: {
-        target: `http://${backendHost}:${backendPort}`,
-        changeOrigin: true,
-      },
-    },
   },
   preview: {
     allowedHosts: true,

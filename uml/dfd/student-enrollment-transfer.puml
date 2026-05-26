@@ -2,8 +2,8 @@
 left to right direction
 actor "Teacher" as T
 rectangle "Student API" as P1
-rectangle "Student Use Cases" as P2
-rectangle "Student Discord Membership Service" as P3
+rectangle "Student and enrollment changes" as P2
+rectangle "Student guild membership" as P3
 database "students" as D1
 database "classes" as D2
 database "enrollments" as D3
@@ -22,6 +22,6 @@ D1 --> P2 : student
 D2 --> P2 : class status
 D3 --> P2 : enrollment state
 D4 --> P2 : balance totals
-P2 --> P1 : student summary
+P2 --> P1 : Student
 P1 --> T : response
 @enduml

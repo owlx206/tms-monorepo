@@ -1,8 +1,8 @@
 import type { AppModule } from '../module.types.js';
 import { AppDataSource } from '../../infrastructure/database/data-source.js';
 import { DiscordRecipientResolver, searchDiscordGuildMembers } from '../../infrastructure/external/discord/discord.js';
-import { AuthorizeStudentDiscord } from '../identity/application/commands/AuthorizeStudentDiscord.js';
-import { TypeOrmStudentDiscordIdentityStore, TypeOrmSysadminDiscordBotCredentialStore } from '../identity/infrastructure/persistence/typeorm/Writer.js';
+import { AuthorizeStudentDiscord } from './application/commands/AuthorizeStudentDiscord.js';
+import { TypeOrmStudentDiscordIdentityStore, TypeOrmSysadminDiscordBotCredentialStore } from '../account/infrastructure/persistence/typeorm/Writer.js';
 import { Enrollment } from '../../infrastructure/database/entities/enrollment.entity.js';
 import { Student } from '../../infrastructure/database/entities/student.entity.js';
 import { SendStudentMessages } from './application/commands/SendStudentMessages.js';
@@ -62,6 +62,7 @@ const studentControllers = {
   updateStudent: new StudentController('updateStudent', studentControllerDependencies),
   listStudentEnrollments: new StudentController('listStudentEnrollments', studentControllerDependencies),
   getStudentDiscordAuthorizationUrl: new StudentController('getStudentDiscordAuthorizationUrl', studentControllerDependencies),
+  completeStudentDiscordAuthorization: new StudentController('completeStudentDiscordAuthorization', studentControllerDependencies),
   inviteStudentToCurrentClass: new StudentController('inviteStudentToCurrentClass', studentControllerDependencies),
   sendStudentMessage: new StudentController('sendStudentMessage', studentControllerDependencies),
   sendStudentMessages: new StudentController('sendStudentMessages', studentControllerDependencies),

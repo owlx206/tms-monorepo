@@ -1,8 +1,12 @@
 import { QueryFailedError } from 'typeorm';
 
-import { TransactionType } from '../../contracts/types.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
-import { parseAmountToBigInt } from '../../domain/Money.js';
+import {
+  assertRefundsDoNotExceedPayments,
+  assertTransactionKeepsRefundBalance,
+  parseAmountToBigInt,
+} from '../../domain/Money.js';
+import type { TransactionType } from '../../contracts/types.js';
 import type { TypeOrmTransactionWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 function isRefundBalanceConstraintError(error: unknown): boolean {
@@ -12,20 +16,6 @@ function isRefundBalanceConstraintError(error: unknown): boolean {
 
   const driverError = error.driverError as { constraint?: string };
   return driverError.constraint === 'chk_transactions_refund_not_over_payment';
-}
-
-function validateTransactionAmount(type: TransactionType, amount: bigint): void {
-  if (amount === 0n) {
-    throw new HttpError('amount must be non-zero', 400);
-  }
-
-  if (type === TransactionType.Payment && amount <= 0n) {
-    throw new HttpError('payment amount must be positive', 400);
-  }
-
-  if (type === TransactionType.Refund && amount >= 0n) {
-    throw new HttpError('refund amount must be negative', 400);
-  }
 }
 
 export class UpdateTransaction {
@@ -57,17 +47,11 @@ export class UpdateTransaction {
     }
 
     const amount = parseAmountToBigInt(input.amount);
-    validateTransactionAmount(input.type, amount);
 
     const totals = await this.transactionWriter.getStudentTransactionTotals(input.teacherId, input.studentId, {
       excludeTransactionId: input.transactionId,
     });
-    const totalPayments = totals.payments + (input.type === TransactionType.Payment ? amount : 0n);
-    const totalRefunds = totals.refunds + (input.type === TransactionType.Refund ? amount * -1n : 0n);
-
-    if (totalRefunds > totalPayments) {
-      throw new HttpError('Tổng số tiền hoàn trả không được lớn hơn tổng số tiền đã nhận', 400);
-    }
+    assertTransactionKeepsRefundBalance(totals, { type: input.type, amount });
 
     const oldSnapshot = {
       student_id: transaction.student_id,
@@ -104,7 +88,7 @@ export class UpdateTransaction {
       );
     } catch (error) {
       if (isRefundBalanceConstraintError(error)) {
-        throw new HttpError('Tổng số tiền hoàn trả không được lớn hơn tổng số tiền đã nhận', 400);
+        assertRefundsDoNotExceedPayments({ payments: 0n, refunds: 1n });
       }
 
       throw error;

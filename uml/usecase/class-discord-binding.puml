@@ -1,19 +1,19 @@
 @startuml
 left to right direction
 actor "Teacher" as Teacher
-actor "Discord Classroom Sync Worker" as Worker
+actor "Scheduler" as Scheduler
 actor "Discord API" as Discord
-rectangle "Classroom Module" {
+rectangle "Classroom" {
   usecase "List teacher guilds" as UC1
   usecase "List guild channels" as UC2
-  usecase "Bind class to guild" as UC3
+  usecase "Assign Discord guild" as UC3
   usecase "Validate text channel" as UC4
   usecase "Validate voice channel" as UC5
-  usecase "Unbind class guild" as UC6
+  usecase "Unassign Discord guild" as UC6
   usecase "Receive bot install callback" as UC7
   usecase "Save raw guild id for sync" as UC8
 }
-rectangle "Discord Cache" {
+rectangle "Discord raw cache" {
   usecase "Refresh guild metadata" as UC9
   usecase "Refresh channel cache" as UC10
 }
@@ -22,8 +22,8 @@ Teacher --> UC2
 Teacher --> UC3
 Teacher --> UC6
 Discord --> UC7
-Worker --> UC9
-Worker --> UC10
+Scheduler --> UC9
+Scheduler --> UC10
 UC3 .> UC4 : include
 UC3 .> UC5 : include
 UC7 .> UC8 : include

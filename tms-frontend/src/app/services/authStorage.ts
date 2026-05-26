@@ -19,7 +19,7 @@ export function getStoredTeacher(): AuthTeacher | null {
       return null;
     }
 
-    if (parsed.role !== "teacher" && parsed.role !== "sysadmin") {
+    if (parsed.role !== "teacher" && parsed.role !== "admin") {
       return null;
     }
 
@@ -44,5 +44,5 @@ export function clearAuthSession(): void {
 }
 
 export function getDefaultHomePath(role: TeacherRole): string {
-  return role === "sysadmin" ? "/admin/teachers" : "/dashboard";
+  return role === "admin" ? "/admin/teachers" : "/dashboard";
 }

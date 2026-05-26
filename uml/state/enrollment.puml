@@ -1,0 +1,9 @@
+@startuml
+title Object lifecycle: Enrollment
+[*] --> Active : student enrolled in class
+Active --> EndedByTransfer : transfer closes current enrollment
+EndedByTransfer --> [*]
+Active --> EndedByWithdraw : teacher withdraws student
+EndedByWithdraw --> [*]
+Active --> [*]
+@enduml

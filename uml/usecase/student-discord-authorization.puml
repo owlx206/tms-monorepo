@@ -3,7 +3,7 @@ left to right direction
 actor "Teacher" as Teacher
 actor "Student" as Student
 actor "Discord OAuth2" as OAuth
-rectangle "Identity Module" {
+rectangle "Identity" {
   usecase "Build student authorize URL" as UC1
   usecase "Verify student state" as UC2
   usecase "Exchange OAuth code" as UC3

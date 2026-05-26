@@ -17,7 +17,7 @@ import { AppDataSource } from '../../../../../infrastructure/database/data-sourc
 import { DiscordGuildChannelCache } from '../../../../../infrastructure/external/discord/cache/entities/discord-guild-channel-cache.entity.js';
 import { DiscordUserGuild } from '../../../../../infrastructure/external/discord/cache/entities/discord-user-guild.entity.js';
 import { TypeOrmDiscordCacheStore } from '../../../../../infrastructure/external/discord/cache/discord-cache.store.js';
-import { findTeacherDiscordUserId } from '../../../../identity/infrastructure/persistence/typeorm/Writer.js';
+import { findTeacherDiscordUserId } from '../../../../account/infrastructure/persistence/typeorm/Writer.js';
 
 export type ClassDiscordBindingContext = {
   id: number;

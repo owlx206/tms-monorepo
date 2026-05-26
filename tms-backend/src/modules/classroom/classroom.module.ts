@@ -1,6 +1,6 @@
 import type { AppModule } from '../module.types.js';
 import { TypeOrmDiscordCacheStore } from '../../infrastructure/external/discord/cache/discord-cache.store.js';
-import { TypeOrmSysadminDiscordBotCredentialStore } from '../identity/infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmSysadminDiscordBotCredentialStore } from '../account/infrastructure/persistence/typeorm/Writer.js';
 import { AssignGym } from './application/commands/AssignGym.js';
 import { UnassignGym } from './application/commands/UnassignGym.js';
 import { GetGymStanding } from './application/queries/GetGymStanding.js';

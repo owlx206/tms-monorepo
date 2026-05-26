@@ -7,7 +7,7 @@ import { TypeOrmDiscordCacheStore } from '../../../../infrastructure/external/di
 import {
   discordFrontendUrl,
   verifyDiscordInstallState,
-} from '../../../identity/infrastructure/auth/discord-oauth.js';
+} from '../../../../infrastructure/security/discord-oauth.js';
 import type { ChannelPostInput, SelectClassDiscordGuildInput } from '../../contracts/types.js';
 
 type ClassDiscordControllerAction =

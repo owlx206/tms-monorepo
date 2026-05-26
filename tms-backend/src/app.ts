@@ -8,7 +8,7 @@ import { AppDataSource } from './infrastructure/database/data-source.js';
 import { errorHandler, notFoundHandler } from './infrastructure/http/error-handler.middleware.js';
 import { attachRequestContext } from './infrastructure/http/request-context.js';
 import { appModules } from './modules/app-modules.js';
-import { configurePassport } from './modules/identity/infrastructure/auth/configurePassport.js';
+import { configurePassport } from './infrastructure/security/configurePassport.js';
 
 export function createApp(): express.Express {
   const app = express();

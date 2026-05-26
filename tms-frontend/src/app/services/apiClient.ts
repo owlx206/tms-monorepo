@@ -13,7 +13,7 @@ type ApiRequestOptions = RequestInit & {
   withAuth?: boolean;
 };
 
-const apiBaseUrl = import.meta.env.VITE_API_URL ?? "/api";
+const apiBaseUrl = "/api";
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { withAuth = true, headers, ...init } = options;

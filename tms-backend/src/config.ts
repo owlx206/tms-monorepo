@@ -45,13 +45,13 @@ type DatabaseConfig = {
 function getPublicUrl(primaryKey: string, legacyKey?: string): string {
   const value = parseOptionalString(process.env[primaryKey])
     ?? (legacyKey ? parseOptionalString(process.env[legacyKey]) : undefined)
-    ?? `http://localhost:${parsePositiveInteger(process.env.PORT ?? process.env.BACKEND_PORT, 4000)}`;
+    ?? `http://localhost:${backendPort}`;
 
   return normalizeBaseUrl(value);
 }
 
 const backendPort = parsePositiveInteger(
-  process.env.PORT ?? process.env.WEBSITES_PORT ?? process.env.BACKEND_PORT,
+  process.env.PORT ?? process.env.WEBSITES_PORT,
   4000,
 );
 
@@ -171,7 +171,7 @@ const databaseConfig = getDatabaseConfig();
 
 const config = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
-  host: parseOptionalString(process.env.HOST) ?? parseOptionalString(process.env.BACKEND_HOST) ?? '0.0.0.0',
+  host: parseOptionalString(process.env.HOST) ?? '0.0.0.0',
   port: backendPort,
   apiPrefix: parseOptionalString(process.env.API_PREFIX) ?? '/api',
   frontendUrl: getPublicUrl('FRONTEND_URL', 'FRONTEND_PUBLIC_URL'),
@@ -189,6 +189,13 @@ const config = {
     allowPublicRegistration: parseBoolean(process.env.AUTH_ALLOW_PUBLIC_REGISTRATION, false),
     sysAdminUsername: process.env.SYSADMIN_USERNAME ?? 'admin',
     sysAdminPassword: parseOptionalString(process.env.SYSADMIN_PASSWORD),
+  },
+  discordBot: {
+    botToken: parseOptionalString(process.env.DISCORD_BOT_TOKEN),
+    clientId: parseOptionalString(process.env.DISCORD_CLIENT_ID),
+    clientSecret: parseOptionalString(process.env.DISCORD_CLIENT_SECRET),
+    permissions: parseOptionalString(process.env.DISCORD_BOT_PERMISSIONS),
+    scopes: parseOptionalString(process.env.DISCORD_BOT_SCOPES),
   },
   security: {
     credentialSecret: parseOptionalString(process.env.CREDENTIAL_SECRET)

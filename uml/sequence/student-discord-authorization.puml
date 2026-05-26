@@ -1,7 +1,7 @@
 @startuml
 actor Student
-participant "AuthController" as C
-participant "LinkStudentDiscordUseCase" as U
+participant "Auth API" as C
+participant "Student Discord authorization" as U
 database "sysadmin_discord_bot_credentials/students/student_discord_credentials" as DB
 participant "Discord OAuth2" as OAuth
 Student -> C : open student authorize link

@@ -59,23 +59,55 @@ export class TypeOrmDiscordCacheStore {
     guilds: Array<{ discord_guild_id: string; name: string }>,
   ): Promise<DiscordUserGuild[]> {
     const repo = this.manager.getRepository(DiscordUserGuild);
-    await repo.delete({ discord_user_id: discordUserId });
+    const existingGuilds = await repo.find({ where: { discord_user_id: discordUserId } });
+    const existingByDiscordGuildId = new Map(
+      existingGuilds.map((guild) => [guild.discord_guild_id, guild]),
+    );
+    const nextDiscordGuildIds = guilds.map((guild) => guild.discord_guild_id);
+
+    const deleteQuery = repo
+      .createQueryBuilder()
+      .delete()
+      .from(DiscordUserGuild)
+      .where('discord_user_id = :discordUserId', { discordUserId });
+
+    if (nextDiscordGuildIds.length > 0) {
+      deleteQuery.andWhere('discord_guild_id NOT IN (:...discordGuildIds)', {
+        discordGuildIds: nextDiscordGuildIds,
+      });
+    }
+
+    await deleteQuery.execute();
     if (guilds.length === 0) {
       return [];
     }
 
-    return repo.save(guilds.map((guild) => repo.create({
-      discord_user_id: discordUserId,
-      discord_guild_id: guild.discord_guild_id,
-      name: guild.name,
-      synced_at: new Date(),
-    })));
+    return repo.save(guilds.map((guild) => {
+      const existing = existingByDiscordGuildId.get(guild.discord_guild_id);
+      const entity = existing ?? repo.create({
+        discord_user_id: discordUserId,
+        discord_guild_id: guild.discord_guild_id,
+      });
+      entity.name = guild.name;
+      entity.synced_at = new Date();
+      return entity;
+    }));
   }
 
   findChannelByOwnerAndId(discordUserId: string, id: number): Promise<DiscordGuildChannelCache | null> {
     return this.manager.getRepository(DiscordGuildChannelCache).findOneBy({
       discord_user_id: discordUserId,
       id,
+    });
+  }
+
+  findChannelByOwnerAndDiscordChannelId(
+    discordUserId: string,
+    discordChannelId: string,
+  ): Promise<DiscordGuildChannelCache | null> {
+    return this.manager.getRepository(DiscordGuildChannelCache).findOneBy({
+      discord_user_id: discordUserId,
+      discord_channel_id: discordChannelId,
     });
   }
 
@@ -98,23 +130,48 @@ export class TypeOrmDiscordCacheStore {
     channels: Array<{ discord_channel_id: string; name: string; type: 'text' | 'voice' }>,
   ): Promise<DiscordGuildChannelCache[]> {
     const repo = this.manager.getRepository(DiscordGuildChannelCache);
-    await repo.delete({
-      discord_user_id: discordUserId,
-      discord_guild_id: discordGuildId,
+    const existingChannels = await repo.find({
+      where: {
+        discord_user_id: discordUserId,
+        discord_guild_id: discordGuildId,
+      },
     });
+    const existingByDiscordChannelId = new Map(
+      existingChannels.map((channel) => [channel.discord_channel_id, channel]),
+    );
+    const nextDiscordChannelIds = channels.map((channel) => channel.discord_channel_id);
+
+    const deleteQuery = repo
+      .createQueryBuilder()
+      .delete()
+      .from(DiscordGuildChannelCache)
+      .where('discord_user_id = :discordUserId', { discordUserId })
+      .andWhere('discord_guild_id = :discordGuildId', { discordGuildId });
+
+    if (nextDiscordChannelIds.length > 0) {
+      deleteQuery.andWhere('discord_channel_id NOT IN (:...discordChannelIds)', {
+        discordChannelIds: nextDiscordChannelIds,
+      });
+    }
+
+    await deleteQuery.execute();
 
     if (channels.length === 0) {
       return [];
     }
 
-    return repo.save(channels.map((channel) => repo.create({
-      discord_user_id: discordUserId,
-      discord_guild_id: discordGuildId,
-      discord_channel_id: channel.discord_channel_id,
-      name: channel.name,
-      type: channel.type,
-      synced_at: new Date(),
-    })));
+    return repo.save(channels.map((channel) => {
+      const existing = existingByDiscordChannelId.get(channel.discord_channel_id);
+      const entity = existing ?? repo.create({
+        discord_user_id: discordUserId,
+        discord_guild_id: discordGuildId,
+        discord_channel_id: channel.discord_channel_id,
+      });
+      entity.name = channel.name;
+      entity.type = channel.type;
+      entity.synced_at = new Date();
+      return entity;
+    }));
   }
 
   async deleteChannelsForOwnerExceptGuilds(discordUserId: string, discordGuildIds: string[]): Promise<number> {

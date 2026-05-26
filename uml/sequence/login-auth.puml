@@ -1,10 +1,10 @@
 @startuml
 actor User
-participant "AuthController" as C
-participant "LoginUseCase" as U
-participant "TeacherWriter" as W
-participant "BcryptPasswordHasher" as H
-participant "JwtAccessTokenSigner" as J
+participant "Auth API" as C
+participant "Login" as U
+participant "Teacher storage" as W
+participant "Password hasher" as H
+participant "Access token signer" as J
 database "teachers" as DB
 User -> C : POST /login
 C -> U : execute(username, password)
@@ -23,7 +23,7 @@ else valid account
   else password match
     U -> J : sign(teacher)
     J --> U : accessToken
-    U --> C : auth payload
+    U --> C : access token + Teacher
     C --> User : 200 token + profile
   end
 end
@@ -31,6 +31,6 @@ end
 User -> C : GET /me
 C -> W : findById(teacherId from JWT)
 W -> DB : SELECT teacher
-W --> C : AuthTeacher
+W --> C : Teacher
 C --> User : 200 profile
 @enduml

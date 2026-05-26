@@ -1,24 +1,24 @@
 @startuml
 object Teacher
-object DiscordOAuthCallback
-object ClassDiscordController
-object GetDiscordBotInviteLinkUseCase
-object BindClassDiscordGuildUseCase
-object ClassroomDiscordWriter
-object DiscordCacheStore
-object DiscordUserGuilds <<database>>
-object DiscordGuildChannels <<database>>
-object ClassDiscordBindings <<database>>
-Teacher --> ClassDiscordController : 1: request bot invite
-ClassDiscordController --> GetDiscordBotInviteLinkUseCase : 2: build install URL
-GetDiscordBotInviteLinkUseCase --> ClassroomDiscordWriter : 3: load teacher Discord user id
-ClassDiscordController --> Teacher : 4: invite_link
-DiscordOAuthCallback --> ClassDiscordController : 5: guild_id callback
-ClassDiscordController --> DiscordCacheStore : 6: save raw guild id
-DiscordCacheStore --> DiscordUserGuilds : 7: INSERT/UPDATE synced_at=null
-Teacher --> ClassDiscordController : 8: select guild/channels
-ClassDiscordController --> BindClassDiscordGuildUseCase : 9: execute
-BindClassDiscordGuildUseCase --> ClassroomDiscordWriter : 10: validate cached guild/channels
-ClassroomDiscordWriter --> DiscordGuildChannels : 11: SELECT
-ClassroomDiscordWriter --> ClassDiscordBindings : 12: INSERT/UPDATE binding
+object "Discord install callback" as DiscordOAuthCallback
+object "Class Discord API" as ClassDiscordAPI
+object "Bot install link" as BotInstallLink
+object "Discord guild assignment" as DiscordGuildAssignment
+object "Class Discord storage" as ClassDiscordStorage
+object "Discord cache storage" as DiscordCacheStorage
+object "Discord guild cache" as DiscordGuildCache <<database>>
+object "Discord channel cache" as DiscordChannelCache <<database>>
+object "Class Discord binding" as ClassDiscordBinding <<database>>
+Teacher --> ClassDiscordAPI : 1: request bot invite
+ClassDiscordAPI --> BotInstallLink : 2: build install URL
+BotInstallLink --> ClassDiscordStorage : 3: load Teacher Discord identity
+ClassDiscordAPI --> Teacher : 4: invite_link
+DiscordOAuthCallback --> ClassDiscordAPI : 5: guild_id callback
+ClassDiscordAPI --> DiscordCacheStorage : 6: save raw guild id
+DiscordCacheStorage --> DiscordGuildCache : 7: INSERT/UPDATE synced_at=null
+Teacher --> ClassDiscordAPI : 8: select guild/channels
+ClassDiscordAPI --> DiscordGuildAssignment : 9: assign Discord guild
+DiscordGuildAssignment --> ClassDiscordStorage : 10: validate cached guild/channels
+ClassDiscordStorage --> DiscordChannelCache : 11: SELECT
+ClassDiscordStorage --> ClassDiscordBinding : 12: INSERT/UPDATE
 @enduml

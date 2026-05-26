@@ -1,6 +1,6 @@
 import { apiRequest } from "./apiClient";
 
-export type TeacherRole = "sysadmin" | "teacher";
+export type TeacherRole = "admin" | "teacher";
 
 export interface AuthTeacher {
   id: number;

@@ -1,23 +1,23 @@
 @startuml
 object Teacher
-object StudentController
-object SendStudentMessagesUseCase
-object StudentReaderFunctions
-object DiscordRecipientResolver
-object DiscordMessenger
-object ClassDiscordController
-object SendChannelPostUseCase
+object "Student API" as StudentAPI
+object "Student message delivery" as StudentMessageDelivery
+object "Student message recipients" as StudentMessageRecipients
+object "Discord recipient lookup" as DiscordRecipientLookup
+object "Discord messaging" as DiscordMessaging
+object "Class Discord API" as ClassDiscordAPI
+object "Class channel post" as ClassChannelPost
 object RecipientData <<database>>
-Teacher --> StudentController : 1: send DM request
-StudentController --> SendStudentMessagesUseCase : 2: execute
-SendStudentMessagesUseCase --> StudentReaderFunctions : 3: load recipient bases
-StudentReaderFunctions --> RecipientData : 4: SELECT students/classes
-SendStudentMessagesUseCase --> RecipientData : 5: load identities and class guilds
-SendStudentMessagesUseCase --> DiscordRecipientResolver : 6: resolve guild member
-SendStudentMessagesUseCase --> DiscordMessenger : 7: send direct message
-SendStudentMessagesUseCase --> StudentController : 8: delivery summary
-Teacher --> ClassDiscordController : 9: channel post request
-ClassDiscordController --> SendChannelPostUseCase : 10: execute
-SendChannelPostUseCase --> RecipientData : 11: load class binding
-SendChannelPostUseCase --> DiscordMessenger : 12: send channel message
+Teacher --> StudentAPI : 1: send DM request
+StudentAPI --> StudentMessageDelivery : 2: execute
+StudentMessageDelivery --> StudentMessageRecipients : 3: load recipients
+StudentMessageRecipients --> RecipientData : 4: SELECT students/classes
+StudentMessageDelivery --> RecipientData : 5: load identities and class guilds
+StudentMessageDelivery --> DiscordRecipientLookup : 6: resolve guild member
+StudentMessageDelivery --> DiscordMessaging : 7: send direct message
+StudentMessageDelivery --> StudentAPI : 8: delivery results
+Teacher --> ClassDiscordAPI : 9: channel post request
+ClassDiscordAPI --> ClassChannelPost : 10: execute
+ClassChannelPost --> RecipientData : 11: load class Discord binding
+ClassChannelPost --> DiscordMessaging : 12: send channel message
 @enduml

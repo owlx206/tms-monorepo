@@ -1,9 +1,9 @@
-import type { SysadminDiscordBotCredentialStore } from '../../../identity/infrastructure/persistence/typeorm/Writer.js';
-import { findTeacherDiscordUserId } from '../../../identity/infrastructure/persistence/typeorm/Writer.js';
+import type { SysadminDiscordBotCredentialStore } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
+import { findTeacherDiscordUserId } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
 import {
   discordApiUrl,
   signDiscordInstallState,
-} from '../../../identity/infrastructure/auth/discord-oauth.js';
+} from '../../../../infrastructure/security/discord-oauth.js';
 
 export class GetDiscordBotInviteLink {
   constructor(private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore) {}

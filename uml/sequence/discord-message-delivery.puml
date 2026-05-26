@@ -1,12 +1,12 @@
 @startuml
 actor Teacher
-participant "StudentController" as SC
-participant "SendStudentMessagesUseCase" as SU
-participant "Student Reader functions" as SR
-participant "DiscordRecipientResolver" as R
-participant "DiscordMessenger" as DM
-participant "ClassDiscordController" as CC
-participant "SendChannelPostUseCase" as CU
+participant "Student API" as SC
+participant "Send student messages" as SU
+participant "Student message recipients" as SR
+participant "Discord recipient lookup" as R
+participant "Discord messaging" as DM
+participant "Class Discord API" as CC
+participant "Send class channel post" as CU
 database "students/enrollments/discord_credentials/class_discord_bindings" as DB
 actor "Discord REST API" as Discord
 
@@ -32,13 +32,13 @@ loop each recipient
     end
   end
 end
-SU --> SC : delivery summary
+SU --> SC : message delivery results
 SC --> Teacher : 201
 
 Teacher -> CC : POST /classes/{id}/discord/channel-post
 CC -> CU : execute(teacherId,input)
 CU -> DB : SELECT class binding + channel
 CU -> Discord : POST channel message
-CU --> CC : sent result
+CU --> CC : sent message
 CC --> Teacher : 201
 @enduml

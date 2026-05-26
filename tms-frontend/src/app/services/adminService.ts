@@ -1,7 +1,7 @@
 import { apiRequest } from "./apiClient";
 import type { TeacherRole } from "./authService";
 
-export interface BackendAdminTeacher {
+export interface BackendTeacherAccount {
   id: number;
   username: string;
   role: TeacherRole;
@@ -19,6 +19,8 @@ export interface BackendSysadminDiscordBotCredential {
   scopes: string | null;
   invite_link: string;
   verification_redirect_uri: string;
+  install_redirect_uri: string;
+  student_authorization_redirect_uri: string;
   has_bot_token: boolean;
   bot_health_status: "unknown" | "healthy" | "unhealthy";
   bot_health_message: string | null;
@@ -27,12 +29,12 @@ export interface BackendSysadminDiscordBotCredential {
   updated_at: string;
 }
 
-export async function listTeachersForAdmin(): Promise<BackendAdminTeacher[]> {
-  const data = await apiRequest<{ teachers: BackendAdminTeacher[] }>("/admin/teachers");
+export async function listTeacherAccounts(): Promise<BackendTeacherAccount[]> {
+  const data = await apiRequest<{ teachers: BackendTeacherAccount[] }>("/admin/teachers");
   return data.teachers;
 }
 
-export async function updateTeacherByAdmin(
+export async function updateTeacherAccount(
   teacherId: number,
   payload: {
     username?: string;
@@ -42,8 +44,8 @@ export async function updateTeacherByAdmin(
     codeforces_api_key?: string | null;
     codeforces_api_secret?: string | null;
   },
-): Promise<BackendAdminTeacher> {
-  const data = await apiRequest<{ teacher: BackendAdminTeacher }>(`/admin/teachers/${teacherId}`, {
+): Promise<BackendTeacherAccount> {
+  const data = await apiRequest<{ teacher: BackendTeacherAccount }>(`/admin/teachers/${teacherId}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });

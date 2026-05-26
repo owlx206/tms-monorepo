@@ -1,0 +1,9 @@
+@startuml
+title Object lifecycle: Teacher Discord identity
+[*] --> NotVerified
+NotVerified --> Verified : OAuth callback stores Discord user id
+Verified --> Verified : same Discord user verifies again
+Verified --> Replaced : different Discord user verifies
+Replaced --> Verified : teacher record updated
+Verified --> [*]
+@enduml

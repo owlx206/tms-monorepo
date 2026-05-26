@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../identity/contracts/types.js';
+import { TeacherRole } from '../../../account/contracts/types.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
 import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
-import { authorizeOwnedClassBody, authorizeOwnedClassQuery, authorizeOwnedStudentBody, authorizeOwnedStudentParam } from '../../../identity/presentation/middlewares/ownership.js';
-import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
+import { authorizeOwnedClassBody, authorizeOwnedClassQuery, authorizeOwnedStudentBody, authorizeOwnedStudentParam } from '../../../../infrastructure/security/ownership.js';
+import { requireRoles } from '../../../../infrastructure/security/rbac.js';
 import {
   archivePendingStudentBodySchema,
   createStudentBodySchema,
@@ -28,6 +28,7 @@ type StudentRouteControllers = {
   updateStudent: StudentController;
   listStudentEnrollments: StudentController;
   getStudentDiscordAuthorizationUrl: StudentController;
+  completeStudentDiscordAuthorization: StudentController;
   inviteStudentToCurrentClass: StudentController;
   sendStudentMessage: StudentController;
   sendStudentMessages: StudentController;
@@ -39,10 +40,15 @@ type StudentRouteControllers = {
 
 export function createStudentRouter(controllers: StudentRouteControllers): Router {
   const studentRouter = Router();
+  const requireTeacherAuth = [
+    passport.authenticate('jwt', { session: false }),
+    requireRoles([TeacherRole.Teacher]),
+    attachRequestContext(),
+  ];
 
-  studentRouter.use(passport.authenticate('jwt', { session: false }));
-  studentRouter.use(requireRoles([TeacherRole.Teacher]));
-  studentRouter.use(attachRequestContext());
+  studentRouter.get('/discord/student/callback', adaptExpressRoute(controllers.completeStudentDiscordAuthorization));
+
+  studentRouter.use('/students', ...requireTeacherAuth);
 
   studentRouter.get('/students', validate({ query: studentListQuerySchema }), authorizeOwnedClassQuery(), adaptExpressRoute(controllers.listStudents));
 

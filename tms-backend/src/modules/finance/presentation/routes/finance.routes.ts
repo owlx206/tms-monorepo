@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import passport from 'passport';
 
-import { TeacherRole } from '../../../identity/contracts/types.js';
+import { TeacherRole } from '../../../account/contracts/types.js';
 import { validate } from '../../../../shared/middlewares/validate.js';
 import { attachRequestContext } from '../../../../infrastructure/http/request-context.js';
 import { adaptExpressRoute } from '../../../../shared/presentation/adapt-express-route.js';
-import { authorizeOwnedClasses, authorizeOwnedFeeRecordParam, authorizeOwnedStudentBody, authorizeOwnedStudentQuery, authorizeOwnedTransactionParam } from '../../../identity/presentation/middlewares/ownership.js';
-import { requireRoles } from '../../../identity/presentation/middlewares/rbac.js';
+import { authorizeOwnedClasses, authorizeOwnedFeeRecordParam, authorizeOwnedStudentBody, authorizeOwnedStudentQuery, authorizeOwnedTransactionParam } from '../../../../infrastructure/security/ownership.js';
+import { requireRoles } from '../../../../infrastructure/security/rbac.js';
 import { FinanceController } from '../controllers/FinanceController.js';
 import {
   financeIdParamSchema,
@@ -33,9 +33,12 @@ type FinanceRouteControllers = {
 export function createFinanceRouter(controllers: FinanceRouteControllers): Router {
   const router = Router();
 
-  router.use(passport.authenticate('jwt', { session: false }));
-  router.use(requireRoles([TeacherRole.Teacher]));
-  router.use(attachRequestContext());
+  router.use(
+    '/finance',
+    passport.authenticate('jwt', { session: false }),
+    requireRoles([TeacherRole.Teacher]),
+    attachRequestContext(),
+  );
 
   router.get(
     '/finance/transactions',

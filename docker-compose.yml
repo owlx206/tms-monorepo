@@ -1,52 +1,17 @@
 services:
-  tms-backend:
-    image: node:20-alpine
-    working_dir: /usr/app
+  tms-app:
+    build:
+      context: .
+      dockerfile: dockerfile
+      args:
+        ENV_FILE: ${ENV_FILE:-.env.prod}
     restart: unless-stopped
     env_file:
-      - .env.dev
+      - ${ENV_FILE:-.env.prod}
     environment:
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV:-production}
       HOST: 0.0.0.0
       PORT: 4000
-      BACKEND_PORT: 4000
-      FRONTEND_URL: http://localhost:5173
-      BACKEND_URL: http://localhost:4000
-      DISCORD_FALLBACK_URL: http://localhost:5173
+      FRONTEND_DIST_DIR: /usr/app/frontend
     ports:
       - "4000:4000"
-    volumes:
-      - ./tms-backend:/usr/app
-      - backend_node_modules:/usr/app/node_modules
-    command: sh -c "if [ ! -d node_modules/.bin ]; then npm ci; fi; npm run dev"
-    networks:
-      - tms-network
-
-  tms-frontend:
-    image: node:20-alpine
-    working_dir: /usr/app
-    restart: unless-stopped
-    environment:
-      NODE_ENV: development
-      VITE_API_URL: /api
-      API_PREFIX: /api
-      BACKEND_HOST: tms-backend
-      BACKEND_PORT: 4000
-      CHOKIDAR_USEPOLLING: "true"
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./tms-frontend:/usr/app
-      - frontend_node_modules:/usr/app/node_modules
-    command: sh -c "if [ ! -d node_modules/.bin ]; then npm ci; fi; npm run dev -- --host 0.0.0.0"
-    depends_on:
-      - tms-backend
-    networks:
-      - tms-network
-
-volumes:
-  backend_node_modules:
-  frontend_node_modules:
-
-networks:
-  tms-network:

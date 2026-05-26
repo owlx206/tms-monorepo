@@ -3,12 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start:backend": "npm start --prefix tms-backend",
-    "start:frontend": "npm start --prefix tms-frontend",
+    "start": "npm start --prefix tms-backend",
+    "build": "npm run build:frontend && npm run build:backend",
     "build:backend": "npm run build --prefix tms-backend",
     "build:frontend": "npm run build --prefix tms-frontend",
-    "dev:backend": "npm run dev --prefix tms-backend",
-    "dev:frontend": "npm run dev --prefix tms-frontend",
+    "dev": "npm run dev --prefix tms-backend",
     "install": "cd tms-backend && npm install && cd ../tms-frontend && npm install"
   }
 }

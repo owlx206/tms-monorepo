@@ -10,6 +10,7 @@ import { Student } from './student.entity.js';
 @Unique('uq_student_discord_credential_student_id', ['student_id'])
 @Index('idx_student_discord_credential_student_id', ['student_id'])
 @Index('idx_student_discord_credential_user_id', ['discord_user_id'])
+@Index('idx_student_discord_credential_guild_id', ['guild_id'])
 export class StudentDiscordCredential {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -22,6 +23,9 @@ export class StudentDiscordCredential {
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   discord_user_id!: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true, default: null })
+  guild_id!: string | null;
 
   @Column({ type: 'text', nullable: true })
   discord_access_token!: string | null;

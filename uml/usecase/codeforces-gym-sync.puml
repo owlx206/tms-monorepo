@@ -1,0 +1,24 @@
+@startuml
+left to right direction
+actor "Teacher" as Teacher
+actor "Scheduler" as Scheduler
+actor "Codeforces API" as CF
+rectangle "Classroom" {
+  usecase "List available gyms" as UC1
+  usecase "Assign gym to class" as UC2
+  usecase "Unassign gym" as UC3
+  usecase "View gym standing" as UC4
+  usecase "Sync gym catalog" as UC5
+  usecase "Sync gym problems" as UC6
+  usecase "Sync gym standing" as UC7
+}
+Teacher --> UC1
+Teacher --> UC2
+Teacher --> UC3
+Teacher --> UC4
+Scheduler --> UC5
+Scheduler --> UC7
+UC5 .> CF : calls
+UC5 .> UC6 : include
+UC7 .> CF : calls
+@enduml

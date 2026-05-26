@@ -1,10 +1,10 @@
 @startuml
 actor Teacher
-participant "AttendanceController" as C
-participant "UpsertSessionAttendanceUseCase" as U
-participant "AttendanceWriter" as AW
-participant "TypeOrmClassroomWriter" as CW
-participant "TransactionWriter" as FW
+participant "Attendance API" as C
+participant "Update attendance" as U
+participant "Attendance storage" as AW
+participant "Session finance sync" as CW
+participant "Finance storage" as FW
 database "sessions/classes/students/enrollments/attendance/fee_records" as DB
 Teacher -> C : PUT /sessions/{id}/attendance
 C -> U : execute(command)
@@ -26,7 +26,7 @@ else valid attendance
   U -> CW : sync fee projection trigger
   CW -> FW : upsert/delete fee record
   FW -> DB : INSERT/UPDATE/DELETE fee_record
-  U --> C : AttendanceRecordSummary
+  U --> C : Attendance record
   C --> Teacher : 200
 end
 @enduml

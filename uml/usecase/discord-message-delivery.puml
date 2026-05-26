@@ -2,14 +2,14 @@
 left to right direction
 actor "Teacher" as Teacher
 actor "Discord REST API" as Discord
-rectangle "Student Module" {
+rectangle "Student" {
   usecase "Send DM to selected students" as UC1
   usecase "Load active class guild" as UC2
   usecase "Resolve Discord recipient" as UC3
   usecase "Send direct message" as UC4
   usecase "Return delivery summary" as UC5
 }
-rectangle "Classroom Module" {
+rectangle "Classroom" {
   usecase "Send channel post" as UC6
   usecase "Resolve notification channel" as UC7
 }

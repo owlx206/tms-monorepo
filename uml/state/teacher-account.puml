@@ -1,0 +1,14 @@
+@startuml
+title Object lifecycle: Teacher account
+[*] --> Active : account created
+Active --> Active : profile/password updated
+Active --> Sysadmin : role promoted
+Sysadmin --> Active : role demoted
+Active --> Inactive : sysadmin disables account
+Sysadmin --> Inactive : sysadmin disables account
+Inactive --> Active : sysadmin enables as teacher
+Inactive --> Sysadmin : sysadmin enables as sysadmin
+Active --> [*]
+Sysadmin --> [*]
+Inactive --> [*]
+@enduml

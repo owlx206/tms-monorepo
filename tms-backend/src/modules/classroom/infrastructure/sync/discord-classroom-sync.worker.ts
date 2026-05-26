@@ -3,28 +3,35 @@ import { In } from 'typeorm';
 import config from '../../../../config.js';
 import { AppDataSource } from '../../../../infrastructure/database/data-source.js';
 import {
+  addDiscordGuildMember,
   checkDiscordBotTokenHealth,
   DiscordVoice,
   fetchDiscordGuildMetadata,
+  kickDiscordGuildMember,
   listDiscordGuildChannels,
   type DiscordGuildMemberIdentity,
 } from '../../../../infrastructure/external/discord/discord.js';
 import { TypeOrmDiscordCacheStore } from '../../../../infrastructure/external/discord/cache/discord-cache.store.js';
 import { startSyncLoop, type SyncLoop } from '../../../../infrastructure/sync/sync-loop.js';
+import { refreshStudentDiscordToken } from '../../../../infrastructure/security/discord-oauth.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 import { listStudentIdsByClassAtTime } from '../../../student/infrastructure/persistence/typeorm/Reader.js';
+import { StudentStatus } from '../../../student/contracts/types.js';
 import {
   findDefaultSysadminDiscordBotCredential,
   findTeacherDiscordUserId,
   listStudentDiscordIdentities,
   listTeacherIdsWithDiscordUserId,
   updateDefaultSysadminDiscordBotHealth,
-} from '../../../identity/infrastructure/persistence/typeorm/Writer.js';
+} from '../../../account/infrastructure/persistence/typeorm/Writer.js';
 import { AttendanceSource, AttendanceStatus, ClassStatus, SessionStatus } from '../../contracts/types.js';
 import { TypeOrmAttendanceWriter, TypeOrmSessionFinanceService } from '../persistence/typeorm/Writer.js';
 import { Class } from '../../../../infrastructure/database/entities/class.entity.js';
 import { ClassDiscordBinding } from '../../../../infrastructure/database/entities/discord/class-discord-binding.entity.js';
+import { Enrollment } from '../../../../infrastructure/database/entities/enrollment.entity.js';
 import { Session } from '../../../../infrastructure/database/entities/session.entity.js';
+import { Student } from '../../../../infrastructure/database/entities/student.entity.js';
+import { StudentDiscordCredential } from '../../../../infrastructure/database/entities/student-discord-credential.entity.js';
 
 type OpenVoiceAttendanceSession = {
   teacher_id: number;
@@ -39,6 +46,18 @@ type VoiceAttendanceStudentIdentity = {
   student_id: number;
   discord_user_id: string | null;
   discord_username: string | null;
+};
+
+type StudentDiscordMembershipSyncRow = {
+  credential_id: number;
+  teacher_id: number;
+  student_id: number;
+  discord_user_id: string;
+  current_guild_id: string | null;
+  target_guild_id: string | null;
+  discord_access_token: string | null;
+  discord_refresh_token: string | null;
+  discord_token_expires_at: Date | null;
 };
 
 type UpdatedSessionRow = {
@@ -169,6 +188,238 @@ export async function syncDiscordGuildsForTeacherOnce(teacherId: number): Promis
   }
 
   return { synced_guilds: guilds.length, removed_bindings: removedBindings };
+}
+
+async function listStudentDiscordMembershipSyncRows(
+  teacherId: number,
+): Promise<StudentDiscordMembershipSyncRow[]> {
+  const rows = await AppDataSource.getRepository(StudentDiscordCredential)
+    .createQueryBuilder('credential')
+    .innerJoin(Student, 'student', 'student.id = credential.student_id')
+    .leftJoin(
+      Enrollment,
+      'enrollment',
+      [
+        'enrollment.teacher_id = student.teacher_id',
+        'enrollment.student_id = student.id',
+        'enrollment.unenrolled_at IS NULL',
+        'student.status = :activeStatus',
+      ].join(' AND '),
+    )
+    .leftJoin(
+      ClassDiscordBinding,
+      'discord_guild',
+      [
+        'discord_guild.teacher_id = student.teacher_id',
+        'discord_guild.class_id = enrollment.class_id',
+      ].join(' AND '),
+    )
+    .select('credential.id', 'credential_id')
+    .addSelect('student.teacher_id', 'teacher_id')
+    .addSelect('student.id', 'student_id')
+    .addSelect('credential.discord_user_id', 'discord_user_id')
+    .addSelect('credential.guild_id', 'current_guild_id')
+    .addSelect('discord_guild.discord_guild_id', 'target_guild_id')
+    .addSelect('credential.discord_access_token', 'discord_access_token')
+    .addSelect('credential.discord_refresh_token', 'discord_refresh_token')
+    .addSelect('credential.discord_token_expires_at', 'discord_token_expires_at')
+    .where('student.teacher_id = :teacherId', { teacherId })
+    .andWhere('credential.discord_user_id IS NOT NULL')
+    .andWhere("LEN(TRIM(credential.discord_user_id)) > 0")
+    .andWhere('(credential.guild_id IS NOT NULL OR discord_guild.discord_guild_id IS NOT NULL)', {
+      activeStatus: StudentStatus.Active,
+    })
+    .getRawMany<{
+      credential_id: number | string;
+      teacher_id: number | string;
+      student_id: number | string;
+      discord_user_id: string;
+      current_guild_id: string | null;
+      target_guild_id: string | null;
+      discord_access_token: string | null;
+      discord_refresh_token: string | null;
+      discord_token_expires_at: Date | string | null;
+    }>();
+
+  return rows.map((row) => ({
+    credential_id: Number(row.credential_id),
+    teacher_id: Number(row.teacher_id),
+    student_id: Number(row.student_id),
+    discord_user_id: row.discord_user_id,
+    current_guild_id: row.current_guild_id?.trim() || null,
+    target_guild_id: row.target_guild_id?.trim() || null,
+    discord_access_token: row.discord_access_token,
+    discord_refresh_token: row.discord_refresh_token,
+    discord_token_expires_at: row.discord_token_expires_at
+      ? new Date(row.discord_token_expires_at)
+      : null,
+  }));
+}
+
+async function getValidStudentDiscordAccessToken(input: {
+  row: StudentDiscordMembershipSyncRow;
+  clientId: string | null | undefined;
+  clientSecret: string | null | undefined;
+}): Promise<string | null> {
+  const accessToken = input.row.discord_access_token?.trim() || null;
+  const expiresAt = input.row.discord_token_expires_at;
+  if (accessToken && expiresAt && expiresAt.getTime() > Date.now() + 60_000) {
+    return accessToken;
+  }
+
+  const refreshToken = input.row.discord_refresh_token?.trim() || null;
+  if (!refreshToken || !input.clientId || !input.clientSecret) {
+    return null;
+  }
+
+  try {
+    const refreshed = await refreshStudentDiscordToken({
+      refreshToken,
+      clientId: input.clientId,
+      clientSecret: input.clientSecret,
+    });
+    await AppDataSource.getRepository(StudentDiscordCredential).update(
+      { id: input.row.credential_id },
+      {
+        discord_access_token: refreshed.accessToken,
+        discord_refresh_token: refreshed.refreshToken,
+        discord_token_expires_at: refreshed.expiresAt,
+      },
+    );
+    return refreshed.accessToken;
+  } catch {
+    return null;
+  }
+}
+
+async function reconcileStudentDiscordMembershipRow(input: {
+  row: StudentDiscordMembershipSyncRow;
+  botToken: string;
+  clientId: string | null | undefined;
+  clientSecret: string | null | undefined;
+}): Promise<'added' | 'kicked' | 'moved' | 'skipped' | 'unchanged'> {
+  const targetGuildId = input.row.target_guild_id;
+  const currentGuildId = input.row.current_guild_id;
+  if (currentGuildId === targetGuildId) {
+    return 'unchanged';
+  }
+
+  if (targetGuildId) {
+    const accessToken = await getValidStudentDiscordAccessToken({
+      row: input.row,
+      clientId: input.clientId,
+      clientSecret: input.clientSecret,
+    });
+    if (!accessToken) {
+      return 'skipped';
+    }
+
+    await addDiscordGuildMember({
+      botToken: input.botToken,
+      guildId: targetGuildId,
+      userId: input.row.discord_user_id,
+      userAccessToken: accessToken,
+    });
+  }
+
+  if (currentGuildId && currentGuildId !== targetGuildId) {
+    await kickDiscordGuildMember({
+      botToken: input.botToken,
+      guildId: currentGuildId,
+      userId: input.row.discord_user_id,
+    });
+  }
+
+  await AppDataSource.getRepository(StudentDiscordCredential).update(
+    { id: input.row.credential_id },
+    { guild_id: targetGuildId },
+  );
+
+  if (currentGuildId && targetGuildId) {
+    return 'moved';
+  }
+
+  return targetGuildId ? 'added' : 'kicked';
+}
+
+export async function syncStudentDiscordGuildMembershipForTeacherOnce(teacherId: number): Promise<{
+  added: number;
+  kicked: number;
+  moved: number;
+  skipped: number;
+}> {
+  if (!AppDataSource.isInitialized) {
+    return { added: 0, kicked: 0, moved: 0, skipped: 0 };
+  }
+
+  const credential = await findDefaultSysadminDiscordBotCredential();
+  const botToken = credential?.bot_token?.trim();
+  if (!botToken) {
+    return { added: 0, kicked: 0, moved: 0, skipped: 0 };
+  }
+
+  const rows = await listStudentDiscordMembershipSyncRows(teacherId);
+  const result = { added: 0, kicked: 0, moved: 0, skipped: 0 };
+  for (const row of rows) {
+    try {
+      const action = await reconcileStudentDiscordMembershipRow({
+        row,
+        botToken,
+        clientId: credential?.client_id,
+        clientSecret: credential?.client_secret,
+      });
+      if (action === 'added') {
+        result.added += 1;
+      } else if (action === 'kicked') {
+        result.kicked += 1;
+      } else if (action === 'moved') {
+        result.moved += 1;
+      } else if (action === 'skipped') {
+        result.skipped += 1;
+      }
+    } catch {
+      result.skipped += 1;
+    }
+  }
+
+  return result;
+}
+
+export async function listStudentDiscordMembershipSyncTeacherIds(): Promise<number[]> {
+  if (!AppDataSource.isInitialized) {
+    return [];
+  }
+
+  const rows = await AppDataSource.getRepository(StudentDiscordCredential)
+    .createQueryBuilder('credential')
+    .innerJoin(Student, 'student', 'student.id = credential.student_id')
+    .leftJoin(
+      Enrollment,
+      'enrollment',
+      [
+        'enrollment.teacher_id = student.teacher_id',
+        'enrollment.student_id = student.id',
+        'enrollment.unenrolled_at IS NULL',
+        'student.status = :activeStatus',
+      ].join(' AND '),
+    )
+    .leftJoin(
+      ClassDiscordBinding,
+      'discord_guild',
+      [
+        'discord_guild.teacher_id = student.teacher_id',
+        'discord_guild.class_id = enrollment.class_id',
+      ].join(' AND '),
+    )
+    .select('DISTINCT student.teacher_id', 'teacher_id')
+    .where('credential.discord_user_id IS NOT NULL')
+    .andWhere("LEN(TRIM(credential.discord_user_id)) > 0")
+    .andWhere('(credential.guild_id IS NOT NULL OR discord_guild.discord_guild_id IS NOT NULL)', {
+      activeStatus: StudentStatus.Active,
+    })
+    .getRawMany<{ teacher_id: number | string }>();
+
+  return rows.map((row) => Number(row.teacher_id));
 }
 
 function getSessionEndAt(session: Pick<Session, 'scheduled_at' | 'end_time'>): Date | null {
@@ -722,6 +973,7 @@ export class ClassroomDiscordWorker {
 
     const teacherIds = Array.from(new Set([
       ...await listDiscordSyncTeacherIds(),
+      ...await listStudentDiscordMembershipSyncTeacherIds(),
       ...await listSessionStatusSyncTeacherIds(),
       ...await listVoiceAttendanceSyncTeacherIds(),
     ]));
@@ -732,6 +984,10 @@ export class ClassroomDiscordWorker {
     let attendanceCreated = 0;
     let feeRecordsSynced = 0;
     let voiceMarked = 0;
+    let membershipAdded = 0;
+    let membershipKicked = 0;
+    let membershipMoved = 0;
+    let membershipSkipped = 0;
 
     for (const teacherId of teacherIds) {
       const sessionStatusResult = await syncSessionStatusesForTeacherOnce(teacherId);
@@ -744,13 +1000,19 @@ export class ClassroomDiscordWorker {
       syncedGuilds += discordResult.synced_guilds;
       removedBindings += discordResult.removed_bindings;
 
+      const membershipResult = await syncStudentDiscordGuildMembershipForTeacherOnce(teacherId);
+      membershipAdded += membershipResult.added;
+      membershipKicked += membershipResult.kicked;
+      membershipMoved += membershipResult.moved;
+      membershipSkipped += membershipResult.skipped;
+
       const voiceResult = await syncVoiceAttendanceForTeacherOnce(teacherId);
       voiceMarked += voiceResult.marked_count;
     }
 
     if (teacherIds.length > 0) {
       console.log(
-        `[sync] classroom-discord teachers=${teacherIds.length}, guilds=${syncedGuilds}, removed_bindings=${removedBindings}, sessions_started=${sessionsStarted}, sessions_completed=${sessionsCompleted}, attendance_created=${attendanceCreated}, fee_records_synced=${feeRecordsSynced}, voice_marked=${voiceMarked}`,
+        `[sync] classroom-discord teachers=${teacherIds.length}, guilds=${syncedGuilds}, removed_bindings=${removedBindings}, membership_added=${membershipAdded}, membership_kicked=${membershipKicked}, membership_moved=${membershipMoved}, membership_skipped=${membershipSkipped}, sessions_started=${sessionsStarted}, sessions_completed=${sessionsCompleted}, attendance_created=${attendanceCreated}, fee_records_synced=${feeRecordsSynced}, voice_marked=${voiceMarked}`,
       );
     }
   }

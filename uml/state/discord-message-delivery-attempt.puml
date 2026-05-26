@@ -1,0 +1,13 @@
+@startuml
+title Object lifecycle: Discord message delivery attempt
+[*] --> Pending : delivery requested
+Pending --> Skipped : missing active class, guild, channel, or Discord identity
+Pending --> ResolvingRecipient : recipient has guild context
+ResolvingRecipient --> Failed : recipient cannot be resolved
+ResolvingRecipient --> Sending : Discord user/channel resolved
+Sending --> Sent : Discord REST call succeeds
+Sending --> Failed : Discord REST call fails
+Skipped --> [*]
+Sent --> [*]
+Failed --> [*]
+@enduml

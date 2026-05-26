@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowLeft, BarChart3, BookOpen, Calendar, CheckCircle2, ExternalLink, Plus, Search, Server, Trash2, Users, X } from "lucide-react";
+import { ArrowLeft, BarChart3, BookOpen, Calendar, CheckCircle2, ExternalLink, MessageSquare, Plus, Search, Server, Trash2, Users, Volume2, X } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { ApiError } from "../services/apiClient";
@@ -10,6 +10,14 @@ import {
   unbindClassTopic,
   type BackendTopic,
 } from "../services/topicService";
+import {
+  listDiscordGuildChannels,
+  listDiscordGuilds,
+  unbindDiscordGuildByClass,
+  upsertDiscordGuildByClass,
+  type BackendClassDiscordBinding,
+  type BackendDiscordChannel,
+} from "../services/discordService";
 
 const DAY_OPTIONS = [
   { value: 0, label: "Chủ nhật" },
@@ -67,6 +75,12 @@ export function ClassDetail() {
   const [bindingGym, setBindingGym] = useState(false);
   const [bindError, setBindError] = useState("");
   const [unbindingTopicId, setUnbindingTopicId] = useState<number | null>(null);
+  const [discordModalOpen, setDiscordModalOpen] = useState(false);
+  const [discordGuilds, setDiscordGuilds] = useState<BackendClassDiscordBinding[]>([]);
+  const [discordGuildsLoading, setDiscordGuildsLoading] = useState(false);
+  const [bindingDiscord, setBindingDiscord] = useState(false);
+  const [unbindingDiscord, setUnbindingDiscord] = useState(false);
+  const [discordError, setDiscordError] = useState("");
 
   const loadClassDetails = async () => {
     if (!Number.isInteger(classId) || classId <= 0) {
@@ -106,6 +120,20 @@ export function ClassDetail() {
     setGymModalOpen(true);
     setGymSearch("");
     await loadGymContests();
+  };
+
+  const openDiscordModal = async () => {
+    setDiscordModalOpen(true);
+    setDiscordGuildsLoading(true);
+    setDiscordError("");
+
+    try {
+      setDiscordGuilds(await listDiscordGuilds());
+    } catch (error) {
+      setDiscordError(toErrorMessage(error));
+    } finally {
+      setDiscordGuildsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -204,7 +232,71 @@ export function ClassDetail() {
 
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-zinc-900">Codeforces GYM</h2>
+            <h2 className="text-lg font-semibold text-zinc-900">Discord</h2>
+            {details.class.status === "active" && (
+              <button
+                type="button"
+                onClick={() => void openDiscordModal()}
+                className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+              >
+                <Server className="h-4 w-4" />
+                {details.discord_guild ? "Đổi server" : "Gắn server"}
+              </button>
+            )}
+          </div>
+          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+            {details.discord_guild ? (
+              <div className="p-5">
+                <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Server className="h-4 w-4 text-zinc-500" />
+                    <h3 className="font-semibold text-zinc-900">
+                      {details.discord_guild.name ?? details.discord_guild.discord_guild_id}
+                    </h3>
+                  </div>
+                  {details.class.status === "active" && (
+                    <button
+                      type="button"
+                      disabled={unbindingDiscord}
+                      onClick={async () => {
+                        const label = details.discord_guild?.name ?? details.discord_guild?.discord_guild_id ?? "Discord";
+                        if (!window.confirm(`Bạn có chắc muốn gỡ Discord server "${label}" khỏi lớp này?`)) {
+                          return;
+                        }
+
+                        setUnbindingDiscord(true);
+                        setRequestError("");
+                        try {
+                          await unbindDiscordGuildByClass(details.class.id);
+                          await loadClassDetails();
+                        } catch (error) {
+                          setRequestError(toErrorMessage(error));
+                        } finally {
+                          setUnbindingDiscord(false);
+                        }
+                      }}
+                      className="inline-flex w-fit items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {unbindingDiscord ? "Đang gỡ..." : "Gỡ"}
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <Metric label="Server" value={details.discord_guild.name ?? details.discord_guild.discord_guild_id} />
+                  <Metric label="General channel" value={details.discord_guild.notification_channel_id ?? "Chưa chọn"} />
+                  <Metric label="Voice channel" value={details.discord_guild.attendance_voice_channel_id ?? "Chưa chọn"} />
+                </div>
+              </div>
+            ) : (
+              <p className="p-5 text-sm text-zinc-600">Chưa gắn Discord server cho lớp này.</p>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-zinc-900">Codeforces Gym</h2>
             {details.class.status === "active" && (
               <button
                 type="button"
@@ -212,7 +304,7 @@ export function ClassDetail() {
                 className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
               >
                 <Plus className="h-4 w-4" />
-                Gắn GYM
+                Thêm Gym
               </button>
             )}
           </div>
@@ -242,7 +334,7 @@ export function ClassDetail() {
                             type="button"
                             disabled={unbindingTopicId === topic.id}
                             onClick={async () => {
-                              if (!window.confirm(`Bạn có chắc muốn gỡ GYM "${topic.title}"? Tất cả dữ liệu standing sẽ bị xoá.`)) {
+                              if (!window.confirm(`Bạn có chắc muốn gỡ Gym "${topic.title}"? Tất cả dữ liệu standing sẽ bị xoá.`)) {
                                 return;
                               }
 
@@ -354,6 +446,41 @@ export function ClassDetail() {
               setBindError(toErrorMessage(error));
             } finally {
               setBindingGym(false);
+            }
+          }}
+        />
+      )}
+
+      {discordModalOpen && (
+        <DiscordGuildBindingModal
+          classId={details.class.id}
+          currentBinding={details.discord_guild}
+          guilds={discordGuilds}
+          loadingGuilds={discordGuildsLoading}
+          binding={bindingDiscord}
+          error={discordError}
+          onClose={() => setDiscordModalOpen(false)}
+          onBind={async (payload) => {
+            setBindingDiscord(true);
+            setDiscordError("");
+
+            try {
+              if (payload.guildId === null) {
+                await unbindDiscordGuildByClass(details.class.id);
+              } else {
+                await upsertDiscordGuildByClass(details.class.id, {
+                  guild_id: payload.guildId,
+                  notification_channel_id: payload.notificationChannelId,
+                  attendance_voice_channel_id: payload.attendanceVoiceChannelId,
+                });
+              }
+
+              setDiscordModalOpen(false);
+              await loadClassDetails();
+            } catch (error) {
+              setDiscordError(toErrorMessage(error));
+            } finally {
+              setBindingDiscord(false);
             }
           }}
         />
@@ -516,6 +643,292 @@ function CodeforcesGymPickerModal({
             className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
           >
             {binding ? "Đang gắn..." : "Gắn vào lớp"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiscordGuildBindingModal({
+  classId,
+  currentBinding,
+  guilds,
+  loadingGuilds,
+  binding,
+  error,
+  onClose,
+  onBind,
+}: {
+  classId: number;
+  currentBinding: BackendClassDetails["discord_guild"];
+  guilds: BackendClassDiscordBinding[];
+  loadingGuilds: boolean;
+  binding: boolean;
+  error: string;
+  onClose: () => void;
+  onBind: (payload: {
+    guildId: number | null;
+    notificationChannelId: string | null;
+    attendanceVoiceChannelId: string | null;
+  }) => Promise<void>;
+}) {
+  const availableGuilds = guilds.filter((guild) => (
+    guild.binding.role === "unbound" ||
+    guild.binding.class_id === classId ||
+    guild.discord_guild_id === currentBinding?.discord_guild_id
+  ));
+  const currentGuild = availableGuilds.find((guild) => (
+    guild.binding.class_id === classId ||
+    guild.discord_guild_id === currentBinding?.discord_guild_id
+  ));
+  const [search, setSearch] = useState("");
+  const [selectedGuildId, setSelectedGuildId] = useState(currentGuild ? String(currentGuild.id) : "");
+  const [channels, setChannels] = useState<BackendDiscordChannel[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(false);
+  const [channelError, setChannelError] = useState("");
+  const [notificationChannelId, setNotificationChannelId] = useState(currentBinding?.notification_channel_id ?? "");
+  const [attendanceVoiceChannelId, setAttendanceVoiceChannelId] = useState(currentBinding?.attendance_voice_channel_id ?? "");
+
+  useEffect(() => {
+    if (!currentGuild) {
+      return;
+    }
+
+    setSelectedGuildId(String(currentGuild.id));
+  }, [currentGuild?.id]);
+
+  useEffect(() => {
+    if (!selectedGuildId) {
+      setChannels([]);
+      setChannelError("");
+      setNotificationChannelId("");
+      setAttendanceVoiceChannelId("");
+      return;
+    }
+
+    const guildId = Number(selectedGuildId);
+    if (!Number.isInteger(guildId) || guildId <= 0) {
+      return;
+    }
+
+    let cancelled = false;
+    setChannelsLoading(true);
+    setChannelError("");
+
+    listDiscordGuildChannels(guildId)
+      .then((rows) => {
+        if (cancelled) {
+          return;
+        }
+
+        setChannels(rows);
+        const selectedGuild = availableGuilds.find((guild) => guild.id === guildId);
+        const isCurrentGuild = selectedGuild?.discord_guild_id === currentBinding?.discord_guild_id;
+        setNotificationChannelId(isCurrentGuild ? currentBinding?.notification_channel_id ?? "" : "");
+        setAttendanceVoiceChannelId(isCurrentGuild ? currentBinding?.attendance_voice_channel_id ?? "" : "");
+      })
+      .catch((loadError) => {
+        if (!cancelled) {
+          setChannelError(toErrorMessage(loadError));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setChannelsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedGuildId]);
+
+  const q = search.trim().toLowerCase();
+  const filteredGuilds = availableGuilds.filter((guild) => {
+    if (!q) {
+      return true;
+    }
+
+    return (
+      (guild.name ?? "").toLowerCase().includes(q) ||
+      guild.discord_guild_id.toLowerCase().includes(q)
+    );
+  });
+  const textChannels = channels.filter((channel) => channel.type === "text");
+  const voiceChannels = channels.filter((channel) => channel.type === "voice");
+  const parsedGuildId = selectedGuildId ? Number(selectedGuildId) : null;
+  const canSubmit = (
+    (parsedGuildId === null && Boolean(currentBinding)) ||
+    (Number.isInteger(parsedGuildId) && notificationChannelId && attendanceVoiceChannelId)
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4">
+      <div className="w-full max-w-4xl rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Chọn Discord server cho lớp</h2>
+            <p className="text-sm text-zinc-500">Chọn server, general channel và voice channel.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            aria-label="Đóng"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid gap-5 p-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                placeholder="Tìm theo tên server hoặc guild ID"
+              />
+            </div>
+
+            <div className="max-h-96 overflow-y-auto rounded-lg border border-zinc-200">
+              <label className="flex cursor-pointer items-start gap-3 p-4 hover:bg-zinc-50">
+                <input
+                  type="radio"
+                  name="discord_guild"
+                  value=""
+                  checked={selectedGuildId === ""}
+                  onChange={(event) => setSelectedGuildId(event.target.value)}
+                  className="mt-1"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-zinc-900">Không gắn server</p>
+                  <p className="mt-1 text-xs text-zinc-500">Gỡ Discord khỏi lớp này.</p>
+                </div>
+              </label>
+
+              {loadingGuilds ? (
+                <p className="border-t border-zinc-100 p-5 text-sm text-zinc-600">Đang tải server Discord...</p>
+              ) : filteredGuilds.length === 0 ? (
+                <p className="border-t border-zinc-100 p-5 text-sm text-zinc-600">
+                  {availableGuilds.length === 0 ? "Chưa có server Discord khả dụng." : "Không tìm thấy server phù hợp."}
+                </p>
+              ) : (
+                <div className="divide-y divide-zinc-100 border-t border-zinc-100">
+                  {filteredGuilds.map((guild) => {
+                    const selected = selectedGuildId === String(guild.id);
+                    const label = guild.name ?? guild.discord_guild_id;
+                    const isCurrent = guild.binding.class_id === classId || guild.discord_guild_id === currentBinding?.discord_guild_id;
+
+                    return (
+                      <label
+                        key={guild.id}
+                        className={`flex cursor-pointer items-start gap-3 p-4 ${selected ? "bg-zinc-50" : "hover:bg-zinc-50"}`}
+                      >
+                        <input
+                          type="radio"
+                          name="discord_guild"
+                          value={guild.id}
+                          checked={selected}
+                          onChange={(event) => setSelectedGuildId(event.target.value)}
+                          className="mt-1"
+                        />
+                        <Server className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-zinc-900">{label}</p>
+                            {isCurrent && (
+                              <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-600">Đang gắn</span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {guild.name ? guild.discord_guild_id : "Đang đồng bộ metadata"}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-zinc-500" />
+                <label className="text-sm font-medium text-zinc-800">General channel</label>
+              </div>
+              <select
+                value={notificationChannelId}
+                disabled={!selectedGuildId || channelsLoading}
+                onChange={(event) => setNotificationChannelId(event.target.value)}
+                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 disabled:opacity-60"
+              >
+                <option value="">Chọn text channel</option>
+                {textChannels.map((channel) => (
+                  <option key={channel.id} value={channel.discord_channel_id}>#{channel.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <Volume2 className="h-4 w-4 text-zinc-500" />
+                <label className="text-sm font-medium text-zinc-800">Voice channel</label>
+              </div>
+              <select
+                value={attendanceVoiceChannelId}
+                disabled={!selectedGuildId || channelsLoading}
+                onChange={(event) => setAttendanceVoiceChannelId(event.target.value)}
+                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 disabled:opacity-60"
+              >
+                <option value="">Chọn voice channel</option>
+                {voiceChannels.map((channel) => (
+                  <option key={channel.id} value={channel.discord_channel_id}>{channel.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedGuildId && channelsLoading && (
+              <p className="text-sm text-zinc-600">Đang tải channel...</p>
+            )}
+            {selectedGuildId && !channelsLoading && textChannels.length === 0 && (
+              <p className="text-sm text-amber-700">Server này chưa có text channel trong cache.</p>
+            )}
+            {selectedGuildId && !channelsLoading && voiceChannels.length === 0 && (
+              <p className="text-sm text-amber-700">Server này chưa có voice channel trong cache.</p>
+            )}
+            {(error || channelError) && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {error || channelError}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-zinc-100 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            disabled={!canSubmit || binding || channelsLoading}
+            onClick={() => void onBind({
+              guildId: parsedGuildId,
+              notificationChannelId: parsedGuildId === null ? null : notificationChannelId,
+              attendanceVoiceChannelId: parsedGuildId === null ? null : attendanceVoiceChannelId,
+            })}
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+          >
+            {binding ? "Đang lưu..." : parsedGuildId === null ? "Gỡ Discord" : "Gắn vào lớp"}
           </button>
         </div>
       </div>

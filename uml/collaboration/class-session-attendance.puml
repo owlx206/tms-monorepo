@@ -1,20 +1,20 @@
 @startuml
 object Teacher
-object AttendanceController
-object UpsertAttendanceUseCase
-object AttendanceWriter
-object ClassroomWriter
-object TransactionWriter
+object "Attendance API" as AttendanceAPI
+object "Attendance update" as AttendanceUpdate
+object "Attendance storage" as AttendanceStorage
+object "Session finance sync" as SessionFinanceSync
+object "Finance storage" as FinanceStorage
 object Database <<database>>
-Teacher --> AttendanceController : 1: attendance command
-AttendanceController --> UpsertAttendanceUseCase : 2: execute
-UpsertAttendanceUseCase --> AttendanceWriter : 3: load session/class/student
-AttendanceWriter --> Database : 4: SELECT validation rows
-UpsertAttendanceUseCase --> AttendanceWriter : 5: load enrollment at session time
-UpsertAttendanceUseCase --> AttendanceWriter : 6: save manual attendance
-AttendanceWriter --> Database : 7: INSERT/UPDATE attendance
-UpsertAttendanceUseCase --> ClassroomWriter : 8: sync fee projection
-ClassroomWriter --> TransactionWriter : 9: write fee record
-TransactionWriter --> Database : 10: UPSERT/DELETE fee
-UpsertAttendanceUseCase --> AttendanceController : 11: summary
+Teacher --> AttendanceAPI : 1: attendance command
+AttendanceAPI --> AttendanceUpdate : 2: execute
+AttendanceUpdate --> AttendanceStorage : 3: load session/class/student
+AttendanceStorage --> Database : 4: SELECT validation rows
+AttendanceUpdate --> AttendanceStorage : 5: load enrollment at session time
+AttendanceUpdate --> AttendanceStorage : 6: save manual attendance
+AttendanceStorage --> Database : 7: INSERT/UPDATE attendance
+AttendanceUpdate --> SessionFinanceSync : 8: sync fee projection
+SessionFinanceSync --> FinanceStorage : 9: write Fee record
+FinanceStorage --> Database : 10: UPSERT/DELETE Fee record
+AttendanceUpdate --> AttendanceAPI : 11: Attendance
 @enduml

@@ -16,8 +16,6 @@ import { listStudents } from "../services/studentService";
 import {
   listDiscordGuilds,
   sendChannelPost,
-  unbindDiscordGuildByClass,
-  upsertDiscordGuildByClass,
   type BackendClassDiscordBinding,
 } from "../services/discordService";
 
@@ -187,22 +185,16 @@ export function Classes() {
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
-    serverId: number | null;
   }) => {
     setSubmitting(true);
     setRequestError("");
 
     try {
-      const createdClass = await createClass({
+      await createClass({
         name: payload.name,
         fee_per_session: payload.feePerSession,
         schedules: payload.schedules,
       });
-      if (payload.serverId !== null) {
-        await upsertDiscordGuildByClass(createdClass.id, {
-          guild_id: payload.serverId,
-        });
-      }
 
       await refreshClasses();
       setShowAddModal(false);
@@ -218,7 +210,6 @@ export function Classes() {
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
-    serverId: number | null;
   }) => {
     setSubmitting(true);
     setRequestError("");
@@ -229,13 +220,6 @@ export function Classes() {
         fee_per_session: payload.feePerSession,
         schedules: payload.schedules,
       });
-      if (payload.serverId !== null) {
-        await upsertDiscordGuildByClass(payload.classId, {
-          guild_id: payload.serverId,
-        });
-      } else if (selectedClass?.discordServerId != null) {
-        await unbindDiscordGuildByClass(payload.classId);
-      }
       await refreshClasses();
       setShowEditModal(false);
       setSelectedClass(null);
@@ -446,7 +430,6 @@ export function Classes() {
 
       {showAddModal && (
         <AddClassModal
-          servers={discordGuilds}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleCreateClass}
           submitting={submitting}
@@ -457,7 +440,6 @@ export function Classes() {
       {showEditModal && selectedClass && (
         <EditClassModal
           classData={selectedClass}
-          servers={discordGuilds}
           onClose={() => {
             setShowEditModal(false);
             setSelectedClass(null);
@@ -683,19 +665,16 @@ function ScheduleEditor({
 }
 
 function AddClassModal({
-  servers,
   onClose,
   onSubmit,
   submitting,
   error,
 }: {
-  servers: BackendClassDiscordBinding[];
   onClose: () => void;
   onSubmit: (payload: {
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
-    serverId: number | null;
   }) => Promise<void>;
   submitting: boolean;
   error: string;
@@ -703,9 +682,7 @@ function AddClassModal({
   const [name, setName] = useState("");
   const [feePerSession, setFeePerSession] = useState("");
   const [schedules, setSchedules] = useState<ScheduleDraft[]>([]);
-  const [serverId, setServerId] = useState("");
   const [localError, setLocalError] = useState("");
-  const availableServers = servers.filter((server) => server.binding.role === "unbound");
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -721,12 +698,6 @@ function AddClassModal({
 
     if (!Number.isInteger(parsedFee) || parsedFee < 0) {
       setLocalError("Học phí/buổi phải là số nguyên không âm");
-      return;
-    }
-
-    const parsedServerId = serverId ? Number(serverId) : null;
-    if (parsedServerId !== null && (!Number.isInteger(parsedServerId) || parsedServerId <= 0)) {
-      setLocalError("Discord guild không hợp lệ");
       return;
     }
 
@@ -746,7 +717,6 @@ function AddClassModal({
       name: normalizedName,
       feePerSession: parsedFee,
       schedules: schedulePayloads,
-      serverId: parsedServerId,
     });
   };
 
@@ -779,20 +749,6 @@ function AddClassModal({
 
           <ScheduleEditor schedules={schedules} onChange={setSchedules} />
 
-          <div>
-            <label className="block text-sm text-zinc-600 mb-2">Discord guild</label>
-            <select
-              value={serverId}
-              onChange={(event) => setServerId(event.target.value)}
-              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            >
-              <option value="">Không gắn server</option>
-              {availableServers.map((server) => (
-                <option key={server.id} value={server.id}>{server.name ?? `${server.discord_guild_id} (đang đồng bộ)`}</option>
-              ))}
-            </select>
-          </div>
-
           {(localError || error) && <p className="text-sm text-red-600">{localError || error}</p>}
 
           <div className="flex gap-3 pt-4">
@@ -820,21 +776,18 @@ function AddClassModal({
 
 function EditClassModal({
   classData,
-  servers,
   onClose,
   onSubmit,
   submitting,
   error,
 }: {
   classData: ClassCard;
-  servers: BackendClassDiscordBinding[];
   onClose: () => void;
   onSubmit: (payload: {
     classId: number;
     name: string;
     feePerSession: number;
     schedules: ClassSchedulePayload[];
-    serverId: number | null;
   }) => Promise<void>;
   submitting: boolean;
   error: string;
@@ -844,11 +797,7 @@ function EditClassModal({
   const [schedules, setSchedules] = useState<ScheduleDraft[]>(
     classData.schedules.map((schedule) => createScheduleDraft(schedule)),
   );
-  const [serverId, setServerId] = useState(classData.discordServerId ? String(classData.discordServerId) : "");
   const [localError, setLocalError] = useState("");
-  const availableServers = classData.discordServerId
-    ? servers.filter((server) => server.id === classData.discordServerId)
-    : servers.filter((server) => server.binding.role === "unbound");
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -864,12 +813,6 @@ function EditClassModal({
 
     if (!Number.isInteger(parsedFee) || parsedFee < 0) {
       setLocalError("Học phí/buổi phải là số nguyên không âm");
-      return;
-    }
-
-    const parsedServerId = serverId ? Number(serverId) : null;
-    if (parsedServerId !== null && (!Number.isInteger(parsedServerId) || parsedServerId <= 0)) {
-      setLocalError("Discord guild không hợp lệ");
       return;
     }
 
@@ -890,7 +833,6 @@ function EditClassModal({
       name: normalizedName,
       feePerSession: parsedFee,
       schedules: schedulePayloads,
-      serverId: parsedServerId,
     });
   };
 
@@ -923,20 +865,6 @@ function EditClassModal({
           </div>
 
           <ScheduleEditor schedules={schedules} onChange={setSchedules} />
-
-          <div>
-            <label className="block text-sm text-zinc-600 mb-2">Discord guild</label>
-            <select
-              value={serverId}
-              onChange={(event) => setServerId(event.target.value)}
-              className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            >
-              <option value="">Không gắn server</option>
-              {availableServers.map((server) => (
-                <option key={server.id} value={server.id}>{server.name ?? `${server.discord_guild_id} (đang đồng bộ)`}</option>
-              ))}
-            </select>
-          </div>
 
           {(localError || error) && <p className="text-sm text-red-600">{localError || error}</p>}
 

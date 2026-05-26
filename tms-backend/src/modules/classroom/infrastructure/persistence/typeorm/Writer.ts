@@ -24,7 +24,7 @@ import { CreateSession } from '../../../application/commands/CreateSession.js';
 import { TypeOrmFinanceFeeSync } from '../../../../finance/infrastructure/persistence/typeorm/Writer.js';
 import { Teacher } from '../../../../../infrastructure/database/entities/teacher.entity.js';
 import { TeacherCodeforcesCredential } from '../../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
-import { findTeacherDiscordUserId } from '../../../../identity/infrastructure/persistence/typeorm/Writer.js';
+import { findTeacherDiscordUserId } from '../../../../account/infrastructure/persistence/typeorm/Writer.js';
 import {
   resolveCodeforcesCredentials,
   type CodeforcesContestListItem,
@@ -853,6 +853,18 @@ export class TypeOrmClassroomDiscordWriter {
     }
 
     return new TypeOrmDiscordCacheStore(this.manager).findChannelByOwnerAndId(discordUserId, channelId);
+  }
+
+  async findDiscordGuildChannelCacheByDiscordChannelId(teacherId: number, discordChannelId: string) {
+    const discordUserId = await findTeacherDiscordUserId(teacherId);
+    if (!discordUserId) {
+      return null;
+    }
+
+    return new TypeOrmDiscordCacheStore(this.manager).findChannelByOwnerAndDiscordChannelId(
+      discordUserId,
+      discordChannelId,
+    );
   }
 
   findDiscordGuildByClass(teacherId: number, classId: number) {

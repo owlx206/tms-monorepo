@@ -1,0 +1,19 @@
+@startuml
+object Scheduler
+object "Codeforces gym sync" as Sync
+object "Gym storage" as GymStorage
+object "Codeforces API" as CodeforcesAPI
+object "Gym catalog" as GymCatalog <<database>>
+object "Gym problems" as GymProblems <<database>>
+object "Gym standing" as GymStanding <<database>>
+Scheduler --> Sync : 1: run loop
+Sync --> GymStorage : 2: load assigned gyms and credentials
+GymStorage --> GymCatalog : 3: SELECT
+Sync --> CodeforcesAPI : 4: list owned gyms
+CodeforcesAPI --> Sync : 5: visible gyms
+Sync --> GymStorage : 6: save gym catalog
+GymStorage --> GymCatalog : 7: UPSERT
+Sync --> CodeforcesAPI : 8: fetch gym standing snapshot
+GymStorage --> GymProblems : 9: UPSERT problem rows
+GymStorage --> GymStanding : 10: UPSERT standing rows
+@enduml

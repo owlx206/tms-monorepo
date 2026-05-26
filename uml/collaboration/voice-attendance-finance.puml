@@ -1,23 +1,23 @@
 @startuml
-object SyncRunner
-object DiscordClassroomSyncWorker
-object DiscordVoice
-object AttendanceWriter
-object ClassroomWriter
-object TransactionWriter
-object OpenSessions <<database>>
-object StudentCredentials <<database>>
+object Scheduler
+object "Voice attendance sync" as VoiceAttendanceSync
+object "Discord voice API" as DiscordVoiceAPI
+object "Attendance storage" as AttendanceStorage
+object "Session finance sync" as SessionFinanceSync
+object "Finance storage" as FinanceStorage
+object "Open sessions" as OpenSessions <<database>>
+object "Student Discord credentials" as StudentDiscordCredentials <<database>>
 object Attendance <<database>>
-object FeeRecords <<database>>
-SyncRunner --> DiscordClassroomSyncWorker : 1: run loop
-DiscordClassroomSyncWorker --> OpenSessions : 2: find open sessions
-DiscordClassroomSyncWorker --> DiscordVoice : 3: ensure client
-DiscordVoice --> DiscordClassroomSyncWorker : 4: voice identities
-DiscordClassroomSyncWorker --> StudentCredentials : 5: load enrolled credentials
-DiscordClassroomSyncWorker --> AttendanceWriter : 6: mark present if not manual
-AttendanceWriter --> Attendance : 7: INSERT/UPDATE
-DiscordClassroomSyncWorker --> ClassroomWriter : 8: sync charge
-ClassroomWriter --> TransactionWriter : 9: write fee projection
-TransactionWriter --> FeeRecords : 10: UPSERT
-DiscordClassroomSyncWorker --> SyncRunner : 11: complete
+object "Fee records" as FeeRecords <<database>>
+Scheduler --> VoiceAttendanceSync : 1: run loop
+VoiceAttendanceSync --> OpenSessions : 2: find open sessions
+VoiceAttendanceSync --> DiscordVoiceAPI : 3: collect voice identities
+DiscordVoiceAPI --> VoiceAttendanceSync : 4: voice identities
+VoiceAttendanceSync --> StudentDiscordCredentials : 5: load enrolled credentials
+VoiceAttendanceSync --> AttendanceStorage : 6: mark present if not manual
+AttendanceStorage --> Attendance : 7: INSERT/UPDATE
+VoiceAttendanceSync --> SessionFinanceSync : 8: sync charge
+SessionFinanceSync --> FinanceStorage : 9: write Fee record
+FinanceStorage --> FeeRecords : 10: UPSERT
+VoiceAttendanceSync --> Scheduler : 11: complete
 @enduml

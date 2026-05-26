@@ -11,7 +11,7 @@ import { TopicStanding } from "./pages/TopicStanding";
 import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
 import { Layout } from "./components/Layout";
-import { AdminTeachers } from "./pages/AdminTeachers";
+import { TeacherAccounts } from "./pages/TeacherAccounts";
 import type { TeacherRole } from "./services/authService";
 import {
   clearAuthSession,
@@ -96,7 +96,7 @@ export const router = createBrowserRouter([
       { path: "classes/:classId/gyms/:gymId/standing", Component: TopicStanding, loader: requireRoleLoader(["teacher"]) },
       { path: "settings", Component: Settings, loader: requireRoleLoader(["teacher"]) },
       { path: "reports", loader: () => redirect("/transactions") },
-      { path: "admin/teachers", Component: AdminTeachers, loader: requireRoleLoader(["sysadmin"]) },
+      { path: "admin/teachers", Component: TeacherAccounts, loader: requireRoleLoader(["admin"]) },
     ],
   },
 ]);

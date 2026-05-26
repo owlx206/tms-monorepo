@@ -3,7 +3,6 @@ import { Enrollment } from '../../../domain/models/Enrollment.js';
 import { EnrollmentId } from '../../../domain/value-objects/EnrollmentId.js';
 import { StudentId } from '../../../domain/value-objects/StudentId.js';
 import { Enrollment as EnrollmentOrmEntity } from '../../../../../infrastructure/database/entities/enrollment.entity.js';
-import { HttpError } from '../../../../../shared/errors/HttpError.js';
 import { ArchivePendingStudent } from '../../../application/commands/ArchivePendingStudent.js';
 import { CreateStudent } from '../../../application/commands/CreateStudent.js';
 import { ReinstateStudent } from '../../../application/commands/ReinstateStudent.js';
@@ -11,16 +10,15 @@ import { TransferStudent } from '../../../application/commands/TransferStudent.j
 import { UpdateStudent } from '../../../application/commands/UpdateStudent.js';
 import { WithdrawStudent } from '../../../application/commands/WithdrawStudent.js';
 import { type ArchivePendingStudentCommand, type CreateStudentCommand, type ReinstateStudentCommand, type TransferStudentCommand, type UpdateStudentCommand, type WithdrawStudentCommand } from '../../../contracts/types.js';
-import { findActiveEnrollment, findDiscordGuildByClass, findLastEnrollment, findRecentEnrollments, TypeOrmBalanceSnapshotReader, TypeOrmClassroomAccess } from './Reader.js';
+import { findActiveEnrollment, findDiscordGuildByClass, TypeOrmBalanceSnapshotReader, TypeOrmClassroomAccess } from './Reader.js';
 import { type ClassDiscordBinding } from '../../../../../infrastructure/database/entities/discord/class-discord-binding.entity.js';
 import {
   addDiscordGuildMember,
   fetchDiscordGuildMember,
-  kickDiscordGuildMember,
 } from '../../../../../infrastructure/external/discord/discord.js';
-import type { SysadminDiscordBotCredentialStore } from '../../../../identity/infrastructure/persistence/typeorm/Writer.js';
+import type { SysadminDiscordBotCredentialStore } from '../../../../account/infrastructure/persistence/typeorm/Writer.js';
 import { type SysadminDiscordBotCredential } from '../../../../../infrastructure/database/entities/sysadmin-discord-bot-credential.entity.js';
-import { refreshStudentDiscordToken } from '../../../../identity/infrastructure/auth/discord-oauth.js';
+import { refreshStudentDiscordToken } from '../../../../../infrastructure/security/discord-oauth.js';
 import { Student, Student as StudentOrmEntity } from '../../../../../infrastructure/database/entities/student.entity.js';
 import { DomainError } from '../../../../../shared/domain/DomainError.js';
 import { Student as DomainStudent, type Student as DomainStudentType } from '../../../domain/models/Student.js';
@@ -125,33 +123,6 @@ export class StudentDiscordMembershipNotifier {
     ) ?? Promise.resolve(discordAutomationNotConfigured);
   }
 
-  studentEnrolled(
-    teacherId: number,
-    studentId: number,
-    classId: number,
-  ): Promise<StudentDiscordInviteResult> {
-    return this.studentDiscordMembershipService?.onStudentEnrolled(
-      teacherId,
-      studentId,
-      classId,
-    ) ?? Promise.resolve(discordAutomationNotConfigured);
-  }
-
-  studentTransferred(
-    teacherId: number,
-    studentId: number,
-    toClassId: number,
-  ): Promise<StudentDiscordInviteResult> {
-    return this.studentDiscordMembershipService?.onStudentTransferred(
-      teacherId,
-      studentId,
-      toClassId,
-    ) ?? Promise.resolve(discordAutomationNotConfigured);
-  }
-
-  studentWithdrawn(teacherId: number, studentId: number): void {
-    void this.studentDiscordMembershipService?.onStudentWithdrawn(teacherId, studentId).catch(() => {});
-  }
 }
 
 // TypeOrmEnrollmentWriter.ts
@@ -201,14 +172,11 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly createStudent = {
     execute: async (input: CreateStudentCommand) => {
-      const result = await this.withTransaction((context) => new CreateStudent(
+      return this.withTransaction((context) => new CreateStudent(
         context.students,
         context.enrollments,
         context.classroom,
       ).execute(input));
-
-      void this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, result.id, input.classId).catch(() => {});
-      return result;
     },
   };
 
@@ -230,36 +198,24 @@ export class TypeOrmStudentCommandHandlers {
 
   readonly transferStudent = {
     execute: async (input: TransferStudentCommand) => {
-      const result = await this.withTransaction((context) => this.createTransferStudent(context).execute(input));
-
-      this.assertDiscordMembershipAdded(
-        await this.studentDiscordMembershipNotifier.studentTransferred(input.teacherId, input.studentId, input.toClassId),
-      );
-      return result;
+      return this.withTransaction((context) => this.createTransferStudent(context).execute(input));
     },
   };
 
   readonly withdrawStudent = {
     execute: async (input: WithdrawStudentCommand) => {
-      const result = await this.withTransaction((context) => this.createWithdrawStudent(context).execute(input));
-
-      this.studentDiscordMembershipNotifier.studentWithdrawn(input.teacherId, input.studentId);
-      return result;
+      return this.withTransaction((context) => this.createWithdrawStudent(context).execute(input));
     },
   };
 
   readonly reinstateStudent = {
     execute: async (input: ReinstateStudentCommand) => {
-      const result = await this.withTransaction((context) => new ReinstateStudent(
+      return this.withTransaction((context) => new ReinstateStudent(
         context.students,
         context.enrollments,
         context.classroom,
         context.balanceSnapshots,
       ).execute(input));
-
-      void this.studentDiscordMembershipNotifier.studentEnrolled(input.teacherId, input.studentId, input.classId)
-        .catch(() => {});
-      return result;
     },
   };
 
@@ -303,16 +259,6 @@ export class TypeOrmStudentCommandHandlers {
     );
   }
 
-  private assertDiscordMembershipAdded(result: StudentDiscordInviteResult): void {
-    if (result.sent) {
-      return;
-    }
-
-    throw new HttpError(
-      result.reason ? `discord_membership_add_failed: ${result.reason}` : 'discord_membership_add_failed',
-      502,
-    );
-  }
 }
 
 // TypeOrmStudentDiscordMembershipService.ts
@@ -326,14 +272,6 @@ export class TypeOrmStudentDiscordMembershipService {
     private readonly dataSource: DataSource,
     private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
   ) {}
-
-  async onStudentEnrolled(
-    teacherId: number,
-    studentId: number,
-    classId: number,
-  ): Promise<StudentDiscordInviteResult> {
-    return this.inviteStudentToClass(teacherId, studentId, classId);
-  }
 
   async inviteStudentToCurrentClass(
     teacherId: number,
@@ -387,113 +325,10 @@ export class TypeOrmStudentDiscordMembershipService {
     });
   }
 
-  async onStudentWithdrawn(teacherId: number, studentId: number): Promise<void> {
-    const student = await this.dataSource.manager.getRepository(Student).findOneBy({
-      teacher_id: teacherId,
-      id: studentId,
-    });
-    const discordCredential = student
-      ? await this.dataSource.manager.getRepository(StudentDiscordCredential).findOneBy({ student_id: student.id })
-      : null;
-    if (!discordCredential?.discord_user_id?.trim()) {
-      return;
-    }
-
-    const credential = await this.getSystemBotCredential();
-    if (!credential) {
-      return;
-    }
-
-    const lastEnrollment = await findLastEnrollment(this.dataSource.manager, teacherId, studentId);
-    if (!lastEnrollment) {
-      return;
-    }
-
-    const server = await findDiscordGuildByClass(this.dataSource.manager, teacherId, lastEnrollment.class_id);
-    if (!server) {
-      return;
-    }
-
-    await this.kickFromServer({
-      server,
-      userId: discordCredential.discord_user_id,
-      token: credential.bot_token,
-    });
-  }
-
-  async onStudentTransferred(
-    teacherId: number,
-    studentId: number,
-    newClassId: number,
-  ): Promise<StudentDiscordInviteResult> {
-    const student = await this.dataSource.manager.getRepository(Student).findOneBy({
-      teacher_id: teacherId,
-      id: studentId,
-    });
-    const discordCredential = student
-      ? await this.dataSource.manager.getRepository(StudentDiscordCredential).findOneBy({ student_id: student.id })
-      : null;
-    if (!student || !discordCredential?.discord_user_id?.trim()) {
-      return { sent: false, reason: 'student must authorize Discord before being added to class guild' };
-    }
-
-    const credential = await this.getSystemBotCredential();
-    if (!credential) {
-      return { sent: false, reason: 'discord is not available right now' };
-    }
-
-    const enrollments = await findRecentEnrollments(this.dataSource.manager, teacherId, studentId, 2);
-    const oldEnrollment = enrollments.length >= 2 ? enrollments[1] : null;
-
-    if (oldEnrollment) {
-      const oldServer = await findDiscordGuildByClass(this.dataSource.manager, teacherId, oldEnrollment.class_id);
-      if (oldServer) {
-        await this.kickFromServer({
-          server: oldServer,
-          userId: discordCredential.discord_user_id,
-          token: credential.bot_token,
-        });
-      }
-    }
-
-    const newServer = await findDiscordGuildByClass(this.dataSource.manager, teacherId, newClassId);
-    if (!newServer) {
-      return { sent: false, reason: 'class Discord guild is not configured' };
-    }
-
-    const accessToken = await this.getValidStudentAccessToken(student, discordCredential, credential);
-    if (!accessToken) {
-      return { sent: false, reason: 'student must authorize Discord again' };
-    }
-
-    return this.addStudentToClassGuild({
-      student,
-      discordCredential,
-      userAccessToken: accessToken,
-      targetServer: newServer,
-      token: credential.bot_token,
-    });
-  }
-
   private async getSystemBotCredential(): Promise<SysadminDiscordBotCredential | null> {
     const credential = await this.discordBotCredentialStore.findDefault();
     const token = credential?.bot_token?.trim();
     return credential && token && token.length > 0 ? credential : null;
-  }
-
-  private async kickFromServer(input: {
-    server: ClassDiscordBinding;
-    userId: string;
-    token: string;
-  }): Promise<void> {
-    try {
-      await kickDiscordGuildMember({
-        botToken: input.token,
-        guildId: input.server.discord_guild_id,
-        userId: input.userId,
-      });
-    } catch {
-    }
   }
 
   private async addStudentToClassGuild(input: {
@@ -510,6 +345,10 @@ export class TypeOrmStudentDiscordMembershipService {
         userId: input.discordCredential.discord_user_id ?? '',
       });
       if (existingMember) {
+        await this.dataSource.manager.getRepository(StudentDiscordCredential).update(
+          { id: input.discordCredential.id },
+          { guild_id: input.targetServer.discord_guild_id },
+        );
         return { sent: true, reason: null };
       }
 
@@ -519,6 +358,10 @@ export class TypeOrmStudentDiscordMembershipService {
         userId: input.discordCredential.discord_user_id ?? '',
         userAccessToken: input.userAccessToken,
       });
+      await this.dataSource.manager.getRepository(StudentDiscordCredential).update(
+        { id: input.discordCredential.id },
+        { guild_id: input.targetServer.discord_guild_id },
+      );
       return { sent: true, reason: null };
     } catch (error) {
       return {
