@@ -14,6 +14,12 @@ import {
   type BackendStudentBalance,
 } from "../services/financeService";
 import { getIncomeReport } from "../services/reportingService";
+import {
+  addDaysToDateOnly,
+  formatVietnamDate,
+  todayVietnamDateOnly,
+  vietnamDateTimeToIso,
+} from "../services/vietnamTime";
 
 type ClassOption = {
   id: number;
@@ -68,24 +74,21 @@ function downloadCsv(filename: string, rows: Array<Array<string | number>>): voi
 }
 
 function getDatePresets(): Array<{ label: string; from: string; to: string }> {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  const startOfMonth = new Date(year, month, 1);
-  const endOfMonth = new Date(year, month + 1, 0);
-
-  const startOfLastMonth = new Date(year, month - 1, 1);
-  const endOfLastMonth = new Date(year, month, 0);
-
-  const startOfYear = new Date(year, 0, 1);
-
-  const fmt = (date: Date) => date.toISOString().slice(0, 10);
+  const today = todayVietnamDateOnly();
+  const [year, month] = today.split("-").map(Number);
+  const startOfMonth = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-01`;
+  const startOfNextMonth = month === 12
+    ? `${String(year + 1).padStart(4, "0")}-01-01`
+    : `${String(year).padStart(4, "0")}-${String(month + 1).padStart(2, "0")}-01`;
+  const startOfLastMonth = month === 1
+    ? `${String(year - 1).padStart(4, "0")}-12-01`
+    : `${String(year).padStart(4, "0")}-${String(month - 1).padStart(2, "0")}-01`;
+  const startOfYear = `${String(year).padStart(4, "0")}-01-01`;
 
   return [
-    { label: "Tháng này", from: fmt(startOfMonth), to: fmt(endOfMonth) },
-    { label: "Tháng trước", from: fmt(startOfLastMonth), to: fmt(endOfLastMonth) },
-    { label: "Từ đầu năm", from: fmt(startOfYear), to: fmt(now) },
+    { label: "Tháng này", from: startOfMonth, to: addDaysToDateOnly(startOfNextMonth, -1) },
+    { label: "Tháng trước", from: startOfLastMonth, to: addDaysToDateOnly(startOfMonth, -1) },
+    { label: "Từ đầu năm", from: startOfYear, to: today },
   ];
 }
 
@@ -140,8 +143,8 @@ export function Reports({ embedded = false }: { embedded?: boolean }) {
 
       const [incomeReport, balances] = await Promise.all([
         getIncomeReport({
-          from: `${startDate}T00:00:00.000Z`,
-          to: `${endDate}T23:59:59.999Z`,
+          from: vietnamDateTimeToIso(startDate, "00:00:00", 0),
+          to: vietnamDateTimeToIso(endDate, "23:59:59", 999),
           class_ids: classIds,
           include_unpaid: includeUnpaid,
         }),
@@ -218,7 +221,7 @@ export function Reports({ embedded = false }: { embedded?: boolean }) {
           <div>
             <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Báo cáo tài chính</h1>
             <p className="text-zinc-600">
-              {loading ? "Đang tải..." : `${new Date(startDate).toLocaleDateString("vi-VN")} — ${new Date(endDate).toLocaleDateString("vi-VN")}`}
+              {loading ? "Đang tải..." : `${formatVietnamDate(vietnamDateTimeToIso(startDate))} — ${formatVietnamDate(vietnamDateTimeToIso(endDate))}`}
             </p>
           </div>
           <button
@@ -244,7 +247,7 @@ export function Reports({ embedded = false }: { embedded?: boolean }) {
           <div>
             <h2 className="text-lg font-semibold text-zinc-900">Báo cáo tài chính</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              {loading ? "Đang tải..." : `${new Date(startDate).toLocaleDateString("vi-VN")} — ${new Date(endDate).toLocaleDateString("vi-VN")}`}
+              {loading ? "Đang tải..." : `${formatVietnamDate(vietnamDateTimeToIso(startDate))} — ${formatVietnamDate(vietnamDateTimeToIso(endDate))}`}
             </p>
           </div>
           {embedded && (

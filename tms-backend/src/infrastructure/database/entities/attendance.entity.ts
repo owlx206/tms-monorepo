@@ -57,6 +57,6 @@ export class Attendance {
   @Column({ type: 'datetimeoffset', nullable: true })
   overridden_at!: Date | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'nvarchar', length: 'MAX', nullable: true })
   notes!: string | null;
 }

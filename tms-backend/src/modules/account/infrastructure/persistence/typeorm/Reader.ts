@@ -1,17 +1,21 @@
 import { type EntityManager, In } from 'typeorm';
 import config from '../../../../../config.js';
-import { SysadminDiscordBotCredential } from '../../../../../infrastructure/database/entities/sysadmin-discord-bot-credential.entity.js';
+import { DiscordBotCredential } from '../../../../../infrastructure/database/entities/discord-bot-credential.entity.js';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import {
   type TeacherAccount,
-  type SysadminDiscordBotCredentialView,
+  type DiscordBotCredentialView,
 } from '../../../contracts/types.js';
 import { Teacher } from '../../../../../infrastructure/database/entities/teacher.entity.js';
 import { TeacherCodeforcesCredential } from '../../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
 import { discordApiUrl } from '../../../../../infrastructure/security/discord-oauth.js';
 import { roleForTeacher } from '../../../application/mappers/AuthMapper.js';
+import {
+  DEFAULT_DISCORD_BOT_PERMISSIONS,
+  DEFAULT_DISCORD_BOT_SCOPES,
+} from '../../../../../infrastructure/external/discord/discord.js';
 
-// TypeOrmSysadminDiscordBotCredentialReader.ts
+// TypeOrmDiscordBotCredentialReader.ts
 function buildInviteLink(input: {
   clientId: string;
   permissions: string | null;
@@ -19,21 +23,19 @@ function buildInviteLink(input: {
 }): string {
   const search = new URLSearchParams({
     client_id: input.clientId,
-    scope: input.scopes?.trim() || 'bot applications.commands',
+    scope: input.scopes?.trim() || DEFAULT_DISCORD_BOT_SCOPES,
   });
 
-  if (input.permissions?.trim()) {
-    search.set('permissions', input.permissions.trim());
-  }
+  search.set('permissions', input.permissions?.trim() || DEFAULT_DISCORD_BOT_PERMISSIONS);
 
   return `https://discord.com/oauth2/authorize?${search.toString()}`;
 }
 
-export class TypeOrmSysadminDiscordBotCredentialReader {
+export class TypeOrmDiscordBotCredentialReader {
   constructor(private readonly manager: EntityManager = AppDataSource.manager) {}
 
-  async getDefaultView(): Promise<SysadminDiscordBotCredentialView | null> {
-    const credential = await this.manager.getRepository(SysadminDiscordBotCredential).findOneBy({
+  async getDefaultView(): Promise<DiscordBotCredentialView | null> {
+    const credential = await this.manager.getRepository(DiscordBotCredential).findOneBy({
       singleton_key: 'default',
     });
 

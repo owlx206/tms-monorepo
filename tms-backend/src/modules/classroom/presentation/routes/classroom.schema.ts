@@ -8,6 +8,11 @@ import {
   positiveIntegerSchema,
   requiredTrimmedStringSchema,
 } from '../../../../shared/presentation/validation.js';
+import {
+  toVietnamDateParts,
+  vietnamDateTimeToUtcDate,
+  vietnamTimeString,
+} from '../../../../shared/time/vietnam-time.js';
 
 const dateOnlyPattern = /^(\d{4})-(\d{2})-(\d{2})$/;
 const timePattern = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
@@ -21,13 +26,14 @@ function normalizeDateOnly(value: string): string {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const date = new Date(year, month - 1, day);
+  const date = vietnamDateTimeToUtcDate(year, month, day);
+  const parts = toVietnamDateParts(date);
 
   if (
     Number.isNaN(date.getTime())
-    || date.getFullYear() !== year
-    || date.getMonth() !== month - 1
-    || date.getDate() !== day
+    || parts.year !== year
+    || parts.month !== month
+    || parts.day !== day
   ) {
     throw new Error('is not a valid date');
   }
@@ -55,7 +61,7 @@ function normalizeTime(value: string): string {
 function combineDateAndTime(dateOnly: string, timeValue: string): Date {
   const [year, month, day] = dateOnly.split('-').map(Number);
   const [hours, minutes, seconds] = timeValue.split(':').map(Number);
-  return new Date(year, month - 1, day, hours, minutes, seconds, 0);
+  return vietnamDateTimeToUtcDate(year, month, day, hours, minutes, seconds, 0);
 }
 
 const feePerSessionSchema = z.coerce.number().int().nonnegative().transform(String);
@@ -141,11 +147,7 @@ export const createManualSessionBodySchema = z.object({
   end_time: normalizedTimeSchema,
 }).transform((value, ctx) => {
   if (value.scheduled_at !== undefined) {
-    const startTime = [
-      String(value.scheduled_at.getHours()).padStart(2, '0'),
-      String(value.scheduled_at.getMinutes()).padStart(2, '0'),
-      String(value.scheduled_at.getSeconds()).padStart(2, '0'),
-    ].join(':');
+    const startTime = vietnamTimeString(value.scheduled_at);
 
     if (value.end_time <= startTime) {
       ctx.addIssue({

@@ -1,3 +1,6 @@
+import { Router } from 'express';
+import passport from 'passport';
+
 import type { AppModule } from '../module.types.js';
 import config from '../../config.js';
 import { Login } from './application/commands/Login.js';
@@ -6,16 +9,19 @@ import { VerifyTeacherDiscord } from './application/commands/VerifyTeacherDiscor
 import { UpdateMyProfile } from './application/commands/UpdateMyProfile.js';
 import { TeacherCodeforcesCredential } from '../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
 import { StudentDiscordCredential } from '../../infrastructure/database/entities/student-discord-credential.entity.js';
-import { TypeOrmSysadminDiscordBotCredentialStore } from './infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmDiscordBotCredentialStore } from './infrastructure/persistence/typeorm/Writer.js';
 import { Teacher } from '../../infrastructure/database/entities/teacher.entity.js';
 import { TypeOrmTeacherWriter } from './infrastructure/persistence/typeorm/Writer.js';
 import { BcryptPasswordHasher, JwtAccessTokenSigner } from '../../infrastructure/security/auth.js';
 import { AuthController } from './presentation/controllers/AuthController.js';
-import { createAuthRouter } from './presentation/routes/auth.routes.js';
+import { loginBodySchema, registerBodySchema, updateMeBodySchema } from './presentation/routes/auth.schema.js';
 import { toAuthTeacher } from './application/mappers/AuthMapper.js';
+import { validate } from '../../shared/middlewares/validate.js';
+import { attachRequestContext } from '../../infrastructure/http/request-context.js';
+import { adaptExpressRoute } from '../../shared/presentation/adapt-express-route.js';
 
 const teacherWriter = new TypeOrmTeacherWriter();
-const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore();
+const discordBotCredentialStore = new TypeOrmDiscordBotCredentialStore();
 const passwordHasher = new BcryptPasswordHasher();
 const accessTokenSigner = new JwtAccessTokenSigner();
 const register = new Register(
@@ -53,14 +59,36 @@ const authControllerDeps = {
   linkTeacherDiscord: verifyTeacherDiscord,
 };
 
-const authRouter = createAuthRouter({
-  register: new AuthController('register', authControllerDeps),
-  login: new AuthController('login', authControllerDeps),
-  me: new AuthController('me', authControllerDeps),
-  updateMe: new AuthController('updateMe', authControllerDeps),
-  startDiscordVerification: new AuthController('startDiscordVerification', authControllerDeps),
-  completeDiscordVerification: new AuthController('completeDiscordVerification', authControllerDeps),
-});
+const registerController = new AuthController('register', authControllerDeps);
+const loginController = new AuthController('login', authControllerDeps);
+const meController = new AuthController('me', authControllerDeps);
+const updateMeController = new AuthController('updateMe', authControllerDeps);
+const startDiscordVerificationController = new AuthController('startDiscordVerification', authControllerDeps);
+const completeDiscordVerificationController = new AuthController('completeDiscordVerification', authControllerDeps);
+
+const authRouter = Router();
+authRouter.post('/register', validate({ body: registerBodySchema }), adaptExpressRoute(registerController));
+authRouter.post('/login', validate({ body: loginBodySchema }), adaptExpressRoute(loginController));
+authRouter.get('/discord/verification/callback', adaptExpressRoute(completeDiscordVerificationController));
+authRouter.get(
+  '/me',
+  passport.authenticate('jwt', { session: false }),
+  attachRequestContext(),
+  adaptExpressRoute(meController),
+);
+authRouter.get(
+  '/me/discord/verification/start',
+  passport.authenticate('jwt', { session: false }),
+  attachRequestContext(),
+  adaptExpressRoute(startDiscordVerificationController),
+);
+authRouter.patch(
+  '/me',
+  passport.authenticate('jwt', { session: false }),
+  attachRequestContext(),
+  validate({ body: updateMeBodySchema }),
+  adaptExpressRoute(updateMeController),
+);
 
 export const accountModule: AppModule = {
   name: 'account',

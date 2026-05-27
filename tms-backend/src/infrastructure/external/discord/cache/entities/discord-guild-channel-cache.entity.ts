@@ -18,8 +18,8 @@ export class DiscordGuildChannelCache {
   @Column({ type: 'varchar', length: 50 })
   discord_channel_id!: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  name!: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  name!: string | null;
 
   @Column({ type: 'varchar', length: 16 })
   type!: 'text' | 'voice';

@@ -93,7 +93,7 @@ export async function getIncomeReport(filters?: {
     query.set("include_unpaid", String(filters.include_unpaid));
   }
 
-  const path = query.toString() ? `/reporting/income?${query.toString()}` : "/reporting/income";
+  const path = query.toString() ? `/finance/reporting/income?${query.toString()}` : "/finance/reporting/income";
   return apiRequest<IncomeReport>(path);
 }
 

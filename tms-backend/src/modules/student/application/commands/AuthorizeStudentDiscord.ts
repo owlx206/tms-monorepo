@@ -1,6 +1,6 @@
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type {
-  SysadminDiscordBotCredentialStore,
+  DiscordBotCredentialStore,
   TypeOrmStudentDiscordIdentityStore,
 } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
 import {
@@ -14,7 +14,7 @@ import {
 export class AuthorizeStudentDiscord {
   constructor(
     private readonly repository: TypeOrmStudentDiscordIdentityStore,
-    private readonly credentialStore: SysadminDiscordBotCredentialStore,
+    private readonly credentialStore: DiscordBotCredentialStore,
   ) {}
 
   async buildAuthorizeUrl(teacherId: number, studentId: number): Promise<string> {

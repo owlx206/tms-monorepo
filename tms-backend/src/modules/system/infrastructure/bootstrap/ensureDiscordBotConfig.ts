@@ -1,7 +1,7 @@
 import config from '../../../../config.js';
-import { TypeOrmSysadminDiscordBotCredentialStore } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmDiscordBotCredentialStore } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
 
-const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore();
+const discordBotCredentialStore = new TypeOrmDiscordBotCredentialStore();
 
 export async function ensureDiscordBotConfig(): Promise<void> {
   const { botToken, clientId, clientSecret, permissions, scopes } = config.discordBot;

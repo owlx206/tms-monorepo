@@ -14,7 +14,7 @@ export class DiscordUserGuild {
   @Column({ type: 'varchar', length: 50 })
   discord_guild_id!: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'nvarchar', length: 255, nullable: true })
   name!: string | null;
 
   @Column({ type: 'datetimeoffset', nullable: true })

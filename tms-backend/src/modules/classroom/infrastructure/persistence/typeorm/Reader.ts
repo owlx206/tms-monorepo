@@ -178,6 +178,7 @@ export async function listTeacherDiscordChannelsForGuild(
 
   return channels.map((channel) => ({
     ...channel,
+    name: channel.name ?? channel.discord_channel_id,
     teacher_id: teacherId,
   }));
 }
@@ -317,28 +318,34 @@ export class TypeOrmAttendanceReader {
       },
     });
 
-    const studentRows = await this.manager.query(
-      `
-        SELECT
-          student.id AS student_id,
-          student.full_name AS student_name,
-          student.status AS student_status
-        FROM students AS student
-        INNER JOIN enrollments AS enrollment
-          ON enrollment.teacher_id = student.teacher_id
-          AND enrollment.student_id = student.id
-          AND enrollment.class_id = $2
-          AND enrollment.enrolled_at <= $3
-          AND (enrollment.unenrolled_at IS NULL OR enrollment.unenrolled_at > $3)
-        WHERE student.teacher_id = $1
-        ORDER BY student.full_name ASC
-      `,
-      [teacherId, session.class_id, session.scheduled_at],
-    ) as Array<{
+    const studentRows = await this.manager
+      .getRepository(Student)
+      .createQueryBuilder('student')
+      .innerJoin(
+        Enrollment,
+        'enrollment',
+        [
+          'enrollment.teacher_id = student.teacher_id',
+          'enrollment.student_id = student.id',
+          'enrollment.class_id = :classId',
+          'enrollment.enrolled_at <= :scheduledAt',
+          '(enrollment.unenrolled_at IS NULL OR enrollment.unenrolled_at > :scheduledAt)',
+        ].join(' AND '),
+        {
+          classId: session.class_id,
+          scheduledAt: session.scheduled_at,
+        },
+      )
+      .select('student.id', 'student_id')
+      .addSelect('student.full_name', 'student_name')
+      .addSelect('student.status', 'student_status')
+      .where('student.teacher_id = :teacherId', { teacherId })
+      .orderBy('student.full_name', 'ASC')
+      .getRawMany<{
       student_id: number | string;
       student_name: string;
       student_status: SessionAttendanceRow['student_status'];
-    }>;
+    }>();
 
     const attendanceByStudentId = new Map<number, Attendance>();
     attendanceRecords.forEach((record) => {

@@ -3,15 +3,16 @@ import { CheckCircle2, Clock3, KeyRound, Settings, TriangleAlert, UserCheck, Use
 
 import { ApiError } from "../services/apiClient";
 import {
-  getSysadminDiscordBotCredential,
+  getDiscordBotCredential,
   listTeacherAccounts,
-  upsertSysadminDiscordBotCredential,
+  upsertDiscordBotCredential,
   updateTeacherAccount,
   type BackendTeacherAccount,
-  type BackendSysadminDiscordBotCredential,
+  type BackendDiscordBotCredential,
 } from "../services/adminService";
 import { getMe, type AuthTeacher, updateMe } from "../services/authService";
 import { setStoredTeacher } from "../services/authStorage";
+import { formatVietnamDate, formatVietnamDateTime } from "../services/vietnamTime";
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -26,24 +27,14 @@ function toErrorMessage(error: unknown): string {
 }
 
 function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) {
-    return dateString;
-  }
-
-  return date.toLocaleDateString("vi-VN");
+  return formatVietnamDate(dateString);
 }
 
 function formatDateTime(dateString: string): string {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) {
-    return dateString;
-  }
-
-  return date.toLocaleString("vi-VN");
+  return formatVietnamDateTime(dateString);
 }
 
-function DiscordBotHealthBadge({ credential }: { credential: BackendSysadminDiscordBotCredential | null }) {
+function DiscordBotHealthBadge({ credential }: { credential: BackendDiscordBotCredential | null }) {
   if (!credential?.has_bot_token) {
     return (
       <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
@@ -95,7 +86,7 @@ export function TeacherAccounts() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [updatingTeacherId, setUpdatingTeacherId] = useState<number | null>(null);
-  const [discordBotCredential, setDiscordBotCredential] = useState<BackendSysadminDiscordBotCredential | null>(null);
+  const [discordBotCredential, setDiscordBotCredential] = useState<BackendDiscordBotCredential | null>(null);
 
   const loadData = async (): Promise<void> => {
     setLoading(true);
@@ -110,7 +101,7 @@ export function TeacherAccounts() {
       setTeachers(teacherList);
       setAccount(me);
       setStoredTeacher(me);
-      const credential = await getSysadminDiscordBotCredential();
+      const credential = await getDiscordBotCredential();
       setDiscordBotCredential(credential);
     } catch (error) {
       setRequestError(toErrorMessage(error));
@@ -195,7 +186,7 @@ export function TeacherAccounts() {
     setRequestError("");
 
     try {
-      const saved = await upsertSysadminDiscordBotCredential(payload);
+      const saved = await upsertDiscordBotCredential(payload);
       setDiscordBotCredential(saved);
       setShowDiscordBotModal(false);
     } catch (error) {
@@ -390,7 +381,7 @@ function DiscordBotCredentialModal({
   onClose,
   onSubmit,
 }: {
-  credential: BackendSysadminDiscordBotCredential | null;
+  credential: BackendDiscordBotCredential | null;
   submitting: boolean;
   onClose: () => void;
   onSubmit: (payload: {

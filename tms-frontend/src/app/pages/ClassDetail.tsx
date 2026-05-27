@@ -18,6 +18,7 @@ import {
   type BackendClassDiscordBinding,
   type BackendDiscordChannel,
 } from "../services/discordService";
+import { formatVietnamDate } from "../services/vietnamTime";
 
 const DAY_OPTIONS = [
   { value: 0, label: "Chủ nhật" },
@@ -42,12 +43,7 @@ function toErrorMessage(error: unknown): string {
 }
 
 function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString("vi-VN");
+  return formatVietnamDate(value);
 }
 
 function formatDecimal(value: number): string {

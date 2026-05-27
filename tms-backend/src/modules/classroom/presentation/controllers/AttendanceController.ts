@@ -11,7 +11,6 @@ import type {
 
 type AttendanceAction =
   | 'getSessionAttendance'
-  | 'syncSessionAttendance'
   | 'upsertSessionAttendance'
   | 'listAttendanceRecords';
 
@@ -37,10 +36,6 @@ type AttendanceDependencies = {
       studentId: number;
       attendance: UpsertSessionAttendanceInput;
     }): Promise<unknown>;
-    syncSessionAttendance(input: {
-      teacherId: number;
-      sessionId: number;
-    }): Promise<unknown>;
   };
 };
 
@@ -56,8 +51,6 @@ export class AttendanceController implements Controller {
     switch (this.action) {
       case 'getSessionAttendance':
         return this.getSessionAttendance(request);
-      case 'syncSessionAttendance':
-        return this.syncSessionAttendance(request);
       case 'upsertSessionAttendance':
         return this.upsertSessionAttendance(request);
       case 'listAttendanceRecords':
@@ -76,20 +69,6 @@ export class AttendanceController implements Controller {
     return {
       statusCode: 200,
       body: data,
-    };
-  }
-
-  private async syncSessionAttendance(
-    request: HttpRequest<unknown, AttendanceParams, unknown, unknown, AttendanceContext>,
-  ): Promise<HttpResponse> {
-    const result = await this.dependencies.commandHandlers.syncSessionAttendance({
-      teacherId: request.context.teacherId,
-      sessionId: request.context.params.sessionId,
-    });
-
-    return {
-      statusCode: 200,
-      body: result,
     };
   }
 

@@ -4,7 +4,7 @@ import {
   fetchDiscordCurrentUser,
 } from '../../../../infrastructure/external/discord/discord.js';
 import { signDiscordVerificationState, verifyDiscordVerificationState, discordApiUrl, discordFrontendUrl } from '../../../../infrastructure/security/discord-oauth.js';
-import type { SysadminDiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/Writer.js';
+import type { DiscordBotCredentialStore } from '../../infrastructure/persistence/typeorm/Writer.js';
 import type { TypeOrmTeacherWriter } from '../../infrastructure/persistence/typeorm/Writer.js';
 
 async function exchangeDiscordCode(input: {
@@ -24,7 +24,7 @@ async function exchangeDiscordCode(input: {
 export class VerifyTeacherDiscord {
   constructor(
     private readonly teacherWriter: TypeOrmTeacherWriter,
-    private readonly credentialStore: SysadminDiscordBotCredentialStore,
+    private readonly credentialStore: DiscordBotCredentialStore,
   ) {}
 
   async buildAuthorizeUrl(teacherId: number): Promise<string> {

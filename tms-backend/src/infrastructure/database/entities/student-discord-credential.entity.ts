@@ -18,7 +18,7 @@ export class StudentDiscordCredential {
   @Column({ type: 'int' })
   student_id!: number;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'nvarchar', length: 100, nullable: true })
   discord_username!: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })

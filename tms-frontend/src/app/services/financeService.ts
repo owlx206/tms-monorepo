@@ -15,24 +15,6 @@ export interface BackendTransaction {
   updated_at: string;
 }
 
-export interface BackendTransactionAuditLog {
-  id: number;
-  teacher_id: number;
-  transaction_id: number;
-  old_student_id: number;
-  new_student_id: number;
-  old_amount: string;
-  new_amount: string;
-  old_type: BackendTransactionType;
-  new_type: BackendTransactionType;
-  old_recorded_at: string;
-  new_recorded_at: string;
-  old_notes: string | null;
-  new_notes: string | null;
-  reason: string | null;
-  created_at: string;
-}
-
 export interface BackendFeeRecord {
   id: number;
   teacher_id: number;
@@ -107,7 +89,6 @@ export async function createTransaction(payload: {
   type: BackendTransactionType;
   notes?: string | null;
   recorded_at?: string;
-  update_reason?: string | null;
 }): Promise<BackendTransaction> {
   const data = await apiRequest<{ transaction: BackendTransaction }>("/finance/transactions", {
     method: "POST",
@@ -154,14 +135,6 @@ export async function listFeeRecords(filters?: {
   );
 
   return data.fee_records;
-}
-
-export async function listTransactionAuditLogs(transactionId: number): Promise<BackendTransactionAuditLog[]> {
-  const data = await apiRequest<{ audit_logs: BackendTransactionAuditLog[] }>(
-    `/finance/transactions/${transactionId}/audit-logs`,
-  );
-
-  return data.audit_logs;
 }
 
 export async function updateFeeRecordStatus(

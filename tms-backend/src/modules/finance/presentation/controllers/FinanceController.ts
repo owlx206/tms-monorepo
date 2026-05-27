@@ -1,128 +1,45 @@
-import { HttpError } from '../../../../shared/errors/HttpError.js';
+import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type { Controller } from '../../../../shared/presentation/Controller.js';
 import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js';
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
-import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
   CreateTransactionInput,
   FeeRecordListFilters,
+  FeeRecordStatus,
+  IncomeReportFilters,
   StudentBalancesFilters,
   TransactionListFilters,
+  TransactionType,
   UpdateFeeRecordStatusInput,
   UpdateTransactionInput,
-  IncomeReportFilters,
 } from '../../contracts/types.js';
 
-type FinanceControllerAction =
-  | 'listTransactions'
-  | 'createTransaction'
-  | 'updateTransaction'
-  | 'listTransactionAuditLogs'
-  | 'listFeeRecords'
-  | 'updateFeeRecordStatus'
-  | 'listStudentBalances'
-  | 'getFinanceSummary';
-
-type FinanceControllerDependencies = {
-  financeReader: {
-    listTransactions(teacherId: number, filters: TransactionListFilters): Promise<{
-      items: unknown[];
-      total: number;
-      limit: number | null;
-      offset: number;
-    }>;
-    listTransactionAuditLogs(teacherId: number, transactionId: number): Promise<unknown[]>;
-    listFeeRecords(teacherId: number, filters: FeeRecordListFilters): Promise<{
-      items: unknown[];
-      total: number;
-      limit: number | null;
-      offset: number;
-    }>;
-    listStudentBalances(teacherId: number, filters: StudentBalancesFilters): Promise<unknown[]>;
-    getFinanceSummary(teacherId: number, filters: IncomeReportFilters): Promise<unknown>;
-  };
-  createTransaction: {
-    execute(input: {
-      teacherId: number;
-      studentId: number;
-      amount: string;
-      type: import('../../contracts/types.js').TransactionType;
-      notes?: string | null;
-      recordedAt?: Date;
-    }): Promise<unknown>;
-  };
-  updateTransaction: {
-    execute(input: {
-      teacherId: number;
-      transactionId: number;
-      studentId: number;
-      amount: string;
-      type: import('../../contracts/types.js').TransactionType;
-      notes?: string | null;
-      recordedAt?: Date;
-      updateReason?: string | null;
-    }): Promise<unknown>;
-  };
-  updateFeeRecordStatus: {
-    execute(input: {
-      teacherId: number;
-      feeRecordId: number;
-      status: import('../../contracts/types.js').FeeRecordStatus;
-    }): Promise<unknown>;
-  };
-};
-
-type FinanceHttpRequest = HttpRequest<
-  CreateTransactionInput | UpdateTransactionInput | UpdateFeeRecordStatusInput,
-  { id: number },
-  TransactionListFilters | FeeRecordListFilters | StudentBalancesFilters | IncomeReportFilters,
+type AuthenticatedRequest<Body = unknown, Params = unknown, Query = unknown> = HttpRequest<
+  Body,
+  Params,
+  Query,
   unknown,
-  ParsedRequestContext<
-    CreateTransactionInput | UpdateTransactionInput | UpdateFeeRecordStatusInput,
-    { id: number },
-    TransactionListFilters | FeeRecordListFilters | StudentBalancesFilters | IncomeReportFilters
-  > & { teacherId: number }
+  ParsedRequestContext<Body, Params, Query> & { teacherId: number }
 >;
 
-export class FinanceController implements Controller {
+type PaginatedResult = {
+  items: unknown[];
+  total: number;
+  limit: number | null;
+  offset: number;
+};
+
+export class ListTransactionsController implements Controller {
   constructor(
-    private readonly action: FinanceControllerAction,
-    private readonly dependencies: FinanceControllerDependencies,
+    private readonly transactionReader: {
+      listTransactions(teacherId: number, filters: TransactionListFilters): Promise<PaginatedResult>;
+    },
   ) {}
 
-  async handle(request: FinanceHttpRequest): Promise<HttpResponse> {
-    try {
-      switch (this.action) {
-        case 'listTransactions':
-          return this.listTransactions(request);
-        case 'createTransaction':
-          return this.createTransaction(request);
-        case 'updateTransaction':
-          return this.updateTransaction(request);
-        case 'listTransactionAuditLogs':
-          return this.listTransactionAuditLogs(request);
-        case 'listFeeRecords':
-          return this.listFeeRecords(request);
-        case 'updateFeeRecordStatus':
-          return this.updateFeeRecordStatus(request);
-        case 'listStudentBalances':
-          return this.listStudentBalances(request);
-        case 'getFinanceSummary':
-          return this.getFinanceSummary(request);
-      }
-    } catch (error) {
-      if (error instanceof HttpError) {
-        throw error;
-      }
-
-      throw error;
-    }
-  }
-
-  private async listTransactions(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const result = await this.dependencies.financeReader.listTransactions(
+  async handle(request: AuthenticatedRequest<unknown, unknown, TransactionListFilters>): Promise<HttpResponse> {
+    const result = await this.transactionReader.listTransactions(
       request.context.teacherId,
-      (request.query ?? {}) as TransactionListFilters,
+      request.query ?? {},
     );
 
     return {
@@ -137,10 +54,25 @@ export class FinanceController implements Controller {
       },
     };
   }
+}
 
-  private async createTransaction(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const input = request.body as CreateTransactionInput;
-    const transaction = await this.dependencies.createTransaction.execute({
+export class CreateTransactionController implements Controller {
+  constructor(
+    private readonly createTransaction: {
+      execute(input: {
+        teacherId: number;
+        studentId: number;
+        amount: string;
+        type: TransactionType;
+        notes?: string | null;
+        recordedAt?: Date;
+      }): Promise<unknown>;
+    },
+  ) {}
+
+  async handle(request: AuthenticatedRequest<CreateTransactionInput>): Promise<HttpResponse> {
+    const input = request.body;
+    const transaction = await this.createTransaction.execute({
       teacherId: request.context.teacherId,
       studentId: input.student_id,
       amount: input.amount,
@@ -154,10 +86,26 @@ export class FinanceController implements Controller {
       body: { transaction },
     };
   }
+}
 
-  private async updateTransaction(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const input = request.body as UpdateTransactionInput;
-    const transaction = await this.dependencies.updateTransaction.execute({
+export class UpdateTransactionController implements Controller {
+  constructor(
+    private readonly updateTransaction: {
+      execute(input: {
+        teacherId: number;
+        transactionId: number;
+        studentId: number;
+        amount: string;
+        type: TransactionType;
+        notes?: string | null;
+        recordedAt?: Date;
+      }): Promise<unknown>;
+    },
+  ) {}
+
+  async handle(request: AuthenticatedRequest<UpdateTransactionInput, { id: number }>): Promise<HttpResponse> {
+    const input = request.body;
+    const transaction = await this.updateTransaction.execute({
       teacherId: request.context.teacherId,
       transactionId: request.context.params.id,
       studentId: input.student_id,
@@ -165,7 +113,6 @@ export class FinanceController implements Controller {
       type: input.type,
       notes: input.notes,
       recordedAt: input.recorded_at,
-      updateReason: input.update_reason,
     });
 
     return {
@@ -173,23 +120,19 @@ export class FinanceController implements Controller {
       body: { transaction },
     };
   }
+}
 
-  private async listTransactionAuditLogs(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const auditLogs = await this.dependencies.financeReader.listTransactionAuditLogs(
+export class ListFeeRecordsController implements Controller {
+  constructor(
+    private readonly transactionReader: {
+      listFeeRecords(teacherId: number, filters: FeeRecordListFilters): Promise<PaginatedResult>;
+    },
+  ) {}
+
+  async handle(request: AuthenticatedRequest<unknown, unknown, FeeRecordListFilters>): Promise<HttpResponse> {
+    const result = await this.transactionReader.listFeeRecords(
       request.context.teacherId,
-      request.context.params.id,
-    );
-
-    return {
-      statusCode: 200,
-      body: { audit_logs: auditLogs },
-    };
-  }
-
-  private async listFeeRecords(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const result = await this.dependencies.financeReader.listFeeRecords(
-      request.context.teacherId,
-      (request.query ?? {}) as FeeRecordListFilters,
+      request.query ?? {},
     );
 
     return {
@@ -204,13 +147,24 @@ export class FinanceController implements Controller {
       },
     };
   }
+}
 
-  private async updateFeeRecordStatus(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const input = request.body as UpdateFeeRecordStatusInput;
-    const feeRecord = await this.dependencies.updateFeeRecordStatus.execute({
+export class UpdateFeeRecordStatusController implements Controller {
+  constructor(
+    private readonly updateFeeRecordStatus: {
+      execute(input: {
+        teacherId: number;
+        feeRecordId: number;
+        status: FeeRecordStatus;
+      }): Promise<unknown>;
+    },
+  ) {}
+
+  async handle(request: AuthenticatedRequest<UpdateFeeRecordStatusInput, { id: number }>): Promise<HttpResponse> {
+    const feeRecord = await this.updateFeeRecordStatus.execute({
       teacherId: request.context.teacherId,
       feeRecordId: request.context.params.id,
-      status: input.status,
+      status: request.body.status,
     });
 
     return {
@@ -218,11 +172,19 @@ export class FinanceController implements Controller {
       body: { fee_record: feeRecord },
     };
   }
+}
 
-  private async listStudentBalances(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const balances = await this.dependencies.financeReader.listStudentBalances(
+export class ListStudentBalancesController implements Controller {
+  constructor(
+    private readonly transactionReader: {
+      listStudentBalances(teacherId: number, filters: StudentBalancesFilters): Promise<unknown[]>;
+    },
+  ) {}
+
+  async handle(request: AuthenticatedRequest<unknown, unknown, StudentBalancesFilters>): Promise<HttpResponse> {
+    const balances = await this.transactionReader.listStudentBalances(
       request.context.teacherId,
-      (request.query ?? {}) as StudentBalancesFilters,
+      request.query ?? {},
     );
 
     return {
@@ -230,11 +192,19 @@ export class FinanceController implements Controller {
       body: { balances },
     };
   }
+}
 
-  private async getFinanceSummary(request: FinanceHttpRequest): Promise<HttpResponse> {
-    const summary = await this.dependencies.financeReader.getFinanceSummary(
+export class GetFinanceSummaryController implements Controller {
+  constructor(
+    private readonly transactionReader: {
+      getFinanceSummary(teacherId: number, filters: IncomeReportFilters): Promise<unknown>;
+    },
+  ) {}
+
+  async handle(request: AuthenticatedRequest<unknown, unknown, IncomeReportFilters>): Promise<HttpResponse> {
+    const summary = await this.transactionReader.getFinanceSummary(
       request.context.teacherId,
-      (request.query ?? {}) as IncomeReportFilters,
+      request.query ?? {},
     );
 
     return {

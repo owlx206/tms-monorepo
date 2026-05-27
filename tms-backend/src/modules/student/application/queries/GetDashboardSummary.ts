@@ -1,4 +1,5 @@
 import { parseAmountToBigInt } from '../../../finance/domain/Money.js';
+import { toVietnamDateParts, vietnamDateTimeToUtcDate } from '../../../../shared/time/vietnam-time.js';
 import { EnrollmentStudentStatus } from '../../contracts/types.js';
 import type { DashboardReader } from '../../contracts/types.js';
 import type { TypeOrmFinanceReportReader } from '../../infrastructure/persistence/typeorm/Reader.js';
@@ -30,14 +31,14 @@ export class GetDashboardSummary {
       return sum;
     }, 0n);
 
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const nowInVietnam = toVietnamDateParts(now);
+    const monthStart = vietnamDateTimeToUtcDate(nowInVietnam.year, nowInVietnam.month, 1);
 
     const financeSummary = await this.finance.getFinanceSummary({
       teacherId,
       from: monthStart,
-      to: new Date(),
+      to: now,
       includeUnpaid: false,
     });
 

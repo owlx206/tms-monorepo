@@ -4,7 +4,6 @@ import { FeeRecord } from '../../../../../infrastructure/database/entities/fee-r
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import { Student } from '../../../../../infrastructure/database/entities/student.entity.js';
 import { parseAmountToBigInt } from '../../../domain/Money.js';
-import { TransactionAuditLog } from '../../../../../infrastructure/database/entities/transaction-audit-log.entity.js';
 import { Transaction } from '../../../../../infrastructure/database/entities/transaction.entity.js';
 
 // FeeRecordSyncDataAccess.ts
@@ -227,24 +226,5 @@ export class TypeOrmTransactionWriter {
 
   save(transaction: Transaction) {
     return this.manager.getRepository(Transaction).save(transaction);
-  }
-
-  async saveWithAuditLog(
-    teacherId: number,
-    transactionId: number,
-    transaction: Transaction,
-    audit: Omit<TransactionAuditLog, 'id' | 'teacher_id' | 'transaction_id' | 'created_at'>,
-  ) {
-    return this.manager.transaction(async (manager) => {
-      const saved = await manager.getRepository(Transaction).save(transaction);
-      const auditLog = manager.getRepository(TransactionAuditLog).create({
-        teacher_id: teacherId,
-        transaction_id: transactionId,
-        ...audit,
-      });
-
-      await manager.getRepository(TransactionAuditLog).save(auditLog);
-      return saved;
-    });
   }
 }

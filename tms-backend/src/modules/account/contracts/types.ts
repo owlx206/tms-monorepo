@@ -71,7 +71,7 @@ export type TeacherAccount = {
   created_at: Date;
 };
 
-export type SysadminDiscordBotCredentialInput = {
+export type DiscordBotCredentialInput = {
   bot_token: string;
   client_id: string;
   client_secret: string;
@@ -79,7 +79,7 @@ export type SysadminDiscordBotCredentialInput = {
   scopes?: string | null;
 };
 
-export type SysadminDiscordBotCredentialView = {
+export type DiscordBotCredentialView = {
   id: number;
   client_id: string;
   permissions: string | null;

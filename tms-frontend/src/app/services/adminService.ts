@@ -12,7 +12,7 @@ export interface BackendTeacherAccount {
   created_at: string;
 }
 
-export interface BackendSysadminDiscordBotCredential {
+export interface BackendDiscordBotCredential {
   id: number;
   client_id: string;
   permissions: string | null;
@@ -52,19 +52,19 @@ export async function updateTeacherAccount(
   return data.teacher;
 }
 
-export async function getSysadminDiscordBotCredential(): Promise<BackendSysadminDiscordBotCredential | null> {
-  const data = await apiRequest<{ credential: BackendSysadminDiscordBotCredential | null }>("/admin/discord-bot");
+export async function getDiscordBotCredential(): Promise<BackendDiscordBotCredential | null> {
+  const data = await apiRequest<{ credential: BackendDiscordBotCredential | null }>("/admin/discord-bot");
   return data.credential;
 }
 
-export async function upsertSysadminDiscordBotCredential(payload: {
+export async function upsertDiscordBotCredential(payload: {
   bot_token: string;
   client_id: string;
   client_secret: string;
   permissions?: string | null;
   scopes?: string | null;
-}): Promise<BackendSysadminDiscordBotCredential> {
-  const data = await apiRequest<{ credential: BackendSysadminDiscordBotCredential }>("/admin/discord-bot", {
+}): Promise<BackendDiscordBotCredential> {
+  const data = await apiRequest<{ credential: BackendDiscordBotCredential }>("/admin/discord-bot", {
     method: "PUT",
     body: JSON.stringify(payload),
   });

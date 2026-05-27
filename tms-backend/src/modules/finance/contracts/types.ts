@@ -33,7 +33,6 @@ export type UpdateTransactionInput = {
   type: TransactionType;
   notes?: string | null;
   recorded_at?: Date;
-  update_reason?: string | null;
 };
 
 export type FeeRecordListFilters = {

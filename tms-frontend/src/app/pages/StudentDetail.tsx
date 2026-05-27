@@ -13,6 +13,7 @@ import {
 } from "../services/financeService";
 import { getStudentLearningProfile, type StudentLearningProfile } from "../services/reportingService";
 import { getStudent, type BackendStudentSummary } from "../services/studentService";
+import { formatVietnamDate } from "../services/vietnamTime";
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -230,7 +231,7 @@ export function StudentDetail() {
               <span className="text-sm text-zinc-600">Ngày nhập học</span>
             </div>
             <p className="text-lg font-semibold text-zinc-900">
-              {new Date(student.created_at).toLocaleDateString("vi-VN")}
+              {formatVietnamDate(student.created_at)}
             </p>
           </div>
         </div>
@@ -336,7 +337,7 @@ export function StudentDetail() {
                       <div>
                         <p className="text-zinc-900 font-medium">{tx.notes || "Giao dịch tài chính"}</p>
                         <p className="text-sm text-zinc-600">
-                          {new Date(tx.recorded_at).toLocaleDateString("vi-VN")}
+                          {formatVietnamDate(tx.recorded_at)}
                         </p>
                       </div>
                       <div className="text-right">
@@ -375,7 +376,7 @@ export function StudentDetail() {
                         {feeRecords.slice(0, feeRecordsPage * FEE_RECORDS_PER_PAGE).map((fr) => (
                           <tr key={fr.id} className="hover:bg-zinc-50 transition-colors">
                             <td className="px-4 py-3 text-zinc-900">
-                              {new Date(fr.created_at).toLocaleDateString("vi-VN")}
+                              {formatVietnamDate(fr.created_at)}
                             </td>
                             <td className="px-4 py-3 text-zinc-600 font-mono text-xs">#{fr.session_id}</td>
                             <td className="px-4 py-3 text-right font-semibold text-zinc-900">

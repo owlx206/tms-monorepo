@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Calendar, CheckCircle2, Clock, RefreshCw, XCircle } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { Link, useParams } from "react-router";
 
 import { ApiError } from "../services/apiClient";
 import {
   listSessionAttendance,
-  syncSessionAttendance,
   type BackendAttendanceSource,
   type BackendAttendanceStatus,
   type SessionAttendanceRow,
@@ -17,6 +16,7 @@ import {
   type BackendSession,
   type BackendSessionStatus,
 } from "../services/classService";
+import { formatVietnamDate, formatVietnamTime } from "../services/vietnamTime";
 
 const ATTENDANCE_OPTIONS: Array<{ value: BackendAttendanceStatus; label: string }> = [
   { value: "present", label: "Có mặt" },
@@ -37,15 +37,11 @@ function toErrorMessage(error: unknown): string {
 }
 
 function formatTime(value: string): string {
-  return new Date(value).toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  return formatVietnamTime(value);
 }
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("vi-VN", {
+  return formatVietnamDate(value, {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -54,7 +50,7 @@ function formatDate(value: string): string {
 }
 
 function formatDateShort(value: string): string {
-  return new Date(value).toLocaleDateString("vi-VN");
+  return formatVietnamDate(value);
 }
 
 function statusBadgeClass(status: BackendSessionStatus): string {
@@ -139,7 +135,6 @@ export function SessionDetail() {
   const [attendance, setAttendance] = useState<SessionAttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingStudentId, setSavingStudentId] = useState<number | null>(null);
-  const [syncing, setSyncing] = useState(false);
   const [requestError, setRequestError] = useState("");
 
   const loadData = async (): Promise<void> => {
@@ -185,24 +180,6 @@ export function SessionDetail() {
     () => attendance.filter((row) => row.attendance_status === "present").length,
     [attendance],
   );
-
-  const handleSync = async () => {
-    if (!session || readonly) {
-      return;
-    }
-
-    setSyncing(true);
-    setRequestError("");
-
-    try {
-      await syncSessionAttendance(session.id);
-      await loadData();
-    } catch (error) {
-      setRequestError(toErrorMessage(error));
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const updateRow = async (
     row: SessionAttendanceRow,
@@ -341,15 +318,6 @@ export function SessionDetail() {
             {presentCount}/{attendance.length} học sinh có mặt
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void handleSync()}
-          disabled={readonly || syncing}
-          className="inline-flex items-center gap-2 h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
-        >
-          <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-          {syncing ? "Đang sync..." : "Sync điểm danh"}
-        </button>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">

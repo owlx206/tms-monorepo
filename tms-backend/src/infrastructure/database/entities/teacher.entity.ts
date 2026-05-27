@@ -15,7 +15,7 @@ export class Teacher {
   @Column({ type: 'bit', default: true })
   is_active!: boolean;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'nvarchar', length: 100, nullable: true })
   discord_username!: string | null;
 
   @Column({ type: 'varchar', length: 64, nullable: true })

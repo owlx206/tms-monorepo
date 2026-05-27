@@ -28,9 +28,7 @@ export const financeTransactionBodySchema = z.object({
   recorded_at: dateTimeSchema.optional(),
 });
 
-export const updateFinanceTransactionBodySchema = financeTransactionBodySchema.extend({
-  update_reason: optionalTrimmedStringSchema.nullish().transform((value) => value ?? null),
-});
+export const updateFinanceTransactionBodySchema = financeTransactionBodySchema;
 
 export const financeIdParamSchema = z.object({
   id: positiveIntegerSchema,

@@ -41,7 +41,7 @@ export class Transaction {
   @Column({ type: 'datetimeoffset', default: () => 'SYSDATETIMEOFFSET()' })
   recorded_at!: Date;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'nvarchar', length: 'MAX', nullable: true })
   notes!: string | null;
 
   @UpdateDateColumn({ type: 'datetimeoffset' })

@@ -16,8 +16,8 @@ import {
   addDiscordGuildMember,
   fetchDiscordGuildMember,
 } from '../../../../../infrastructure/external/discord/discord.js';
-import type { SysadminDiscordBotCredentialStore } from '../../../../account/infrastructure/persistence/typeorm/Writer.js';
-import { type SysadminDiscordBotCredential } from '../../../../../infrastructure/database/entities/sysadmin-discord-bot-credential.entity.js';
+import type { DiscordBotCredentialStore } from '../../../../account/infrastructure/persistence/typeorm/Writer.js';
+import { type DiscordBotCredential } from '../../../../../infrastructure/database/entities/discord-bot-credential.entity.js';
 import { refreshStudentDiscordToken } from '../../../../../infrastructure/security/discord-oauth.js';
 import { Student, Student as StudentOrmEntity } from '../../../../../infrastructure/database/entities/student.entity.js';
 import { DomainError } from '../../../../../shared/domain/DomainError.js';
@@ -270,7 +270,7 @@ export type StudentDiscordInviteResult = {
 export class TypeOrmStudentDiscordMembershipService {
   constructor(
     private readonly dataSource: DataSource,
-    private readonly discordBotCredentialStore: SysadminDiscordBotCredentialStore,
+    private readonly discordBotCredentialStore: DiscordBotCredentialStore,
   ) {}
 
   async inviteStudentToCurrentClass(
@@ -325,7 +325,7 @@ export class TypeOrmStudentDiscordMembershipService {
     });
   }
 
-  private async getSystemBotCredential(): Promise<SysadminDiscordBotCredential | null> {
+  private async getSystemBotCredential(): Promise<DiscordBotCredential | null> {
     const credential = await this.discordBotCredentialStore.findDefault();
     const token = credential?.bot_token?.trim();
     return credential && token && token.length > 0 ? credential : null;
@@ -376,7 +376,7 @@ export class TypeOrmStudentDiscordMembershipService {
   private async getValidStudentAccessToken(
     student: Student,
     discordCredential: StudentDiscordCredential,
-    credential: SysadminDiscordBotCredential,
+    credential: DiscordBotCredential,
   ): Promise<string | null> {
     if (!discordCredential.discord_access_token || !discordCredential.discord_refresh_token || !discordCredential.discord_token_expires_at) {
       return null;

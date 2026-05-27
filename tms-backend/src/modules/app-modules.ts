@@ -7,8 +7,8 @@ import type { AppModule } from './module.types.js';
 
 export const appModules: AppModule[] = [
   accountModule,
+  studentModule,
   systemModule,
   classroomModule,
-  studentModule,
   financeModule,
 ];

@@ -24,7 +24,11 @@ export function createApp(): express.Express {
 
   for (const module of appModules) {
     for (const route of module.routes) {
-      app.use(`${config.apiPrefix}${route.path === '/' ? '' : route.path}`, route.router);
+      const mountPath = route.path === '/'
+        ? config.apiPrefix
+        : `${config.apiPrefix}${route.path}`;
+
+      app.use(mountPath, route.router);
     }
   }
 

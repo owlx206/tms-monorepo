@@ -1,6 +1,6 @@
 import { In } from 'typeorm';
 
-import { SysadminDiscordBotCredential } from '../../../../../infrastructure/database/entities/sysadmin-discord-bot-credential.entity.js';
+import { DiscordBotCredential } from '../../../../../infrastructure/database/entities/discord-bot-credential.entity.js';
 import { AppDataSource } from '../../../../../infrastructure/database/data-source.js';
 import { DiscordGuildChannelCache } from '../../../../../infrastructure/external/discord/cache/entities/discord-guild-channel-cache.entity.js';
 import { DiscordUserGuild } from '../../../../../infrastructure/external/discord/cache/entities/discord-user-guild.entity.js';
@@ -11,8 +11,8 @@ import { Teacher } from '../../../../../infrastructure/database/entities/teacher
 import { TeacherCodeforcesCredential } from '../../../../../infrastructure/database/entities/teacher-codeforces-credential.entity.js';
 import { StudentDiscordCredential } from '../../../../../infrastructure/database/entities/student-discord-credential.entity.js';
 
-// SysadminDiscordBotCredentialStore.ts
-export type SysadminDiscordBotCredentialRecord = {
+// DiscordBotCredentialStore.ts
+export type DiscordBotCredentialRecord = {
   id: number;
   client_id: string;
   client_secret: string;
@@ -23,29 +23,29 @@ export type SysadminDiscordBotCredentialRecord = {
   updated_at: Date;
 };
 
-export interface SysadminDiscordBotCredentialStore {
-  findDefault(): Promise<SysadminDiscordBotCredential | null>;
+export interface DiscordBotCredentialStore {
+  findDefault(): Promise<DiscordBotCredential | null>;
   saveDefault(input: {
     bot_token: string;
     client_id: string;
     client_secret: string;
     permissions?: string | null;
     scopes?: string | null;
-  }): Promise<SysadminDiscordBotCredential>;
+  }): Promise<DiscordBotCredential>;
 }
 
-export function findDefaultSysadminDiscordBotCredential(): Promise<SysadminDiscordBotCredential | null> {
-  return AppDataSource.getRepository(SysadminDiscordBotCredential).findOneBy({
+export function findDefaultDiscordBotCredential(): Promise<DiscordBotCredential | null> {
+  return AppDataSource.getRepository(DiscordBotCredential).findOneBy({
     singleton_key: 'default',
   });
 }
 
-export async function updateDefaultSysadminDiscordBotHealth(input: {
+export async function updateDefaultDiscordBotHealth(input: {
   status: 'unknown' | 'healthy' | 'unhealthy';
   message: string;
   checkedAt: Date;
 }): Promise<void> {
-  await AppDataSource.getRepository(SysadminDiscordBotCredential).update(
+  await AppDataSource.getRepository(DiscordBotCredential).update(
     { singleton_key: 'default' },
     {
       bot_health_status: input.status,
@@ -226,10 +226,10 @@ export class TypeOrmStudentDiscordIdentityStore {
   }
 }
 
-// TypeOrmSysadminDiscordBotCredentialStore.ts
-export class TypeOrmSysadminDiscordBotCredentialStore implements SysadminDiscordBotCredentialStore {
-  findDefault(): Promise<SysadminDiscordBotCredential | null> {
-    return AppDataSource.getRepository(SysadminDiscordBotCredential).findOneBy({
+// TypeOrmDiscordBotCredentialStore.ts
+export class TypeOrmDiscordBotCredentialStore implements DiscordBotCredentialStore {
+  findDefault(): Promise<DiscordBotCredential | null> {
+    return AppDataSource.getRepository(DiscordBotCredential).findOneBy({
       singleton_key: 'default',
     });
   }
@@ -240,8 +240,8 @@ export class TypeOrmSysadminDiscordBotCredentialStore implements SysadminDiscord
     client_secret: string;
     permissions?: string | null;
     scopes?: string | null;
-  }): Promise<SysadminDiscordBotCredential> {
-    const repo = AppDataSource.getRepository(SysadminDiscordBotCredential);
+  }): Promise<DiscordBotCredential> {
+    const repo = AppDataSource.getRepository(DiscordBotCredential);
     const existing = await this.findDefault();
 
     if (existing) {

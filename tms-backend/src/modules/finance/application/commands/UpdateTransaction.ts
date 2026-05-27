@@ -29,7 +29,6 @@ export class UpdateTransaction {
     type: TransactionType;
     notes?: string | null;
     recordedAt?: Date;
-    updateReason?: string | null;
   }) {
     const transaction = await this.transactionWriter.findOwnedTransaction(
       input.teacherId,
@@ -53,14 +52,6 @@ export class UpdateTransaction {
     });
     assertTransactionKeepsRefundBalance(totals, { type: input.type, amount });
 
-    const oldSnapshot = {
-      student_id: transaction.student_id,
-      amount: transaction.amount,
-      type: transaction.type,
-      notes: transaction.notes,
-      recorded_at: transaction.recorded_at,
-    };
-
     transaction.student_id = input.studentId;
     transaction.amount = amount.toString();
     transaction.type = input.type;
@@ -68,24 +59,7 @@ export class UpdateTransaction {
     transaction.recorded_at = input.recordedAt ?? transaction.recorded_at;
 
     try {
-      return await this.transactionWriter.saveWithAuditLog(
-        input.teacherId,
-        input.transactionId,
-        transaction,
-        {
-          old_student_id: oldSnapshot.student_id,
-          new_student_id: transaction.student_id,
-          old_amount: oldSnapshot.amount,
-          new_amount: transaction.amount,
-          old_type: oldSnapshot.type,
-          new_type: transaction.type,
-          old_recorded_at: oldSnapshot.recorded_at,
-          new_recorded_at: transaction.recorded_at,
-          old_notes: oldSnapshot.notes,
-          new_notes: transaction.notes,
-          reason: input.updateReason ?? null,
-        },
-      );
+      return await this.transactionWriter.save(transaction);
     } catch (error) {
       if (isRefundBalanceConstraintError(error)) {
         assertRefundsDoNotExceedPayments({ payments: 0n, refunds: 1n });

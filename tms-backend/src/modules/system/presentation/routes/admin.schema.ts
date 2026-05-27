@@ -22,7 +22,7 @@ export const updateTeacherAccountBodySchema = z.object({
   message: 'at least one field is required',
 });
 
-export const upsertSysadminDiscordBotCredentialBodySchema = z.object({
+export const upsertDiscordBotCredentialBodySchema = z.object({
   bot_token: requiredTrimmedStringSchema,
   client_id: requiredTrimmedStringSchema,
   client_secret: requiredTrimmedStringSchema,

@@ -4,8 +4,8 @@ import type { HttpRequest } from '../../../../shared/presentation/HttpRequest.js
 import type { HttpResponse } from '../../../../shared/presentation/HttpResponse.js';
 import type { ParsedRequestContext } from '../../../../infrastructure/http/request-context.js';
 import type {
-  SysadminDiscordBotCredentialInput,
-  SysadminDiscordBotCredentialView,
+  DiscordBotCredentialInput,
+  DiscordBotCredentialView,
   TeacherAccount,
   UpdateTeacherAccountInput,
 } from '../../../account/contracts/types.js';
@@ -18,12 +18,12 @@ type AdminControllerAction =
 
 type AdminControllerDependencies = {
   listTeachers: { execute(): Promise<TeacherAccount[]> };
-  getDiscordBotCredential: { execute(): Promise<SysadminDiscordBotCredentialView | null> };
+  getDiscordBotCredential: { execute(): Promise<DiscordBotCredentialView | null> };
   updateTeacher: {
     execute(actorTeacherId: number, teacherId: number, input: UpdateTeacherAccountInput): Promise<unknown>;
   };
   upsertDiscordBotCredential: {
-    execute(input: SysadminDiscordBotCredentialInput): Promise<unknown>;
+    execute(input: DiscordBotCredentialInput): Promise<unknown>;
   };
 };
 
@@ -91,7 +91,7 @@ export class AdminController implements Controller {
 
   private async upsertDiscordBotCredential(request: HttpRequest): Promise<HttpResponse> {
     const credential = await this.dependencies.upsertDiscordBotCredential.execute(
-      request.body as SysadminDiscordBotCredentialInput,
+      request.body as DiscordBotCredentialInput,
     );
 
     return {

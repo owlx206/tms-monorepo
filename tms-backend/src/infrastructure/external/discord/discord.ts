@@ -107,6 +107,10 @@ export type DiscordSentDirectMessage = {
   messageId: string;
 };
 
+export const DEFAULT_DISCORD_BOT_SCOPES = 'bot applications.commands';
+// Create Invite + Kick Members + View Channels + Send Messages + Connect.
+export const DEFAULT_DISCORD_BOT_PERMISSIONS = '1051651';
+
 const discordRestByBotToken = new Map<string, REST>();
 const discordUnauthenticatedRest = new REST({ version: '10' });
 const discordBearerRest = new REST({ version: '10' });

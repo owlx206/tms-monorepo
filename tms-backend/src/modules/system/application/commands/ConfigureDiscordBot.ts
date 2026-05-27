@@ -1,9 +1,13 @@
 import type {
-  SysadminDiscordBotCredentialInput,
-  SysadminDiscordBotCredentialView,
+  DiscordBotCredentialInput,
+  DiscordBotCredentialView,
 } from '../../../account/contracts/types.js';
 import { discordApiUrl } from '../../../../infrastructure/security/discord-oauth.js';
-import type { SysadminDiscordBotCredentialStore } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
+import type { DiscordBotCredentialStore } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
+import {
+  DEFAULT_DISCORD_BOT_PERMISSIONS,
+  DEFAULT_DISCORD_BOT_SCOPES,
+} from '../../../../infrastructure/external/discord/discord.js';
 
 function buildInviteLink(input: {
   clientId: string;
@@ -12,20 +16,18 @@ function buildInviteLink(input: {
 }): string {
   const search = new URLSearchParams({
     client_id: input.clientId,
-    scope: input.scopes?.trim() || 'bot applications.commands',
+    scope: input.scopes?.trim() || DEFAULT_DISCORD_BOT_SCOPES,
   });
 
-  if (input.permissions?.trim()) {
-    search.set('permissions', input.permissions.trim());
-  }
+  search.set('permissions', input.permissions?.trim() || DEFAULT_DISCORD_BOT_PERMISSIONS);
 
   return `https://discord.com/oauth2/authorize?${search.toString()}`;
 }
 
 export class ConfigureDiscordBot {
-  constructor(private readonly store: SysadminDiscordBotCredentialStore) {}
+  constructor(private readonly store: DiscordBotCredentialStore) {}
 
-  async execute(input: SysadminDiscordBotCredentialInput): Promise<SysadminDiscordBotCredentialView> {
+  async execute(input: DiscordBotCredentialInput): Promise<DiscordBotCredentialView> {
     const existing = await this.store.findDefault();
     const normalizedBotToken = input.bot_token.trim();
     const botToken = normalizedBotToken && normalizedBotToken !== '__KEEP_EXISTING__'

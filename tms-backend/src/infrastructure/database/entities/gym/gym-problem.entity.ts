@@ -28,6 +28,6 @@ export class GymProblem {
   @Column({ type: 'varchar', length: 10 })
   problem_index!: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'nvarchar', length: 255, nullable: true })
   problem_name!: string | null;
 }

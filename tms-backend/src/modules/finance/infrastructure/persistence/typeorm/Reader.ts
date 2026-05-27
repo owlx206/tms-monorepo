@@ -8,7 +8,6 @@ import { FeeRecord } from '../../../../../infrastructure/database/entities/fee-r
 import { Student } from '../../../../../infrastructure/database/entities/student.entity.js';
 import { HttpError } from '../../../../../shared/errors/HttpError.js';
 import { parseAmountToBigInt } from '../../../domain/Money.js';
-import { TransactionAuditLog } from '../../../../../infrastructure/database/entities/transaction-audit-log.entity.js';
 import { Transaction } from '../../../../../infrastructure/database/entities/transaction.entity.js';
 
 // TypeOrmIncomeReportReader.ts
@@ -174,28 +173,6 @@ export class TypeOrmTransactionReader {
       limit: filters.limit ?? null,
       offset: filters.offset ?? 0,
     };
-  }
-
-  async listTransactionAuditLogs(teacherId: number, transactionId: number) {
-    const transaction = await this.manager.getRepository(Transaction).findOneBy({
-      id: transactionId,
-      teacher_id: teacherId,
-    });
-
-    if (!transaction) {
-      throw new HttpError('transaction not found', 404);
-    }
-
-    return this.manager.getRepository(TransactionAuditLog).find({
-      where: {
-        teacher_id: teacherId,
-        transaction_id: transactionId,
-      },
-      order: {
-        created_at: 'DESC',
-        id: 'DESC',
-      },
-    });
   }
 
   async listFeeRecords(

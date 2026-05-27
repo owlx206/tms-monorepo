@@ -5,6 +5,7 @@ import { ArrowLeft, RefreshCw } from "lucide-react";
 import { ApiError } from "../services/apiClient";
 import { listClasses } from "../services/classService";
 import { getTopicStanding, type BackendTopicStandingMatrix } from "../services/topicService";
+import { formatVietnamDateTime } from "../services/vietnamTime";
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -156,7 +157,7 @@ export function TopicStanding() {
 
       <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 mb-6">
         <p className="text-sm text-zinc-600">
-          Cập nhật lần cuối: {lastPulled ? lastPulled.toLocaleString("vi-VN") : "Chưa có dữ liệu"}
+          Cập nhật lần cuối: {lastPulled ? formatVietnamDateTime(lastPulled) : "Chưa có dữ liệu"}
           <span className="ml-3 text-zinc-500">Tự sync sau {autoSyncTick}s</span>
         </p>
       </div>

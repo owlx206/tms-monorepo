@@ -11,6 +11,13 @@ import {
   listClasses,
   listSessions,
 } from "../services/classService";
+import {
+  addDaysToDateOnly,
+  formatVietnamDate,
+  formatVietnamTime,
+  todayVietnamDateOnly,
+  vietnamDateRangeToIso,
+} from "../services/vietnamTime";
 
 type SessionStatusFilter = 'all' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -37,15 +44,11 @@ function toErrorMessage(error: unknown): string {
 }
 
 function formatSessionDate(date: Date): string {
-  return date.toLocaleDateString('vi-VN');
+  return formatVietnamDate(date);
 }
 
 function formatSessionTime(date: Date): string {
-  return date.toLocaleTimeString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+  return formatVietnamTime(date);
 }
 
 function toSessionCards(sessions: BackendSession[], classes: BackendClass[]): SessionCard[] {
@@ -87,18 +90,11 @@ export function Sessions() {
     try {
       const dateFilters: { from?: string; to?: string } = {};
       if (sessionDate) {
-        const [year, month, day] = sessionDate.split("-").map(Number);
-        const startOfSelectedDay = new Date(year, month - 1, day, 0, 0, 0, 0);
-        const endOfSelectedDay = new Date(year, month - 1, day, 23, 59, 59, 999);
-        dateFilters.from = startOfSelectedDay.toISOString();
-        dateFilters.to = endOfSelectedDay.toISOString();
+        Object.assign(dateFilters, vietnamDateRangeToIso(sessionDate));
       } else if (rangeToggleVisible && !showAllSessions) {
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const sevenDaysLater = new Date(startOfToday.getTime() + 7 * 24 * 60 * 60 * 1000);
-        sevenDaysLater.setHours(23, 59, 59, 999);
-        dateFilters.from = startOfToday.toISOString();
-        dateFilters.to = sevenDaysLater.toISOString();
+        const today = todayVietnamDateOnly();
+        dateFilters.from = vietnamDateRangeToIso(today).from;
+        dateFilters.to = vietnamDateRangeToIso(addDaysToDateOnly(today, 7)).to;
       }
 
       const [classList, sessionList] = await Promise.all([
@@ -186,7 +182,7 @@ export function Sessions() {
           <h1 className="text-3xl font-semibold text-zinc-900 mb-2">Buổi học</h1>
           <p className="text-zinc-600">
             {sessionDate
-              ? `Buổi học ngày ${formatSessionDate(new Date(`${sessionDate}T00:00:00`))}`
+              ? `Buổi học ngày ${formatVietnamDate(vietnamDateRangeToIso(sessionDate).from)}`
               : filterStatus === 'completed'
               ? "Tất cả buổi học đã hoàn thành"
               : filterStatus === 'cancelled'

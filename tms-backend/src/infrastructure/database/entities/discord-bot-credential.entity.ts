@@ -2,9 +2,9 @@ import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
 import { credentialTransformer } from '../../security/credential-transformer.js';
 
-@Entity('sysadmin_discord_bot_credentials')
-@Unique('uq_sysadmin_discord_bot_credentials_singleton', ['singleton_key'])
-export class SysadminDiscordBotCredential {
+@Entity('discord_bot_credentials')
+@Unique('uq_discord_bot_credentials_singleton', ['singleton_key'])
+export class DiscordBotCredential {
   @PrimaryGeneratedColumn()
   id!: number;
 
@@ -29,7 +29,7 @@ export class SysadminDiscordBotCredential {
   @Column({ type: 'varchar', length: 16, default: 'unknown' })
   bot_health_status!: 'unknown' | 'healthy' | 'unhealthy';
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'nvarchar', length: 'MAX', nullable: true })
   bot_health_message!: string | null;
 
   @Column({ type: 'datetimeoffset', nullable: true })

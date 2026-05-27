@@ -1,6 +1,10 @@
+import { Router } from 'express';
+import passport from 'passport';
+
 import type { AppModule } from '../module.types.js';
+import { TeacherRole } from '../account/contracts/types.js';
 import { TypeOrmDiscordCacheStore } from '../../infrastructure/external/discord/cache/discord-cache.store.js';
-import { TypeOrmSysadminDiscordBotCredentialStore } from '../account/infrastructure/persistence/typeorm/Writer.js';
+import { TypeOrmDiscordBotCredentialStore } from '../account/infrastructure/persistence/typeorm/Writer.js';
 import { AssignGym } from './application/commands/AssignGym.js';
 import { UnassignGym } from './application/commands/UnassignGym.js';
 import { GetGymStanding } from './application/queries/GetGymStanding.js';
@@ -36,19 +40,41 @@ import { ClassGymStandingReportController } from './presentation/controllers/gym
 import { AttendanceController } from './presentation/controllers/AttendanceController.js';
 import { ClassScheduleController } from './presentation/controllers/ClassScheduleController.js';
 import { SessionController } from './presentation/controllers/SessionController.js';
-import { createAttendanceRouter } from './presentation/routes/attendance.routes.js';
-import { createClassScheduleRouter } from './presentation/routes/class-schedule.routes.js';
-import { createClassroomRouter } from './presentation/routes/classroom.routes.js';
-import { createClassGymRouter } from './presentation/routes/gym/class-gym.routes.js';
-import { createClassGymStandingReportRouter } from './presentation/routes/gym/class-gym-standing-report.routes.js';
-import { createSessionRouter } from './presentation/routes/session.routes.js';
+import {
+  attendanceListQuerySchema,
+  sessionIdParamSchema as attendanceSessionIdParamSchema,
+  sessionStudentIdParamSchema,
+  upsertAttendanceBodySchema,
+} from './presentation/routes/attendance.schema.js';
+import {
+  channelPostBodySchema,
+  classIdParamSchema,
+  classListQuerySchema,
+  createClassBodySchema,
+  createManualSessionBodySchema,
+  guildIdParamSchema,
+  sessionIdParamSchema,
+  sessionListQuerySchema,
+  updateClassBodySchema,
+  upsertDiscordGuildBodySchema,
+} from './presentation/routes/classroom.schema.js';
+import {
+  bindClassGymBodySchema,
+  classGymParamSchema,
+  gymListQuerySchema,
+} from './presentation/routes/gym/class-gym.schema.js';
 import { AppDataSource } from '../../infrastructure/database/data-source.js';
+import { attachRequestContext } from '../../infrastructure/http/request-context.js';
+import { authorizeOwnedClassParam, authorizeOwnedClassQuery, authorizeOwnedGymParam, authorizeOwnedSessionParam, authorizeOwnedStudentParam } from '../../infrastructure/security/ownership.js';
+import { requireRoles } from '../../infrastructure/security/rbac.js';
+import { adaptExpressRoute } from '../../shared/presentation/adapt-express-route.js';
+import { validate } from '../../shared/middlewares/validate.js';
 
 const classCommandHandlers = new TypeOrmClassCommandHandlers();
 const sessionCommandHandlers = new TypeOrmSessionCommandHandlers();
 const attendanceCommandHandlers = new TypeOrmAttendanceCommandHandlers();
 const createGymReader = () => new TypeOrmGymReader(AppDataSource.manager);
-const discordBotCredentialStore = new TypeOrmSysadminDiscordBotCredentialStore();
+const discordBotCredentialStore = new TypeOrmDiscordBotCredentialStore();
 const discordCache = new TypeOrmDiscordCacheStore();
 const classroomDiscordWriter = new TypeOrmClassroomDiscordWriter();
 const classDiscordActions = {
@@ -96,7 +122,7 @@ const classGymActions = {
       new UnassignGym(new TypeOrmGymWriter(manager)).execute(teacherId, classId, gymId)),
 };
 
-const classroomRouter = createClassroomRouter({
+const classroomRouteControllers = {
   listClasses: new ClassController('listClasses', {
     classes: classReader,
     createClass: classCommandHandlers,
@@ -140,15 +166,68 @@ const classroomRouter = createClassroomRouter({
   upsertClassDiscordBinding: new ClassDiscordController('upsertClassDiscordBinding', classDiscordActions),
   unbindClassDiscordBinding: new ClassDiscordController('unbindClassDiscordBinding', classDiscordActions),
   sendChannelPost: new ClassDiscordController('sendChannelPost', classDiscordActions),
-});
+};
+const classRouter = Router();
+classRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+classRouter.get('/', validate({ query: classListQuerySchema }), adaptExpressRoute(classroomRouteControllers.listClasses));
+classRouter.post('/', validate({ body: createClassBodySchema }), adaptExpressRoute(classroomRouteControllers.createClass));
+classRouter.get('/:classId/details', validate({ params: classIdParamSchema }), authorizeOwnedClassParam(), adaptExpressRoute(classroomRouteControllers.getClassDetails));
+classRouter.get('/:classId', validate({ params: classIdParamSchema }), authorizeOwnedClassParam(), adaptExpressRoute(classroomRouteControllers.getClassById));
+classRouter.patch('/:classId', validate({
+  body: updateClassBodySchema,
+  params: classIdParamSchema,
+}), authorizeOwnedClassParam(), adaptExpressRoute(classroomRouteControllers.updateClass));
+classRouter.put(
+  '/:classId/discord-guild/select',
+  validate({ params: classIdParamSchema, body: upsertDiscordGuildBodySchema }),
+  authorizeOwnedClassParam(),
+  adaptExpressRoute(classroomRouteControllers.upsertClassDiscordBinding),
+);
+classRouter.delete(
+  '/:classId/discord-guild',
+  validate({ params: classIdParamSchema }),
+  authorizeOwnedClassParam(),
+  adaptExpressRoute(classroomRouteControllers.unbindClassDiscordBinding),
+);
+classRouter.post('/:classId/archive', validate({ params: classIdParamSchema }), authorizeOwnedClassParam(), adaptExpressRoute(classroomRouteControllers.archiveClass));
+classRouter.post('/:classId/close', validate({ params: classIdParamSchema }), authorizeOwnedClassParam(), adaptExpressRoute(classroomRouteControllers.archiveClass));
 
-const classScheduleRouter = createClassScheduleRouter({
-  listClassSchedules: new ClassScheduleController('listClassSchedules', {
-    classSchedules: classScheduleReader,
-  }),
-});
+const classroomDiscordRouter = Router();
+classroomDiscordRouter.get('/oauth/callback', adaptExpressRoute(classroomRouteControllers.completeDiscordInstall));
+classroomDiscordRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+classroomDiscordRouter.get('/bot-invite-link', adaptExpressRoute(classroomRouteControllers.getBotInviteLink));
+classroomDiscordRouter.get('/guilds', adaptExpressRoute(classroomRouteControllers.listDiscordGuilds));
+classroomDiscordRouter.get(
+  '/guilds/:guildId/channels',
+  validate({ params: guildIdParamSchema }),
+  adaptExpressRoute(classroomRouteControllers.listDiscordGuildChannels),
+);
+classroomDiscordRouter.post(
+  '/messages/channel-post',
+  validate({ body: channelPostBodySchema }),
+  adaptExpressRoute(classroomRouteControllers.sendChannelPost),
+);
 
-const sessionRouter = createSessionRouter({
+const listClassSchedulesController = new ClassScheduleController('listClassSchedules', {
+  classSchedules: classScheduleReader,
+});
+const classScheduleRouter = Router();
+classScheduleRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+classScheduleRouter.get('/:classId/schedules', validate({ params: classIdParamSchema }), authorizeOwnedClassParam(), adaptExpressRoute(listClassSchedulesController));
+
+const sessionRouteControllers = {
   listSessions: new SessionController('listSessions', {
     sessions: sessionReader,
     commandHandlers: sessionCommandHandlers,
@@ -165,14 +244,33 @@ const sessionRouter = createSessionRouter({
     sessions: sessionReader,
     commandHandlers: sessionCommandHandlers,
   }),
-});
+};
+const sessionRouter = Router();
+sessionRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+sessionRouter.get('/', validate({ query: sessionListQuerySchema }), authorizeOwnedClassQuery(), adaptExpressRoute(sessionRouteControllers.listSessions));
+sessionRouter.post('/:sessionId/cancel', validate({ params: sessionIdParamSchema }), authorizeOwnedSessionParam(), adaptExpressRoute(sessionRouteControllers.cancelSession));
 
-const attendanceRouter = createAttendanceRouter({
+const classSessionRouter = Router();
+classSessionRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+classSessionRouter.get('/:classId/sessions', validate({
+  params: classIdParamSchema,
+  query: sessionListQuerySchema,
+}), authorizeOwnedClassParam(), adaptExpressRoute(sessionRouteControllers.listClassSessions));
+classSessionRouter.post('/:classId/sessions/manual', validate({
+  body: createManualSessionBodySchema,
+  params: classIdParamSchema,
+}), authorizeOwnedClassParam(), adaptExpressRoute(sessionRouteControllers.createManualSession));
+
+const attendanceRouteControllers = {
   getSessionAttendance: new AttendanceController('getSessionAttendance', {
-    attendance: attendanceReader,
-    commandHandlers: attendanceCommandHandlers,
-  }),
-  syncSessionAttendance: new AttendanceController('syncSessionAttendance', {
     attendance: attendanceReader,
     commandHandlers: attendanceCommandHandlers,
   }),
@@ -184,30 +282,86 @@ const attendanceRouter = createAttendanceRouter({
     attendance: attendanceReader,
     commandHandlers: attendanceCommandHandlers,
   }),
-});
+};
+const attendanceRouter = Router();
+attendanceRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+attendanceRouter.get('/', validate({ query: attendanceListQuerySchema }), adaptExpressRoute(attendanceRouteControllers.listAttendanceRecords));
 
-const classGymRouter = createClassGymRouter({
-  listAvailableClassGyms: new ClassGymController('listAvailableClassGyms', classGymActions),
-  bindClassGym: new ClassGymController('bindClassGym', classGymActions),
-  unbindClassGym: new ClassGymController('unbindClassGym', classGymActions),
-});
+const sessionAttendanceRouter = Router();
+sessionAttendanceRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+sessionAttendanceRouter.get('/:sessionId/attendance', validate({ params: attendanceSessionIdParamSchema }), authorizeOwnedSessionParam(), adaptExpressRoute(attendanceRouteControllers.getSessionAttendance));
+sessionAttendanceRouter.put('/:sessionId/attendance/:studentId', validate({
+  body: upsertAttendanceBodySchema,
+  params: sessionStudentIdParamSchema,
+}), authorizeOwnedSessionParam(), authorizeOwnedStudentParam(), adaptExpressRoute(attendanceRouteControllers.upsertSessionAttendance));
 
-const classGymStandingReportRouter = createClassGymStandingReportRouter(
-  new ClassGymStandingReportController({
-    getGymStandingMatrix: (teacherId, classId, gymId) =>
-      new GetGymStanding(createGymReader()).execute(teacherId, classId, gymId),
-  }),
+const listAvailableClassGymsController = new ClassGymController('listAvailableClassGyms', classGymActions);
+const bindClassGymController = new ClassGymController('bindClassGym', classGymActions);
+const unbindClassGymController = new ClassGymController('unbindClassGym', classGymActions);
+const classGymStandingReportController = new ClassGymStandingReportController({
+  getGymStandingMatrix: (teacherId, classId, gymId) =>
+    new GetGymStanding(createGymReader()).execute(teacherId, classId, gymId),
+});
+const classGymRouter = Router();
+classGymRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+classGymRouter.get(
+  '/:classId/available-gyms',
+  validate({ params: classIdParamSchema, query: gymListQuerySchema }),
+  authorizeOwnedClassParam(),
+  adaptExpressRoute(listAvailableClassGymsController),
+);
+classGymRouter.post(
+  '/:classId/gyms',
+  validate({ params: classIdParamSchema, body: bindClassGymBodySchema }),
+  authorizeOwnedClassParam(),
+  adaptExpressRoute(bindClassGymController),
+);
+classGymRouter.delete(
+  '/:classId/gyms/:gymId',
+  validate({ params: classGymParamSchema }),
+  authorizeOwnedClassParam(),
+  authorizeOwnedGymParam(),
+  adaptExpressRoute(unbindClassGymController),
+);
+
+const classGymStandingReportRouter = Router();
+classGymStandingReportRouter.use(
+  passport.authenticate('jwt', { session: false }),
+  requireRoles([TeacherRole.Teacher]),
+  attachRequestContext(),
+);
+classGymStandingReportRouter.get(
+  '/:classId/gyms/:gymId/standing',
+  validate({ params: classGymParamSchema }),
+  authorizeOwnedClassParam(),
+  authorizeOwnedGymParam(),
+  adaptExpressRoute(classGymStandingReportController),
 );
 
 export const classroomModule: AppModule = {
   name: 'classroom',
   entities: [Class, ClassSchedule, Session, Attendance, ClassDiscordBinding, Gym, GymProblem, GymStanding],
   routes: [
-    { path: '/', router: classroomRouter },
-    { path: '/', router: classGymRouter },
-    { path: '/', router: classGymStandingReportRouter },
-    { path: '/', router: classScheduleRouter },
-    { path: '/', router: sessionRouter },
-    { path: '/', router: attendanceRouter },
+    { path: '/classes', router: classRouter },
+    { path: '/classes', router: classGymRouter },
+    { path: '/classes', router: classGymStandingReportRouter },
+    { path: '/classes', router: classScheduleRouter },
+    { path: '/classes', router: classSessionRouter },
+    { path: '/discord', router: classroomDiscordRouter },
+    { path: '/sessions', router: sessionRouter },
+    { path: '/sessions', router: sessionAttendanceRouter },
+    { path: '/attendance', router: attendanceRouter },
   ],
 };

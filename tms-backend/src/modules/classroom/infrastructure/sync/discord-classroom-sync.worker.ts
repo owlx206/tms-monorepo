@@ -15,14 +15,18 @@ import { TypeOrmDiscordCacheStore } from '../../../../infrastructure/external/di
 import { startSyncLoop, type SyncLoop } from '../../../../infrastructure/sync/sync-loop.js';
 import { refreshStudentDiscordToken } from '../../../../infrastructure/security/discord-oauth.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
+import {
+  toVietnamDateParts,
+  vietnamDateTimeToUtcDate,
+} from '../../../../shared/time/vietnam-time.js';
 import { listStudentIdsByClassAtTime } from '../../../student/infrastructure/persistence/typeorm/Reader.js';
 import { StudentStatus } from '../../../student/contracts/types.js';
 import {
-  findDefaultSysadminDiscordBotCredential,
+  findDefaultDiscordBotCredential,
   findTeacherDiscordUserId,
   listStudentDiscordIdentities,
   listTeacherIdsWithDiscordUserId,
-  updateDefaultSysadminDiscordBotHealth,
+  updateDefaultDiscordBotHealth,
 } from '../../../account/infrastructure/persistence/typeorm/Writer.js';
 import { AttendanceSource, AttendanceStatus, ClassStatus, SessionStatus } from '../../contracts/types.js';
 import { TypeOrmAttendanceWriter, TypeOrmSessionFinanceService } from '../persistence/typeorm/Writer.js';
@@ -69,12 +73,12 @@ type MaterializeSessionRow = {
   teacher_id: number;
 };
 
-export async function checkSysadminDiscordBotHealthOnce(): Promise<void> {
+export async function checkDiscordBotHealthOnce(): Promise<void> {
   if (!AppDataSource.isInitialized) {
     return;
   }
 
-  const credential = await findDefaultSysadminDiscordBotCredential();
+  const credential = await findDefaultDiscordBotCredential();
   if (!credential?.bot_token) {
     return;
   }
@@ -91,7 +95,7 @@ export async function checkSysadminDiscordBotHealthOnce(): Promise<void> {
     message = error instanceof Error ? error.message : 'Failed to check bot token health.';
   }
 
-  await updateDefaultSysadminDiscordBotHealth({ status, message, checkedAt });
+  await updateDefaultDiscordBotHealth({ status, message, checkedAt });
 }
 
 export async function listDiscordSyncTeacherIds(): Promise<number[]> {
@@ -106,7 +110,7 @@ export async function syncDiscordGuildsForTeacherOnce(teacherId: number): Promis
   synced_guilds: number;
   removed_bindings: number;
 }> {
-  const credential = await findDefaultSysadminDiscordBotCredential();
+  const credential = await findDefaultDiscordBotCredential();
   const botToken = credential?.bot_token?.trim();
   if (!botToken) {
     return { synced_guilds: 0, removed_bindings: 0 };
@@ -304,31 +308,38 @@ async function reconcileStudentDiscordMembershipRow(input: {
     return 'unchanged';
   }
 
-  if (targetGuildId) {
-    const accessToken = await getValidStudentDiscordAccessToken({
-      row: input.row,
-      clientId: input.clientId,
-      clientSecret: input.clientSecret,
-    });
-    if (!accessToken) {
-      return 'skipped';
-    }
-
-    await addDiscordGuildMember({
-      botToken: input.botToken,
-      guildId: targetGuildId,
-      userId: input.row.discord_user_id,
-      userAccessToken: accessToken,
-    });
-  }
-
-  if (currentGuildId && currentGuildId !== targetGuildId) {
+  if (currentGuildId) {
     await kickDiscordGuildMember({
       botToken: input.botToken,
       guildId: currentGuildId,
       userId: input.row.discord_user_id,
     });
+
+    await AppDataSource.getRepository(StudentDiscordCredential).update(
+      { id: input.row.credential_id },
+      { guild_id: null },
+    );
   }
+
+  if (!targetGuildId) {
+    return currentGuildId ? 'kicked' : 'unchanged';
+  }
+
+  const accessToken = await getValidStudentDiscordAccessToken({
+    row: input.row,
+    clientId: input.clientId,
+    clientSecret: input.clientSecret,
+  });
+  if (!accessToken) {
+    return 'skipped';
+  }
+
+  await addDiscordGuildMember({
+    botToken: input.botToken,
+    guildId: targetGuildId,
+    userId: input.row.discord_user_id,
+    userAccessToken: accessToken,
+  });
 
   await AppDataSource.getRepository(StudentDiscordCredential).update(
     { id: input.row.credential_id },
@@ -352,7 +363,7 @@ export async function syncStudentDiscordGuildMembershipForTeacherOnce(teacherId:
     return { added: 0, kicked: 0, moved: 0, skipped: 0 };
   }
 
-  const credential = await findDefaultSysadminDiscordBotCredential();
+  const credential = await findDefaultDiscordBotCredential();
   const botToken = credential?.bot_token?.trim();
   if (!botToken) {
     return { added: 0, kicked: 0, moved: 0, skipped: 0 };
@@ -377,7 +388,11 @@ export async function syncStudentDiscordGuildMembershipForTeacherOnce(teacherId:
       } else if (action === 'skipped') {
         result.skipped += 1;
       }
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      console.warn(
+        `[sync] discord membership skipped teacher=${teacherId} student=${row.student_id} current_guild=${row.current_guild_id ?? 'none'} target_guild=${row.target_guild_id ?? 'none'} error=${message}`,
+      );
       result.skipped += 1;
     }
   }
@@ -428,9 +443,8 @@ function getSessionEndAt(session: Pick<Session, 'scheduled_at' | 'end_time'>): D
   }
 
   const [hours = '0', minutes = '0', seconds = '0'] = session.end_time.split(':');
-  const endAt = new Date(session.scheduled_at);
-  endAt.setHours(Number(hours), Number(minutes), Number(seconds), 0);
-  return endAt;
+  const parts = toVietnamDateParts(session.scheduled_at);
+  return vietnamDateTimeToUtcDate(parts.year, parts.month, parts.day, Number(hours), Number(minutes), Number(seconds), 0);
 }
 
 async function materializeSessionAttendance(input: {
@@ -661,7 +675,7 @@ function studentDiscordKey(student: VoiceAttendanceStudentIdentity): string | nu
 }
 
 async function getOpenVoiceAttendanceSessions(teacherId?: number): Promise<OpenVoiceAttendanceSession[]> {
-  const credential = await findDefaultSysadminDiscordBotCredential();
+  const credential = await findDefaultDiscordBotCredential();
   const botToken = credential?.bot_token?.trim() || null;
   if (!botToken) {
     return [];
@@ -848,7 +862,7 @@ async function getVoiceAttendanceSessionForTeacher(
   teacherId: number,
   sessionId: number,
 ): Promise<OpenVoiceAttendanceSession> {
-  const credential = await findDefaultSysadminDiscordBotCredential();
+  const credential = await findDefaultDiscordBotCredential();
   const botToken = credential?.bot_token?.trim() || null;
   const row = await AppDataSource.getRepository(Session)
     .createQueryBuilder('session')
@@ -969,7 +983,7 @@ export function destroyVoiceAttendanceClients(): void {
 
 export class ClassroomDiscordWorker {
   async runOnce(): Promise<void> {
-    await checkSysadminDiscordBotHealthOnce();
+    await checkDiscordBotHealthOnce();
 
     const teacherIds = Array.from(new Set([
       ...await listDiscordSyncTeacherIds(),
